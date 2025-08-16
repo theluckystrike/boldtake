@@ -1,0 +1,1729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BoldTake Professional</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --brand-green: 158 64% 52%;        /* #34D399 */
+            --brand-green-dark: 158 64% 42%;   /* Darker shade */
+            --text-primary: 210 20% 98%;       /* #F9FAFB */
+            --text-secondary: 220 9% 68%;      /* #9CA3AF */
+            --bg-primary: 216 34% 7%;          /* #111827 */
+            --bg-secondary: 215 28% 12%;       /* #1F2937 */
+            --pain-points: 340 82% 62%;        /* #F472B6 Hot pink */
+            --power-words: 45 93% 58%;         /* #FDE047 Bright yellow */
+            
+            /* Gradients */
+            --gradient-brand: linear-gradient(135deg, hsl(var(--brand-green)), hsl(var(--brand-green-dark)));
+            
+            /* Shadows */
+            --shadow-brand: 0 10px 30px -10px hsl(var(--brand-green) / 0.3);
+            
+            /* Border Radius */
+            --radius: 0.75rem;
+            
+            /* Transitions */
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 420px;
+            min-height: 600px;
+            max-height: 700px;
+            background: hsl(var(--bg-primary));
+            color: hsl(var(--text-primary));
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow-x: hidden;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.5;
+            padding: 0;
+            margin: 0;
+        }
+
+        .header {
+            background: var(--gradient-brand);
+            padding: 24px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+            animation: shimmer 4s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.1); }
+        }
+
+        .header-content {
+            position: relative;
+            z-index: 2;
+        }
+
+        .header h1 {
+            color: hsl(var(--bg-primary));
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -0.025em;
+        }
+
+        .brand-name {
+            color: hsl(var(--bg-primary));
+        }
+
+        .brand-take {
+            color: hsl(var(--text-primary));
+            font-weight: 600;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: hsl(var(--bg-primary));
+            opacity: 0.9;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: hsl(var(--text-secondary));
+            transition: var(--transition-smooth);
+        }
+
+        .status-dot.running {
+            background: hsl(var(--brand-green));
+            box-shadow: 0 0 8px hsl(var(--brand-green) / 0.6);
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .content {
+            padding: 28px;
+        }
+
+        .settings-section {
+            background: hsl(var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid hsl(var(--bg-secondary));
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .settings-title {
+            color: hsl(var(--text-primary));
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: hsl(var(--text-secondary));
+            margin-bottom: 6px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid hsl(var(--bg-primary));
+            border-radius: calc(var(--radius) - 2px);
+            font-size: 14px;
+            font-family: inherit;
+            background: hsl(var(--bg-primary));
+            color: hsl(var(--text-primary));
+            transition: var(--transition-smooth);
+        }
+
+        input:focus {
+            outline: none;
+            border-color: hsl(var(--brand-green));
+            box-shadow: 0 0 0 3px hsl(var(--brand-green) / 0.1);
+        }
+
+        input::placeholder {
+            color: hsl(var(--text-secondary));
+        }
+
+        .timing-select {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid hsl(var(--bg-primary));
+            border-radius: calc(var(--radius) - 2px);
+            font-size: 14px;
+            font-family: inherit;
+            background: hsl(var(--bg-primary));
+            color: hsl(var(--text-primary));
+            transition: var(--transition-smooth);
+        }
+
+        .timing-select:focus {
+            outline: none;
+            border-color: hsl(var(--brand-green));
+            box-shadow: 0 0 0 3px hsl(var(--brand-green) / 0.1);
+        }
+
+        .keyword-categories {
+            margin-bottom: 16px;
+        }
+
+        .keyword-categories select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid hsl(var(--border));
+            border-radius: 8px;
+            background: hsl(var(--bg-primary));
+            color: hsl(var(--text-primary));
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .keyword-categories select:focus {
+            outline: none;
+            border-color: hsl(var(--brand-green));
+            box-shadow: 0 0 0 3px hsl(var(--brand-green) / 0.1);
+        }
+
+        .add-all-section {
+            margin-top: 16px;
+            text-align: center;
+            padding: 12px 0;
+            border-top: 1px solid hsl(var(--border-color));
+        }
+
+        .add-category-btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, hsl(var(--brand-green)), hsl(var(--brand-green) / 0.8));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            min-width: 160px;
+        }
+
+        .add-category-btn:hover {
+            background: linear-gradient(135deg, hsl(var(--brand-green) / 0.9), hsl(var(--brand-green) / 0.7));
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        }
+
+        .add-category-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Custom Prompt Section */
+        .custom-prompt-section {
+            margin-top: 24px;
+        }
+
+        .toggle-checkbox {
+            margin-right: 8px;
+        }
+
+        .custom-prompt-builder {
+            margin-top: 16px;
+            padding: 16px;
+            background: hsl(var(--bg-secondary));
+            border-radius: 8px;
+            border: 1px solid hsl(var(--border));
+        }
+
+        .custom-prompt-builder textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 12px;
+            border: 1px solid hsl(var(--border));
+            border-radius: 6px;
+            background: hsl(var(--bg-primary));
+            color: hsl(var(--text-primary));
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            line-height: 1.4;
+            resize: vertical;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .btn-secondary {
+            padding: 8px 16px;
+            background: hsl(var(--bg-primary));
+            color: hsl(var(--text-primary));
+            border: 1px solid hsl(var(--border));
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-secondary:hover {
+            background: hsl(var(--bg-secondary));
+        }
+
+        .prompt-preview {
+            margin-top: 16px;
+            padding: 12px;
+            background: hsl(var(--bg-primary));
+            border-radius: 6px;
+            border: 1px solid hsl(var(--border));
+        }
+
+        .preview-content {
+            margin-top: 8px;
+            padding: 8px;
+            background: hsl(var(--bg-secondary));
+            border-radius: 4px;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+
+        .saved-prompts {
+            margin-top: 16px;
+        }
+
+        .saved-prompts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        /* Daily Target Select Styling */
+        .daily-target-select {
+            background: linear-gradient(135deg, hsl(var(--bg-primary)), hsl(var(--bg-secondary)));
+            border: 2px solid hsl(var(--brand-green) / 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 600;
+            color: hsl(var(--text-primary));
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .daily-target-select:hover {
+            border-color: hsl(var(--brand-green) / 0.6);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            transform: translateY(-1px);
+        }
+
+        .daily-target-select:focus {
+            outline: none;
+            border-color: hsl(var(--brand-green));
+            box-shadow: 0 0 0 3px hsl(var(--brand-green) / 0.1);
+        }
+
+        .daily-target-select option {
+            padding: 8px;
+            font-weight: 500;
+            background: hsl(var(--bg-primary));
+            color: hsl(var(--text-primary));
+        }
+
+        .keyword-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        .no-category {
+            color: hsl(var(--text-secondary));
+            font-size: 12px;
+            font-style: italic;
+            margin: 8px 0;
+        }
+
+        .keyword-chip {
+            background: hsl(var(--bg-primary));
+            color: hsl(var(--text-secondary));
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            border: 1px solid hsl(var(--bg-primary));
+        }
+
+        .keyword-chip:hover {
+            background: hsl(var(--brand-green) / 0.1);
+            color: hsl(var(--brand-green));
+            border-color: hsl(var(--brand-green) / 0.3);
+        }
+
+        .keyword-chip.active {
+            background: hsl(var(--brand-green));
+            color: hsl(var(--bg-primary));
+            border-color: hsl(var(--brand-green));
+        }
+
+        .personalization-section {
+            margin-top: 20px;
+        }
+
+        .section-divider {
+            height: 1px;
+            background: hsl(var(--bg-primary));
+            margin: 16px 0;
+        }
+
+        .settings-subtitle {
+            font-size: 12px;
+            font-weight: 600;
+            color: hsl(var(--brand-green));
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .btn-secondary {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            background: hsl(var(--bg-secondary));
+            color: hsl(var(--text-secondary));
+            border: 1px solid hsl(var(--bg-secondary));
+        }
+
+        .btn-secondary:hover {
+            background: hsl(var(--brand-green) / 0.1);
+            color: hsl(var(--brand-green));
+            border-color: hsl(var(--brand-green) / 0.3);
+        }
+
+        .btn-secondary.active {
+            background: hsl(var(--brand-green));
+            color: hsl(var(--bg-primary));
+            border-color: hsl(var(--brand-green));
+        }
+
+        .settings-panel, .analytics-panel, .roadmap-panel {
+            margin-bottom: 24px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .roadmap-section {
+            background: hsl(var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 20px;
+            border: 1px solid hsl(var(--bg-secondary));
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .roadmap-quarter {
+            margin-bottom: 20px;
+        }
+
+        .roadmap-quarter:last-child {
+            margin-bottom: 0;
+        }
+
+        .quarter-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: hsl(var(--brand-green));
+            margin-bottom: 12px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid hsl(var(--bg-primary));
+        }
+
+        .roadmap-items {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .roadmap-item {
+            background: hsl(var(--bg-primary));
+            border-radius: calc(var(--radius) - 2px);
+            padding: 10px 12px;
+            border: 1px solid hsl(var(--bg-primary));
+        }
+
+        .roadmap-feature {
+            font-size: 12px;
+            font-weight: 600;
+            color: hsl(var(--text-primary));
+            margin-bottom: 4px;
+        }
+
+        .roadmap-desc {
+            font-size: 10px;
+            color: hsl(var(--text-secondary));
+            line-height: 1.3;
+            margin-bottom: 6px;
+        }
+
+        .roadmap-tag {
+            display: inline-block;
+            background: hsl(var(--brand-green) / 0.1);
+            color: hsl(var(--brand-green));
+            padding: 2px 6px;
+            border-radius: 8px;
+            font-size: 9px;
+            font-weight: 500;
+        }
+
+        /* Analytics Styles */
+        .analytics-section {
+            background: hsl(var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 20px;
+            border: 1px solid hsl(var(--bg-secondary));
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .analytics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .analytics-card {
+            background: hsl(var(--bg-primary));
+            border-radius: calc(var(--radius) - 2px);
+            padding: 16px;
+            border: 1px solid hsl(var(--bg-primary));
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: var(--transition-smooth);
+        }
+
+        .analytics-card:hover {
+            box-shadow: 0 2px 4px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .analytics-icon {
+            font-size: 24px;
+            opacity: 0.8;
+        }
+
+        .analytics-content {
+            flex: 1;
+        }
+
+        .analytics-number {
+            font-size: 20px;
+            font-weight: 700;
+            color: hsl(var(--brand-green));
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+
+        .analytics-label {
+            font-size: 10px;
+            color: hsl(var(--text-secondary));
+            line-height: 1.2;
+        }
+
+        .comment-history {
+            margin-bottom: 20px;
+        }
+
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .history-header h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: hsl(var(--text-primary));
+            margin: 0;
+        }
+
+        .btn-clear {
+            background: hsl(var(--pain-points) / 0.1);
+            color: hsl(var(--pain-points));
+            border: 1px solid hsl(var(--pain-points) / 0.3);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .btn-clear:hover {
+            background: hsl(var(--pain-points) / 0.2);
+        }
+
+        .history-list {
+            max-height: 200px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .history-item {
+            background: hsl(var(--bg-primary));
+            border-radius: calc(var(--radius) - 4px);
+            padding: 10px 12px;
+            border: 1px solid hsl(var(--bg-primary));
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .history-item.placeholder {
+            opacity: 0.6;
+            border-style: dashed;
+        }
+
+        .history-icon {
+            font-size: 14px;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        .history-content {
+            flex: 1;
+        }
+
+        .history-text {
+            font-size: 11px;
+            color: hsl(var(--text-primary));
+            line-height: 1.3;
+            margin-bottom: 4px;
+        }
+
+        .history-meta {
+            font-size: 9px;
+            color: hsl(var(--text-secondary));
+            opacity: 0.8;
+        }
+
+        .analytics-insights h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: hsl(var(--text-primary));
+            margin: 0 0 12px 0;
+        }
+
+        .insights-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .insight-item {
+            background: hsl(var(--brand-green) / 0.05);
+            border: 1px solid hsl(var(--brand-green) / 0.1);
+            border-radius: calc(var(--radius) - 4px);
+            padding: 10px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .insight-icon {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .insight-text {
+            font-size: 11px;
+            color: hsl(var(--text-primary));
+            line-height: 1.3;
+        }
+
+        /* New Tips Format */
+        .tip-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px;
+            background: hsl(var(--bg-primary));
+            border-radius: calc(var(--radius) - 4px);
+            border: 1px solid hsl(var(--bg-primary));
+        }
+
+        .tip-number {
+            background: hsl(var(--brand-green));
+            color: hsl(var(--bg-primary));
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 600;
+            flex-shrink: 0;
+        }
+
+        .tip-content {
+            flex: 1;
+        }
+
+        .tip-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: hsl(var(--text-primary));
+            margin-bottom: 4px;
+        }
+
+        .tip-desc {
+            font-size: 10px;
+            line-height: 1.4;
+            color: hsl(var(--text-secondary));
+        }
+
+        .status-section {
+            background: hsl(var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid hsl(var(--bg-secondary));
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 0;
+        }
+
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .status-label {
+            font-size: 14px;
+            color: hsl(var(--text-secondary));
+            font-weight: 500;
+        }
+
+        .status-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: hsl(var(--brand-green));
+            transition: var(--transition-smooth);
+        }
+
+        .status-item:hover .status-value {
+            transform: scale(1.05);
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 16px 24px;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+            font-family: inherit;
+        }
+
+        .btn:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .btn:hover:before {
+            left: 100%;
+        }
+
+        .btn-start {
+            background: var(--gradient-brand);
+            color: hsl(var(--bg-primary));
+            box-shadow: var(--shadow-brand);
+        }
+
+        .btn-start:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px -5px hsl(var(--brand-green) / 0.4);
+        }
+
+        .btn-stop {
+            background: linear-gradient(135deg, hsl(var(--pain-points)), hsl(var(--pain-points) / 0.9));
+            color: hsl(var(--text-primary));
+            box-shadow: 0 10px 30px -10px hsl(var(--pain-points) / 0.3);
+        }
+
+        .btn-stop:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px -5px hsl(var(--pain-points) / 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        .btn:disabled:before {
+            display: none;
+        }
+
+        .tips-section {
+            padding: 20px;
+            background: hsl(var(--bg-secondary));
+            border-radius: var(--radius);
+            border: 1px solid hsl(var(--bg-secondary));
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .tips-section h3 {
+            color: hsl(var(--brand-green));
+            font-size: 14px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .tips-list {
+            list-style: none;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .tips-list li {
+            margin-bottom: 8px;
+            position: relative;
+            padding-left: 16px;
+            color: hsl(var(--text-secondary));
+        }
+
+        .tips-list li:before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: hsl(var(--brand-green));
+            font-weight: bold;
+        }
+
+        .activity-log {
+            background: hsl(var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 20px;
+            border: 1px solid hsl(var(--bg-secondary));
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .activity-log h3 {
+            color: hsl(var(--brand-green));
+            font-size: 14px;
+            margin-bottom: 12px;
+            font-weight: 600;
+        }
+
+        .activity-feed {
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .activity-item {
+            padding: 6px 0;
+            color: hsl(var(--text-secondary));
+            border-bottom: 1px solid hsl(var(--bg-primary) / 0.3);
+            font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+        }
+
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+
+        .activity-item.success {
+            color: hsl(var(--brand-green));
+        }
+
+        .activity-item.info {
+            color: hsl(var(--text-primary));
+        }
+
+        .strategies-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .strategy-item {
+            background: hsl(var(--bg-primary));
+            border-radius: calc(var(--radius) - 4px);
+            padding: 8px 10px;
+            border: 1px solid hsl(var(--bg-primary));
+        }
+
+        .strategy-name {
+            font-size: 11px;
+            font-weight: 600;
+            color: hsl(var(--brand-green));
+            margin-bottom: 2px;
+        }
+
+        .strategy-desc {
+            font-size: 9px;
+            color: hsl(var(--text-secondary));
+            line-height: 1.2;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid hsl(var(--bg-secondary));
+            border-radius: 50%;
+            border-top-color: hsl(var(--brand-green));
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Status indicators */
+        .status-running { color: hsl(var(--brand-green)) !important; }
+        .status-idle { color: hsl(var(--text-secondary)) !important; }
+        .status-error { color: hsl(var(--pain-points)) !important; }
+
+        /* Power word highlights */
+        .power-word {
+            color: hsl(var(--power-words));
+            font-weight: 600;
+        }
+
+        /* Custom Prompt Saved Items */
+        .saved-prompt-item {
+            background: hsl(var(--bg-secondary));
+            border: 1px solid hsl(var(--border-color));
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s ease;
+        }
+
+        .saved-prompt-item:hover {
+            background: hsl(var(--bg-tertiary));
+            border-color: hsl(var(--accent-primary));
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px hsla(var(--accent-primary), 0.1);
+        }
+
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .prompt-name {
+            font-weight: 600;
+            color: hsl(var(--text-primary));
+            font-size: 14px;
+        }
+
+        .prompt-meta {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+            font-size: 11px;
+            color: hsl(var(--text-secondary));
+        }
+
+        .usage-count {
+            background: hsl(var(--accent-primary));
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .created-date {
+            opacity: 0.7;
+        }
+
+        .prompt-preview {
+            color: hsl(var(--text-secondary));
+            font-size: 12px;
+            line-height: 1.4;
+            margin-bottom: 12px;
+            background: hsl(var(--bg-primary));
+            padding: 8px;
+            border-radius: 6px;
+            border-left: 3px solid hsl(var(--accent-primary));
+        }
+
+        .prompt-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .edit-prompt-btn,
+        .use-prompt-btn,
+        .delete-prompt-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .edit-prompt-btn {
+            background: hsl(var(--bg-tertiary));
+            color: hsl(var(--text-primary));
+            border: 1px solid hsl(var(--border-color));
+        }
+
+        .edit-prompt-btn:hover {
+            background: hsl(var(--bg-quaternary));
+            border-color: hsl(var(--accent-primary));
+        }
+
+        .use-prompt-btn {
+            background: linear-gradient(135deg, hsl(var(--accent-primary)), hsl(var(--accent-secondary)));
+            color: white;
+        }
+
+        .use-prompt-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px hsla(var(--accent-primary), 0.3);
+        }
+
+        .delete-prompt-btn {
+            background: hsl(0, 60%, 50%);
+            color: white;
+        }
+
+        .delete-prompt-btn:hover {
+            background: hsl(0, 70%, 45%);
+            transform: translateY(-1px);
+        }
+
+        /* Preview Response Styles */
+        .preview-sample-tweet {
+            background: hsl(var(--bg-tertiary));
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 3px solid hsl(220, 90%, 56%);
+        }
+
+        .preview-ai-response {
+            background: hsl(var(--bg-secondary));
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 3px solid hsl(var(--accent-primary));
+        }
+
+        .preview-stats {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .preview-stats .stat {
+            background: hsl(var(--bg-tertiary));
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            color: hsl(var(--text-secondary));
+            border: 1px solid hsl(var(--border-color));
+        }
+
+        /* Keyword Rotation Styles */
+        .keyword-rotation-builder {
+            background: hsl(var(--bg-secondary));
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid hsl(var(--border-color));
+        }
+
+        .keyword-input-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            align-items: stretch;
+        }
+
+        .keyword-input-row input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid hsl(var(--border-color));
+            border-radius: 10px;
+            background: hsl(var(--bg-primary));
+            color: hsl(var(--text-primary));
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .keyword-input-row input:focus {
+            outline: none;
+            border-color: hsl(var(--brand-green));
+            box-shadow: 0 0 0 3px hsl(var(--brand-green) / 0.1);
+        }
+
+        .keyword-input-row input::placeholder {
+            color: hsl(var(--text-secondary));
+            font-weight: 400;
+        }
+
+        .add-keyword-btn {
+            background: linear-gradient(135deg, hsl(var(--brand-green)), hsl(var(--brand-green) / 0.8));
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px hsl(var(--brand-green) / 0.2);
+            min-width: 80px;
+        }
+
+        .add-keyword-btn:hover {
+            background: linear-gradient(135deg, hsl(var(--brand-green) / 0.9), hsl(var(--brand-green) / 0.7));
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px hsl(var(--brand-green) / 0.3);
+        }
+
+        .add-keyword-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .rotation-keywords-list {
+            min-height: 60px;
+        }
+
+        .no-keywords {
+            color: hsl(var(--text-secondary));
+            font-style: italic;
+            text-align: center;
+            padding: 20px;
+            background: hsl(var(--bg-primary));
+            border-radius: 8px;
+            border: 2px dashed hsl(var(--border-color));
+        }
+
+        .rotation-keyword-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: hsl(var(--bg-primary));
+            border: 1px solid hsl(var(--border-color));
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .rotation-keyword-item:hover {
+            background: hsl(var(--bg-tertiary));
+            border-color: hsl(var(--accent-primary));
+        }
+
+        .rotation-keyword-item.active {
+            background: hsl(var(--accent-primary));
+            color: white;
+            border-color: hsl(var(--accent-primary));
+        }
+
+        .keyword-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .keyword-name {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .keyword-status {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: hsl(var(--bg-secondary));
+            color: hsl(var(--text-secondary));
+        }
+
+        .rotation-keyword-item.active .keyword-status {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .keyword-actions {
+            display: flex;
+            gap: 4px;
+        }
+
+        .remove-keyword-btn {
+            background: hsl(0, 60%, 50%);
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .remove-keyword-btn:hover {
+            background: hsl(0, 70%, 45%);
+            transform: translateY(-1px);
+        }
+
+        .rotation-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid hsl(var(--border-color));
+            font-size: 12px;
+            color: hsl(var(--text-secondary));
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1><span class="brand-name">Bold</span><span class="brand-take">Take</span></h1>
+            <div class="status-indicator" id="liveStatus">
+                <div class="status-dot"></div>
+                <span>Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="content">
+        <div id="settings-panel" class="settings-panel hidden">
+            <div class="settings-section">
+                <div class="settings-title">Target Settings</div>
+                <div class="input-group">
+                    <label for="daily-target-input">Daily Target</label>
+                    <select id="daily-target-input" class="daily-target-select">
+                        <option value="60">🌱 60 replies/day (Light & Steady)</option>
+                        <option value="120" selected>⚡ 120 replies/day (Optimal Growth)</option>
+                        <option value="180">🚀 180 replies/day (High Impact)</option>
+                        <option value="240">🔥 240 replies/day (Maximum Reach)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="keyword-rotation">🔄 Keyword Rotation Strategy</label>
+                    <p class="section-description">Add 3-5 keywords to rotate through automatically. BoldTake will switch keywords and refresh the page to prevent getting stuck on one topic.</p>
+                    <div class="keyword-rotation-builder">
+                        <div class="keyword-input-row">
+                            <input type="text" id="keyword-input" placeholder="Enter keyword (e.g., 'AI', 'startup')">
+                            <button type="button" id="add-keyword-btn" class="add-keyword-btn">+ Add</button>
+                        </div>
+                        <div id="rotation-keywords-list" class="rotation-keywords-list">
+                            <div class="no-keywords">No keywords added yet. Add 3-5 keywords for optimal rotation.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <label for="min-faves-input">Minimum Engagement</label>
+                    <input type="number" id="min-faves-input" placeholder="e.g., 500" value="500">
+                </div>
+
+                <div class="input-group">
+                    <label for="timing-range">Tweet Timing Range</label>
+                    <select id="timing-range" class="timing-select">
+                        <option value="30-120">Quick (30s - 2m)</option>
+                        <option value="30-300" selected>Balanced (30s - 5m)</option>
+                        <option value="60-300">Safe (1m - 5m)</option>
+                        <option value="120-600">Stealth (2m - 10m)</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="keyword-suggestions">⚡ Niche Categories & Keywords</label>
+                    <p class="section-description">Choose your niche and get proven keywords for maximum engagement:</p>
+                    
+                    <div class="keyword-categories">
+                        <select id="category-select">
+                            <option value="">Choose your niche...</option>
+                            <option value="business">💼 Business & Entrepreneurship</option>
+                            <option value="technology">💻 Technology & AI</option>
+                            <option value="marketing">📈 Marketing & Sales</option>
+                            <option value="finance">💰 Finance & Investment</option>
+                            <option value="fitness">🏃‍♂️ Health & Fitness</option>
+                            <option value="education">🎓 Education & Development</option>
+                            <option value="sustainability">🌍 Sustainability & Environment</option>
+                            <option value="creative">🎨 Creative & Design</option>
+                            <option value="realestate">🏘️ Real Estate & Property</option>
+                            <option value="politics">🏛️ Politics & Economics</option>
+                        </select>
+                    </div>
+                    
+                    <div class="keyword-chips" id="category-keywords">
+                        <p class="no-category">Select a category above to see keyword suggestions</p>
+                    </div>
+                    
+                    <div class="add-all-section">
+                        <button type="button" id="add-category-btn" class="add-category-btn">+ Add All Keywords</button>
+                    </div>
+                </div>
+                
+                <div class="personalization-section">
+                    <div class="section-divider"></div>
+                    <div class="settings-subtitle">🌍 Personalization</div>
+                    
+                    <div class="input-group">
+                        <label for="language-select">Response Language</label>
+                        <select id="language-select" class="timing-select">
+                            <option value="english" selected>🇺🇸 English</option>
+                            <option value="spanish">🇪🇸 Spanish (Español)</option>
+                            <option value="french">🇫🇷 French (Français)</option>
+                            <option value="german">🇩🇪 German (Deutsch)</option>
+                            <option value="italian">🇮🇹 Italian (Italiano)</option>
+                            <option value="portuguese">🇵🇹 Portuguese (Português)</option>
+                            <option value="dutch">🇳🇱 Dutch (Nederlands)</option>
+                            <option value="japanese">🇯🇵 Japanese (日本語)</option>
+                            <option value="korean">🇰🇷 Korean (한국어)</option>
+                            <option value="chinese">🇨🇳 Chinese (中文)</option>
+                            <option value="russian">🇷🇺 Russian (Русский)</option>
+                            <option value="arabic">🇸🇦 Arabic (العربية)</option>
+                            <option value="hindi">🇮🇳 Hindi (हिंदी)</option>
+                            <option value="turkish">🇹🇷 Turkish (Türkçe)</option>
+                            <option value="polish">🇵🇱 Polish (Polski)</option>
+                            <option value="swedish">🇸🇪 Swedish (Svenska)</option>
+                            <option value="norwegian">🇳🇴 Norwegian (Norsk)</option>
+                            <option value="danish">🇩🇰 Danish (Dansk)</option>
+                            <option value="finnish">🇫🇮 Finnish (Suomi)</option>
+                            <option value="czech">🇨🇿 Czech (Čeština)</option>
+                            <option value="hungarian">🇭🇺 Hungarian (Magyar)</option>
+                            <option value="romanian">🇷🇴 Romanian (Română)</option>
+                            <option value="greek">🇬🇷 Greek (Ελληνικά)</option>
+                            <option value="hebrew">🇮🇱 Hebrew (עברית)</option>
+                            <option value="thai">🇹🇭 Thai (ไทย)</option>
+                            <option value="vietnamese">🇻🇳 Vietnamese (Tiếng Việt)</option>
+                            <option value="indonesian">🇮🇩 Indonesian (Bahasa Indonesia)</option>
+                            <option value="malay">🇲🇾 Malay (Bahasa Melayu)</option>
+                            <option value="filipino">🇵🇭 Filipino (Tagalog)</option>
+                            <option value="ukrainian">🇺🇦 Ukrainian (Українська)</option>
+                            <option value="bulgarian">🇧🇬 Bulgarian (Български)</option>
+                            <option value="croatian">🇭🇷 Croatian (Hrvatski)</option>
+                            <option value="serbian">🇷🇸 Serbian (Српски)</option>
+                            <option value="slovenian">🇸🇮 Slovenian (Slovenščina)</option>
+                            <option value="slovak">🇸🇰 Slovak (Slovenčina)</option>
+                            <option value="lithuanian">🇱🇹 Lithuanian (Lietuvių)</option>
+                            <option value="latvian">🇱🇻 Latvian (Latviešu)</option>
+                            <option value="estonian">🇪🇪 Estonian (Eesti)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="tone-select">Voice & Tone Style</label>
+                        <select id="tone-select" class="timing-select">
+                            <option value="adaptive" selected>🎯 Adaptive (Smart Context)</option>
+                            <option value="professional">💼 Professional & Polished</option>
+                            <option value="casual">😊 Casual & Friendly</option>
+                            <option value="witty">😄 Witty & Humorous</option>
+                            <option value="thought-leader">🧠 Thought Leader</option>
+                            <option value="supportive">🤝 Supportive & Encouraging</option>
+                            <option value="contrarian">🤔 Contrarian & Challenging</option>
+                            <option value="storyteller">📖 Storyteller & Narrative</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="custom-prompt-section">
+                    <div class="section-divider"></div>
+                    <div class="settings-subtitle">🤖 Custom AI Prompts</div>
+                    
+                    <div class="input-group">
+                        <label for="customPromptToggle">
+                            <input type="checkbox" id="customPromptToggle" class="toggle-checkbox">
+                            Enable Custom Prompts
+                        </label>
+                        <p class="section-description">Create and use your own AI conversation templates</p>
+                    </div>
+                    
+                    <div id="customPromptBuilder" class="custom-prompt-builder hidden">
+                        <div class="input-group">
+                            <label for="customPromptName">Prompt Name</label>
+                            <input type="text" id="customPromptName" placeholder="e.g., Viral Hook Master">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="customPromptText">Prompt Template</label>
+                            <textarea id="customPromptText" rows="6" placeholder="Enter your custom AI prompt template here..."></textarea>
+                        </div>
+                        
+                        <div class="button-group">
+                            <button type="button" id="testCustomPrompt" class="btn-secondary">Test Prompt</button>
+                            <button type="button" id="saveCustomPrompt" class="btn-primary">Save Prompt</button>
+                        </div>
+                        
+                        <div id="custom-prompt-preview" class="prompt-preview hidden">
+                            <h4>Preview Response:</h4>
+                            <div id="preview-response" class="preview-content"></div>
+                        </div>
+                        
+                        <div id="saved-prompts" class="saved-prompts">
+                            <h4>Saved Prompts:</h4>
+                            <div id="saved-prompts-list" class="saved-prompts-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="analytics-panel" class="analytics-panel hidden">
+            <div class="analytics-section">
+                <div class="settings-title">📊 Performance Analytics</div>
+                
+                <div class="analytics-grid">
+                    <div class="analytics-card">
+                        <div class="analytics-icon">🎯</div>
+                        <div class="analytics-content">
+                            <div class="analytics-number" id="totalCommentsAllTime">0</div>
+                            <div class="analytics-label">Total Comments All-Time</div>
+                        </div>
+                    </div>
+                    
+                    <div class="analytics-card">
+                        <div class="analytics-icon">📅</div>
+                        <div class="analytics-content">
+                            <div class="analytics-number" id="commentsToday">0</div>
+                            <div class="analytics-label">Comments Posted Today</div>
+                        </div>
+                    </div>
+                    
+                    <div class="analytics-card">
+                        <div class="analytics-icon">⚡</div>
+                        <div class="analytics-content">
+                            <div class="analytics-number" id="avgEngagement">0%</div>
+                            <div class="analytics-label">Average Success Rate</div>
+                        </div>
+                    </div>
+                    
+                    <div class="analytics-card">
+                        <div class="analytics-icon">🔥</div>
+                        <div class="analytics-content">
+                            <div class="analytics-number" id="bestStreak">0</div>
+                            <div class="analytics-label">Best Daily Streak</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="comment-history">
+                    <div class="history-header">
+                        <h3>📝 Recent Comment History</h3>
+                        <button id="clearHistory" class="btn-clear">Clear All</button>
+                    </div>
+                    <div id="commentHistoryList" class="history-list">
+                        <div class="history-item placeholder">
+                            <div class="history-icon">💬</div>
+                            <div class="history-content">
+                                <div class="history-text">No comments yet. Start a session to see your activity!</div>
+                                <div class="history-meta">Ready to engage</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="analytics-insights">
+                    <h3>🧠 Smart Insights</h3>
+                    <div id="analyticsInsights" class="insights-list">
+                        <div class="insight-item">
+                            <span class="insight-icon">💡</span>
+                            <span class="insight-text">Start your first session to unlock personalized insights!</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="roadmap-panel" class="roadmap-panel hidden">
+            <div class="roadmap-section">
+                <div class="settings-title">🗺️ Development Roadmap</div>
+                
+                <div class="roadmap-quarter">
+                    <div class="quarter-title">Q4 2025</div>
+                    <div class="roadmap-items">
+                        <div class="roadmap-item">
+                            <div class="roadmap-feature">🌍 Multi-Language Support</div>
+                            <div class="roadmap-desc">Engage globally with AI replies in 50+ languages</div>
+                            <div class="roadmap-tag">Global Reach</div>
+                        </div>
+                        <div class="roadmap-item">
+                            <div class="roadmap-feature">🎨 Custom Voice & Tone</div>
+                            <div class="roadmap-desc">Define your brand's personality with adjustable writing styles</div>
+                            <div class="roadmap-tag">Personalization</div>
+                        </div>
+                        <div class="roadmap-item">
+                            <div class="roadmap-feature">📝 Custom AI Prompts</div>
+                            <div class="roadmap-desc">Upload your own prompts and conversation templates</div>
+                            <div class="roadmap-tag">Customization</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="roadmap-quarter">
+                    <div class="quarter-title">Q1 2026</div>
+                    <div class="roadmap-items">
+                        <div class="roadmap-item">
+                            <div class="roadmap-feature">👥 Multi-Account Management</div>
+                            <div class="roadmap-desc">Manage unlimited X.com accounts from one dashboard</div>
+                            <div class="roadmap-tag">Scale</div>
+                        </div>
+                        <div class="roadmap-item">
+                            <div class="roadmap-feature">🧠 Advanced AI Personas</div>
+                            <div class="roadmap-desc">Create multiple AI personalities for different niches</div>
+                            <div class="roadmap-tag">Intelligence</div>
+                        </div>
+                        <div class="roadmap-item">
+                            <div class="roadmap-feature">🎯 Smart Targeting</div>
+                            <div class="roadmap-desc">AI-powered audience analysis and engagement optimization</div>
+                            <div class="roadmap-tag">Growth</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="roadmap-quarter">
+                    <div class="quarter-title">Q2 2026</div>
+                    <div class="roadmap-items">
+                        <div class="roadmap-item">
+                            <div class="roadmap-feature">📊 Real-time Analytics</div>
+                            <div class="roadmap-desc">Live performance tracking and growth insights</div>
+                            <div class="roadmap-tag">Analytics</div>
+                        </div>
+                        <div class="roadmap-item">
+                            <div class="roadmap-feature">⏰ Content Scheduling</div>
+                            <div class="roadmap-desc">Schedule original posts alongside automated replies</div>
+                            <div class="roadmap-tag">Automation</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-section">
+            <div class="status-item">
+                <span class="status-label">Status:</span>
+                <span class="status-value status-idle" id="sessionStatus">Ready</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Completed:</span>
+                <span class="status-value" id="successfulCount">0</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Success Rate:</span>
+                <span class="status-value" id="successRate">0%</span>
+            </div>
+        </div>
+
+        <div class="control-buttons">
+            <button id="start-button" class="btn btn-start">
+                Launch Session
+            </button>
+            <button id="stop-button" class="btn btn-stop" disabled>
+                Stop Session
+            </button>
+        </div>
+
+        <div class="activity-log">
+            <h3>🔄 Live Activity</h3>
+            <div id="activityFeed" class="activity-feed">
+                <div class="activity-item">Ready to start...</div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button id="settings-button" class="btn btn-secondary">
+                ⚙️ Settings
+            </button>
+            <button id="analytics-button" class="btn btn-secondary">
+                📊 Analytics
+            </button>
+            <button id="roadmap-button" class="btn btn-secondary">
+                🗺️ Roadmap
+            </button>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-title">⚡ AI Strategies (6 Rotating)</div>
+            <div class="strategies-grid">
+                <div class="strategy-item">
+                    <div class="strategy-name">🎯 Indie Voice</div>
+                    <div class="strategy-desc">Authentic, conversational reactions</div>
+                </div>
+                <div class="strategy-item">
+                    <div class="strategy-name">💥 Spark Reply</div>
+                    <div class="strategy-desc">Debate-starting provocations</div>
+                </div>
+                <div class="strategy-item">
+                    <div class="strategy-name">🤔 The Counter</div>
+                    <div class="strategy-desc">Challenge assumptions</div>
+                </div>
+                <div class="strategy-item">
+                    <div class="strategy-name">😄 The Riff</div>
+                    <div class="strategy-desc">Viral-ready comedy</div>
+                </div>
+                <div class="strategy-item">
+                    <div class="strategy-name">🚀 Viral Shot</div>
+                    <div class="strategy-desc">Maximum engagement hooks</div>
+                </div>
+                <div class="strategy-item">
+                    <div class="strategy-name">🎉 Shout-Out</div>
+                    <div class="strategy-desc">Achievement celebrations</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tips-section">
+            <h3>🎯 Expert Growth Strategies</h3>
+            <div class="tips-list">
+                <div class="tip-item">
+                    <div class="tip-number">1.</div>
+                    <div class="tip-content">
+                        <div class="tip-title">Quality Over Quantity</div>
+                        <div class="tip-desc">Target tweets with 500+ engagement for maximum visibility and authentic conversations</div>
+                    </div>
+                </div>
+                <div class="tip-item">
+                    <div class="tip-number">2.</div>
+                    <div class="tip-content">
+                        <div class="tip-title">Niche Authority</div>
+                        <div class="tip-desc">Focus on 2-3 specific topics (AI, SaaS, Marketing) to build consistent thought leadership</div>
+                    </div>
+                </div>
+                <div class="tip-item">
+                    <div class="tip-number">3.</div>
+                    <div class="tip-content">
+                        <div class="tip-title">Optimal Sessions</div>
+                        <div class="tip-desc">Run 2-4 hour sessions during peak hours (9-11 AM, 1-3 PM EST) for maximum reach</div>
+                    </div>
+                </div>
+                <div class="tip-item">
+                    <div class="tip-number">4.</div>
+                    <div class="tip-content">
+                        <div class="tip-title">Stealth Operations</div>
+                        <div class="tip-desc">Use varied timing and natural breaks - our system mimics human behavior patterns</div>
+                    </div>
+                </div>
+                <div class="tip-item">
+                    <div class="tip-number">5.</div>
+                    <div class="tip-content">
+                        <div class="tip-title">Strategic Languages</div>
+                        <div class="tip-desc">English for global reach, Spanish for LATAM markets, or target specific regions</div>
+                    </div>
+                </div>
+                <div class="tip-item">
+                    <div class="tip-number">6.</div>
+                    <div class="tip-content">
+                        <div class="tip-title">Voice Consistency</div>
+                        <div class="tip-desc">Choose one tone style per session to build recognizable brand personality</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>
