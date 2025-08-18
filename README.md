@@ -1,74 +1,66 @@
-# 🚀 BoldTake - Professional X.com Automation
+# 🚀 BoldTake Professional v5.0 - X.com Automation
 
-**Clean, modern, and stealth AI-powered engagement extension for X.com (Twitter)**
+**Enterprise-grade, secure AI-powered engagement extension with subscription management**
 
 ## ✨ Features
 
-- **6 Viral Engagement Strategies** - Smart rotation across proven engagement patterns
-- **Clean BoldTake Branding** - Professional interface matching your website
-- **Live Status Indicator** - Animated green dot showing real-time activity
-- **Activity Feed** - Live updates of last 4 actions
-- **Stealth Mode** - 99% less console logging for better detection avoidance
-- **Smart Content Filtering** - Avoids single-word tweets and spam content
-- **Bulletproof Formatting** - No em dashes, semicolons, or quotes in responses
+- **9 AI Personas** - Advanced personality-driven engagement strategies
+- **Secure Architecture** - All AI processing through encrypted Supabase backend
+- **Subscription Management** - Integrated authentication and usage limits
+- **Live Analytics** - Real-time usage tracking and performance insights
+- **Enterprise Stealth** - Advanced anti-detection with human behavior simulation
+- **Smart Content Filtering** - Multi-layered quality and safety checks
+- **Professional UI** - Modern dashboard with comprehensive controls
 
 ## 🛠️ Setup Instructions
 
-### 1. Get OpenAI API Key
-1. Visit [OpenAI Platform](https://platform.openai.com/api-keys)
-2. Create a new API key
-3. Copy your API key
+### 1. Create Account
+1. Visit [BoldTake.io](https://boldtake.io/auth)
+2. Create your account and choose subscription plan
+3. Complete payment setup
 
-### 2. Configure the Extension
-1. Open `background.js` in a text editor
-2. Replace `'YOUR_OPENAI_API_KEY'` with your actual API key:
-   ```javascript
-   const apiKey = 'sk-your-actual-api-key-here';
-   ```
-
-### 3. Install Extension
+### 2. Install Extension
 1. Open Chrome and go to `chrome://extensions/`
 2. Enable "Developer mode" (top right toggle)
 3. Click "Load unpacked"
 4. Select the BoldTake-v4.1 folder
 5. The extension should appear in your toolbar
 
-### 4. Usage
+### 3. Login & Setup
 1. Navigate to X.com
 2. Click the BoldTake extension icon
-3. Enter your search keyword (e.g., "AI", "startup", "tech")
-4. Set minimum engagement (recommended: 300+)
+3. Login with your account credentials
+4. Configure your target keywords and settings
 5. Click "Launch Session"
-6. Monitor the live status indicator and activity feed
 
-## 💡 Best Practices
+## 🔐 Secure Architecture
 
-- **Quality Targeting**: Start with 300+ engagement tweets
-- **Strategic Keywords**: Use specific terms like "AI", "startup", "tech"
-- **Session Duration**: Recommended 2-3+ hours for account safety
-- **Monitor Activity**: Watch the live status and activity feed for updates
+- **Zero API Keys Required** - All AI processing handled securely on our backend
+- **Encrypted Communication** - All data transmitted through Supabase's secure channels
+- **Authentication Required** - Only verified subscribers can access AI features
+- **Usage Tracking** - Real-time monitoring of daily limits and subscription status
+- **Automatic Rate Limiting** - Built-in protection against overuse
 
-## 🔧 Technical Details
+## 💡 Subscription Tiers
 
-- **Strategy Rotation**: Intelligent cycling through 6 engagement patterns
-- **Content Matching**: Smart selection based on tweet content
-- **Spam Detection**: Advanced filtering for quality engagement
-- **Error Recovery**: Robust handling of network and UI issues
-- **Session Persistence**: Continues where you left off after interruptions
+- **Trial**: 5 replies/day to test the platform
+- **Professional ($49/month)**: 120 replies/day with full feature access
+- **Automatic Usage Reset**: Daily limits reset automatically each day
 
-## 🛡️ Security & Stealth
+## 🔧 Technical Architecture
 
-- Minimal console logging to avoid detection
-- Natural timing delays (30s-5m random intervals)
-- Professional, non-bot-like responses
-- Quality content filtering for authentic engagement
+- **9 AI Personas**: Thoughtful, Witty, Contrarian, Viral, Humorous, Supportive, and more
+- **Strategy Mapping**: Intelligent conversion from extension strategies to backend personas  
+- **Real-time Analytics**: Live usage tracking with detailed insights
+- **Error Recovery**: Comprehensive retry logic with exponential backoff
+- **Session Persistence**: Maintains state across browser restarts
 
-## 📊 Live Features
+## 🛡️ Enterprise Security
 
-- **Top-right Status**: Green pulsing dot when active
-- **Activity Feed**: Real-time updates of last 4 actions
-- **Session Stats**: Success rate, completion count, and progress
-- **Clean Interface**: Modern, rounded design matching BoldTake brand
+- **Backend-Only API Keys** - No sensitive credentials stored in extension
+- **User Authentication** - Supabase-powered secure login system
+- **Subscription Validation** - Real-time verification of user access rights
+- **Audit Logging** - Comprehensive tracking for debugging and analytics
 
 ---
 

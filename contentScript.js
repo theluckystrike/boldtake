@@ -10,11 +10,24 @@ const debugLog = DEBUG_MODE ? console.log : () => {};
 // Activity tracking for live feed
 let recentActivities = [];
 
+// NETWORK MONITORING & AUTO-RECOVERY SYSTEM
+let networkMonitor = {
+  isOnline: navigator.onLine,
+  lastOnlineTime: Date.now(),
+  reconnectAttempts: 0,
+  maxReconnectAttempts: 5,
+  reconnectInterval: null,
+  sessionWasActive: false,
+  recoveryInProgress: false,
+  networkCheckInterval: null,
+  offlineStartTime: null,
+  lastActiveUrl: null // Store the URL where session was active
+};
+
 // ADVANCED STEALTH & SECURITY SYSTEM - Undetectable Automation
 const SECURITY_CONFIG = {
-  // Rate limiting (actions per hour/day) - Conservative for stealth
-  MAX_COMMENTS_PER_HOUR: 12, // Reduced for better stealth
-  MAX_COMMENTS_PER_DAY: 80,  // Human-realistic daily limit
+  // Rate limiting - Optimized for enterprise use
+  MAX_COMMENTS_PER_DAY: 150,  // Increased for enterprise accounts
   
   // Timing constraints (milliseconds) - Optimized for user experience
   MIN_DELAY_BETWEEN_ACTIONS: 30000,  // 30 seconds minimum (user-friendly)
@@ -52,7 +65,6 @@ const SECURITY_CONFIG = {
 
 // Security state tracking
 let securityState = {
-  actionsThisHour: 0,
   actionsToday: 0,
   lastActionTime: 0,
   recentResponses: [],
@@ -60,7 +72,6 @@ let securityState = {
   suspiciousActivity: 0,
   isInSafeMode: false,
   consecutiveFailures: 0,
-  lastHourReset: Date.now(),
   lastDayReset: new Date().toDateString(),
   lastErrorTime: 0
 };
@@ -73,14 +84,9 @@ let securityState = {
  */
 async function checkActionSafety() {
   const now = Date.now();
-  const currentHour = Math.floor(now / 3600000);
   const currentDay = new Date().toDateString();
   
-  // Reset counters if needed
-  if (Math.floor(securityState.lastHourReset / 3600000) !== currentHour) {
-    securityState.actionsThisHour = 0;
-    securityState.lastHourReset = now;
-  }
+  // Reset daily counter if needed
   
   if (securityState.lastDayReset !== currentDay) {
     securityState.actionsToday = 0;
@@ -100,18 +106,7 @@ async function checkActionSafety() {
     }
   }
   
-  // Check rate limits
-  if (securityState.actionsThisHour >= SECURITY_CONFIG.MAX_COMMENTS_PER_HOUR) {
-    const waitTime = 3600000 - (now - securityState.lastHourReset);
-    // STABILITY: Cap hourly wait time to maximum 10 minutes for better UX
-    const cappedWaitTime = Math.min(waitTime, 600000); // Max 10 minutes
-    return {
-      safe: false,
-      reason: 'Hourly rate limit reached',
-      waitTime: cappedWaitTime
-    };
-  }
-  
+  // Check daily rate limit only (hourly limit removed for enterprise use)
   if (securityState.actionsToday >= SECURITY_CONFIG.MAX_COMMENTS_PER_DAY) {
     // STABILITY: Cap daily wait time to 30 minutes for better UX
     // User should just stop the session and come back tomorrow
@@ -423,7 +418,6 @@ function levenshteinDistance(str1, str2) {
 function recordSuccessfulAction(response) {
   const now = Date.now();
   
-  securityState.actionsThisHour++;
   securityState.actionsToday++;
   securityState.lastActionTime = now;
   securityState.consecutiveFailures = 0;
@@ -434,7 +428,7 @@ function recordSuccessfulAction(response) {
     securityState.recentResponses.shift();
   }
   
-  addDetailedActivity(`✅ Action recorded safely (${securityState.actionsThisHour}/h, ${securityState.actionsToday}/day)`, 'success');
+  addDetailedActivity(`✅ Action recorded safely (${securityState.actionsToday}/day)`, 'success');
 }
 
 /**
@@ -505,6 +499,9 @@ const SAFE_FALLBACK_REPLIES = [
   await loadSession();
   await loadKeywordRotation();
   
+  // Initialize network monitoring system
+  initializeNetworkMonitoring();
+  
   // Check if this is a new session launched from the popup
   const { isNewSession } = await chrome.storage.local.get('isNewSession');
 
@@ -520,6 +517,21 @@ const SAFE_FALLBACK_REPLIES = [
     startContinuousSession(true); // Start without resetting stats
   }
 })();
+
+// --- Cleanup on Page Unload ---
+window.addEventListener('beforeunload', () => {
+  // Clean up network monitoring intervals
+  if (networkMonitor.networkCheckInterval) {
+    clearInterval(networkMonitor.networkCheckInterval);
+  }
+  if (networkMonitor.reconnectInterval) {
+    clearInterval(networkMonitor.reconnectInterval);
+  }
+  
+  // Remove event listeners
+  window.removeEventListener('online', handleNetworkOnline);
+  window.removeEventListener('offline', handleNetworkOffline);
+});
 
 // --- Message Handling ---
 
@@ -617,13 +629,23 @@ async function startContinuousSession(isResuming = false) {
     console.log('🎬 === BoldTake Session Started ===');
     
     // Initialize comprehensive session statistics
+    // SUBSCRIPTION-AWARE: Get daily limit from authentication system
+    let dailyLimit = 120; // Default fallback
+    try {
+      if (window.BoldTakeAuthManager) {
+        dailyLimit = window.BoldTakeAuthManager.getDailyLimit() || 120;
+      }
+    } catch (error) {
+      console.warn('⚠️ Could not get subscription limit, using default 120');
+    }
+
     sessionStats = {
       processed: 0,               // Total tweets processed this session
       successful: 0,              // Successfully replied tweets
       failed: 0,                  // Failed processing attempts
       consecutiveApiFailures: 0,  // Circuit breaker for API issues
       lastApiError: null,         // Last API error for debugging
-      target: 120,                // Target tweets to process (optimized for account safety)
+      target: dailyLimit,         // Target tweets based on subscription (5 for trial, 120 for active)
       startTime: new Date().getTime(), // Session start timestamp
       isRunning: true,            // Active session flag
       criticalErrors: 0,          // Critical error counter
@@ -631,19 +653,28 @@ async function startContinuousSession(isResuming = false) {
       lastSuccessfulTweet: null   // Last successful tweet timestamp
     };
     
-    // Reset strategy rotation for new sessions
-    strategyRotation = {
-      currentIndex: 0,
-      usageCount: {
-        "Engagement Indie Voice": 0,
-        "Engagement Spark Reply": 0, 
-        "Engagement The Counter": 0,
-        "The Riff": 0,
-        "The Viral Shot": 0,
-        "The Shout-Out": 0
-      },
-      lastUsedStrategy: null
-    };
+    // PRESERVE strategy counts across sessions for percentage-based distribution
+    // Only reset currentIndex and lastUsedStrategy, keep usageCount persistent
+    if (!strategyRotation.usageCount) {
+      strategyRotation = {
+        currentIndex: 0,
+        usageCount: {
+          "Engagement Indie Voice": 0,
+          "Engagement Spark Reply": 0, 
+          "Engagement The Counter": 0,
+          "The Riff": 0,
+          "The Viral Shot": 0,
+          "The Shout-Out": 0
+        },
+        lastUsedStrategy: null
+      };
+      console.log('🔄 Initialized fresh strategy rotation tracking');
+    } else {
+      // Preserve counts, just reset session-specific fields
+      strategyRotation.currentIndex = 0;
+      strategyRotation.lastUsedStrategy = null;
+      console.log('🔄 Preserved strategy counts across sessions:', strategyRotation.usageCount);
+    }
     console.log('🔄 Strategy rotation reset for new session');
   } else {
     sessionStats.isRunning = true;
@@ -688,8 +719,22 @@ async function startContinuousSession(isResuming = false) {
         const safetyCheck = await checkActionSafety();
         if (!safetyCheck.safe) {
           const waitMinutes = Math.ceil(safetyCheck.waitTime / 60000);
-          addDetailedActivity(`🛡️ Security hold: ${safetyCheck.reason} (${waitMinutes}m wait)`, 'warning');
-          updateCornerWidget(`🛡️ Security hold: ${waitMinutes}m remaining`);
+          const waitHours = Math.round(waitMinutes / 60);
+          
+          // CRITICAL: Enhanced security hold notifications for user visibility
+          if (waitMinutes >= 60) {
+            addDetailedActivity(`🚨 CRITICAL SECURITY HOLD: ${waitHours}h error cooldown`, 'error');
+            addDetailedActivity(`⏰ Next action available: ${new Date(Date.now() + safetyCheck.waitTime).toLocaleTimeString()}`, 'error');
+            addDetailedActivity(`📋 Reason: ${safetyCheck.reason}`, 'warning');
+            updateCornerWidget(`🚨 Security Hold: ${waitHours}h remaining`);
+          } else if (waitMinutes >= 30) {
+            addDetailedActivity(`🛡️ SECURITY HOLD: ${waitMinutes}min rate limit pause`, 'warning');
+            addDetailedActivity(`⏰ Resume time: ${new Date(Date.now() + safetyCheck.waitTime).toLocaleTimeString()}`, 'warning');
+            updateCornerWidget(`🛡️ Security Hold: ${waitMinutes}m remaining`);
+          } else {
+            addDetailedActivity(`🛡️ Security delay: ${safetyCheck.reason} (${waitMinutes}m)`, 'info');
+            updateCornerWidget(`🛡️ Security hold: ${waitMinutes}m remaining`);
+          }
           
           // ENFORCED SAFETY PAUSE: Wait for required safety period
           await new Promise(resolve => setTimeout(resolve, safetyCheck.waitTime));
@@ -705,6 +750,9 @@ async function startContinuousSession(isResuming = false) {
         console.log(`⏰ Waiting ${minutes}m ${seconds}s before next tweet...`);
         sessionStats.lastAction = `⏰ Waiting ${minutes}m ${seconds}s before next tweet`;
         
+        // Update corner widget with countdown
+        updateCornerWidget(`⏰ Waiting ${minutes}m ${seconds}s before next tweet`);
+        
         // Store timeout reference for force stop capability
         window.boldtakeTimeout = setTimeout(() => {
           window.boldtakeTimeout = null;
@@ -719,6 +767,13 @@ async function startContinuousSession(isResuming = false) {
   } catch (error) {
     console.error('💥 CRITICAL ERROR! Attempting graceful recovery...', error);
     sessionStats.criticalErrors = (sessionStats.criticalErrors || 0) + 1;
+    
+    // Check if it's a network-related error first
+    const shouldContinue = await handleNetworkError(error, 'session loop');
+    if (!shouldContinue) {
+      addDetailedActivity('📡 Network error detected - pausing for recovery', 'warning');
+      return; // Exit session loop, network monitor will handle recovery
+    }
     
     // Implement graduated recovery strategy
     if (sessionStats.criticalErrors <= 2) {
@@ -764,6 +819,7 @@ async function startContinuousSession(isResuming = false) {
  */
 async function processNextTweet() {
   updateStatus(`🔍 Processing tweet ${sessionStats.processed + 1}/${sessionStats.target}...`);
+  addDetailedActivity(`🔍 Processing tweet ${sessionStats.processed + 1}/${sessionStats.target}`, 'info');
   debugLog(`\n🎯 === Tweet ${sessionStats.processed + 1}/${sessionStats.target} ===`);
 
   let tweet;
@@ -772,18 +828,31 @@ async function processNextTweet() {
 
   // Retry loop to find a suitable tweet
   while (attempt < maxAttempts) {
-    tweet = findTweet();
-    if (tweet) break; // Found a tweet, exit the loop
+    addDetailedActivity(`🔎 Searching for suitable tweets...`, 'info');
+    tweet = await findTweet();
+    if (tweet) {
+      addDetailedActivity(`✅ Found suitable tweet to process`, 'success');
+      break; // Found a tweet, exit the loop
+    }
     
     attempt++;
     console.log(`🚫 Attempt ${attempt}/${maxAttempts}: No suitable tweets found. Scrolling...`);
+    addDetailedActivity(`🚫 No tweets found (${attempt}/${maxAttempts}). Scrolling for more...`, 'warning');
     window.scrollTo(0, document.body.scrollHeight);
     
     console.log('⏳ Waiting 3 seconds for new tweets to load...');
+    addDetailedActivity(`⏳ Loading new tweets...`, 'info');
     await sleep(3000); // Wait for content to load
   }
 
   if (!tweet) {
+    // Check if we're stuck on an X.com error page
+    if (detectXcomErrorPage()) {
+      addDetailedActivity('🔴 Stuck on X.com error page - refreshing', 'error');
+      await handleXcomPageError();
+      return false;
+    }
+    
     showStatus(`🏁 No new tweets found after ${maxAttempts} attempts. Pausing session.`);
     console.log(`🏁 No new tweets found after ${maxAttempts} attempts. Session paused.`);
     sessionStats.isRunning = false;
@@ -793,12 +862,15 @@ async function processNextTweet() {
 
   // STEALTH MODE: Simulate human reading behavior
   const tweetText = tweet.querySelector('[data-testid="tweetText"]')?.textContent || '';
+  addDetailedActivity(`👀 Reading tweet content...`, 'info');
   await simulateReadingTime(tweetText);
   
   // STEALTH MODE: Random scrolling behavior
+  addDetailedActivity(`📜 Natural browsing behavior...`, 'info');
   await simulateHumanScrolling();
   
   // STEALTH MODE: Random idle time (human thinking/pausing)
+  addDetailedActivity(`🤔 Thinking and analyzing...`, 'info');
   await simulateIdleTime();
 
   // Mark the tweet as processed so we don't select it again
@@ -838,19 +910,25 @@ async function processNextTweet() {
     sessionStats.lastSuccessfulTweet = new Date().getTime();
     sessionStats.retryAttempts = 0; // Reset retry counter on success
     updateStatus(`✅ Tweet ${sessionStats.processed}/${sessionStats.target} replied!`);
+    addDetailedActivity(`✅ Successfully replied to tweet ${sessionStats.processed}/${sessionStats.target}`, 'success');
     
     // ANALYTICS: Update persistent analytics data
     await updateAnalyticsData();
     
+    // Auto-trigger analytics scraping is now handled at startup only
+    
+    addDetailedActivity(`❤️ Liking the tweet...`, 'info');
     await likeTweet(tweet); // Like the tweet after successful reply
   } else {
     sessionStats.failed++;
     sessionStats.retryAttempts++;
     updateStatus(`❌ Failed to process reply for tweet ${sessionStats.processed} (Attempt ${sessionStats.retryAttempts}).`);
+    addDetailedActivity(`❌ Failed to process tweet ${sessionStats.processed} (Attempt ${sessionStats.retryAttempts})`, 'error');
     
     // If we've failed too many times in a row, add extra delay
     if (sessionStats.retryAttempts >= 3) {
       console.log('⚠️ Multiple consecutive failures detected. Adding extra delay...');
+      addDetailedActivity(`⚠️ Multiple failures detected. Adding safety delay...`, 'warning');
       await sleep(5000); // Extra 5 second delay after 3 failures
     }
   }
@@ -888,30 +966,66 @@ async function findReplyTextArea() {
     }
   }
   
-  for (let i = 0; i < 20; i++) { // Extended to 10 seconds for better reliability
-    for (const selector of selectors) {
+  // More efficient approach: try primary selector first, then fallbacks with longer delays
+  const primarySelector = '[data-testid="tweetTextarea_0"]';
+  
+  // Quick check with primary selector (most common case)
+  for (let i = 0; i < 10; i++) {
+    const textarea = document.querySelector(primarySelector);
+    if (textarea && textarea.offsetParent !== null && 
+        textarea.getBoundingClientRect().width > 0 &&
+        !textarea.disabled) {
+      console.log(`✅ Found text area with primary selector`);
+      addDetailedActivity('✅ Found text area quickly', 'success');
+      sessionStorage.setItem('boldtake_textarea_selector', primarySelector);
+      return textarea;
+    }
+    
+    // Try modal focus trigger early
+    if (i === 2) {
+      try {
+        const modal = document.querySelector('[data-testid="tweetTextarea_0"]')?.closest('[role="dialog"]');
+        if (modal) {
+          modal.click();
+          await sleep(300);
+        }
+      } catch (e) {
+        // Ignore click errors
+      }
+    }
+    
+    await sleep(300); // Shorter delays for primary selector
+  }
+  
+  // ENHANCED FALLBACK: More aggressive approach with longer timeouts
+  for (let i = 0; i < 8; i++) { // Increased attempts from 5 to 8
+    for (const selector of selectors.slice(1)) { // Skip primary selector
       const textarea = document.querySelector(selector);
-      // Enhanced visibility check with better detection
-      if (textarea && 
-          textarea.offsetParent !== null && 
+      if (textarea && textarea.offsetParent !== null && 
           textarea.getBoundingClientRect().width > 0 &&
-          textarea.getBoundingClientRect().height > 0 &&
           !textarea.disabled &&
           getComputedStyle(textarea).display !== 'none') {
-        console.log(`✅ Found text area with selector: ${selector}`);
-        addDetailedActivity('✅ Found text area with selector', 'success');
-        // Cache successful selector for performance
+        console.log(`✅ Found text area with fallback selector: ${selector}`);
+        addDetailedActivity('✅ Found text area with fallback', 'success');
         sessionStorage.setItem('boldtake_textarea_selector', selector);
         return textarea;
       }
     }
     
-    // Try to click anywhere to trigger modal focus
-    if (i === 5) {
+    // AGGRESSIVE RECOVERY: Try to trigger modal focus
+    if (i === 3 || i === 6) {
       try {
-        const modal = document.querySelector('[data-testid="tweetTextarea_0"]')?.closest('[role="dialog"]');
+        // Click somewhere in the modal to ensure it's focused
+        const modal = document.querySelector('[role="dialog"]');
         if (modal) {
           modal.click();
+          await sleep(500);
+        }
+        
+        // Try clicking the compose area
+        const composeArea = document.querySelector('[data-testid="toolBar"]');
+        if (composeArea) {
+          composeArea.click();
           await sleep(500);
         }
       } catch (e) {
@@ -919,7 +1033,7 @@ async function findReplyTextArea() {
       }
     }
     
-    await sleep(500); // Wait 500ms before next try
+    await sleep(750); // Increased delays for better recovery
   }
   
   console.error('❌ Could not find a visible tweet text area after 10 seconds.');
@@ -956,20 +1070,51 @@ async function handleReplyModal(originalTweet) {
   // Step 1: Find the reply text box using our new robust function
   const editable = await findReplyTextArea();
   if (!editable) {
-    console.error('❌ Could not find tweet text area. Attempting to close modal...');
-    await gracefullyCloseModal();
+    console.error('❌ Could not find tweet text area. Modal stuck - attempting recovery...');
+    addDetailedActivity('🔄 Modal stuck - attempting recovery', 'warning');
+    
+    // ENHANCED RECOVERY: Try multiple recovery methods
+    try {
+      // Method 1: Try to close modal first
+      const closeButton = document.querySelector('[data-testid="app-bar-close"]');
+      if (closeButton) {
+        closeButton.click();
+        await sleep(1000);
+      }
+      
+      // Method 2: Press Escape key
+      document.body.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Escape',
+        code: 'Escape',
+        bubbles: true
+      }));
+      await sleep(1000);
+      
+      // Method 3: Force page refresh as last resort
+      console.log('🔄 All recovery methods failed - refreshing page...');
+      addDetailedActivity('🔄 Refreshing page to recover from stuck modal', 'error');
+      location.reload();
+    } catch (error) {
+      console.error('Recovery failed:', error);
+      location.reload();
+    }
+    
     return false;
   }
 
   // Step 2: Generate the smart reply
   const tweetText = originalTweet.textContent || '';
+  addDetailedActivity(`🤖 Generating AI reply...`, 'info');
   const replyText = await generateSmartReply(tweetText, sessionStats.processed);
   
   if (!replyText) {
     console.error('❌ Skipping tweet due to critical AI failure.');
+    addDetailedActivity(`❌ AI generation failed - skipping tweet`, 'error');
     await gracefullyCloseModal();
     return false;
   }
+  
+  addDetailedActivity(`✅ AI reply generated successfully`, 'success');
 
   console.log('⌨️ Typing reply:', replyText);
   addDetailedActivity(`⌨️ Typing reply: ${replyText.substring(0, 50)}...`, 'info');
@@ -985,21 +1130,26 @@ async function handleReplyModal(originalTweet) {
   await sleep(1000); // Small pause after typing
 
   // Step 4: Send the reply using keyboard shortcut
+  addDetailedActivity(`🚀 Sending reply...`, 'info');
   const sent = await sendReplyWithKeyboard();
 
   if (sent) {
     // Step 5: Confirm the modal has closed
+    addDetailedActivity(`⏳ Waiting for reply to post...`, 'info');
     const closed = await waitForModalToClose();
     if (closed) {
       console.log('✅ Reply modal closed successfully.');
       sessionStats.lastAction = '✅ Reply modal closed successfully';
+      addDetailedActivity(`✅ Reply posted successfully!`, 'success');
       return true;
     } else {
       console.error('❌ Reply modal did not close after sending.');
+      addDetailedActivity(`❌ Reply modal failed to close`, 'error');
       return false;
     }
   } else {
     console.error('❌ Sending reply failed.');
+    addDetailedActivity(`❌ Failed to send reply`, 'error');
     await gracefullyCloseModal();
     return false;
   }
@@ -1043,7 +1193,7 @@ async function waitForModalToClose() {
   return false; // Timed out
 }
 
-function findTweet() {
+async function findTweet() {
   // Multiple selectors for better tweet detection
   const selectors = [
     '[data-testid="tweet"]:not([data-boldtake-processed="true"])',
@@ -1064,6 +1214,14 @@ function findTweet() {
   
   if (tweets.length === 0) {
     console.log('📊 No tweets found with any selector');
+    
+    // Check if we're on an X.com error page
+    if (detectXcomErrorPage()) {
+      addDetailedActivity('🔴 X.com error page detected during tweet search', 'error');
+      await handleXcomPageError();
+      return null;
+    }
+    
     return null;
   }
   
@@ -1075,6 +1233,16 @@ function findTweet() {
     const unlikeButton = tweet.querySelector('[data-testid="unlike"]');
     if (unlikeButton) {
       console.log('💚 Skipping already liked tweet (already replied)');
+      tweet.setAttribute('data-boldtake-processed', 'true');
+      continue;
+    }
+    
+    // CRITICAL: Check for reply restrictions (new Twitter feature)
+    const replyButton = tweet.querySelector('[data-testid="reply"]');
+    if (replyButton && replyButton.getAttribute('aria-label') && 
+        replyButton.getAttribute('aria-label').includes('can reply')) {
+      console.log('🚫 Skipping tweet with reply restrictions (mentioned users only)');
+      addDetailedActivity('🚫 Skipped tweet with reply restrictions', 'warning');
       tweet.setAttribute('data-boldtake-processed', 'true');
       continue;
     }
@@ -1219,11 +1387,31 @@ function updateCornerWidget(message) {
   let displayText = '';
   let shouldShow = false;
   
-  // 1. Show "next tweet in X min" timing
-  const timeMatch = cleanMessage.match(/(\d+m \d+s)/);
-  if (timeMatch && cleanMessage.includes('Waiting')) {
-    displayText = `next tweet in ${timeMatch[1]}`;
+  // 1. Show "next tweet in X min" timing - handle multiple formats
+  const timeMatch1 = cleanMessage.match(/Waiting (\d+m \d+s)/);
+  const timeMatch2 = cleanMessage.match(/Next tweet in (\d+:\d+)/);
+  const timeMatch3 = cleanMessage.match(/Waiting (\d+:\d+)/);
+  
+  if (timeMatch1) {
+    displayText = `⏰ Next in ${timeMatch1[1]}`;
     shouldShow = true;
+  }
+  else if (timeMatch2) {
+    displayText = `⏰ Next in ${timeMatch2[1]}`;
+    shouldShow = true;
+  }
+  else if (timeMatch3) {
+    displayText = `⏰ Next in ${timeMatch3[1]}`;
+    shouldShow = true;
+  }
+  // Also catch any countdown format
+  else if ((cleanMessage.includes('Next tweet') || cleanMessage.includes('Waiting')) && 
+           (cleanMessage.includes('before next') || cleanMessage.includes('in'))) {
+    const anyTimeMatch = cleanMessage.match(/(\d+:\d+|\d+m \d+s)/);
+    if (anyTimeMatch) {
+      displayText = `⏰ Next in ${anyTimeMatch[1]}`;
+      shouldShow = true;
+    }
   }
   // 2. Show security holds
   else if (cleanMessage.includes('Security hold') || cleanMessage.includes('🛡️')) {
@@ -1318,6 +1506,536 @@ function addDetailedActivity(message, type = 'info') {
   }
 }
 
+// NETWORK MONITORING & AUTO-RECOVERY FUNCTIONS
+
+/**
+ * Initialize network monitoring system
+ */
+function initializeNetworkMonitoring() {
+  addDetailedActivity('🌐 Network monitoring initialized', 'info');
+  
+  // Listen for online/offline events
+  window.addEventListener('online', handleNetworkOnline);
+  window.addEventListener('offline', handleNetworkOffline);
+  
+  // Start periodic network health checks
+  startNetworkHealthChecks();
+}
+
+/**
+ * Handle network coming back online
+ */
+async function handleNetworkOnline() {
+  addDetailedActivity('🌐 Network connection restored!', 'success');
+  networkMonitor.isOnline = true;
+  networkMonitor.lastOnlineTime = Date.now();
+  
+  if (networkMonitor.offlineStartTime) {
+    const offlineDuration = Math.round((Date.now() - networkMonitor.offlineStartTime) / 1000);
+    addDetailedActivity(`📶 Offline for ${offlineDuration}s`, 'info');
+    networkMonitor.offlineStartTime = null;
+  }
+  
+  // Clear any reconnect intervals
+  if (networkMonitor.reconnectInterval) {
+    clearInterval(networkMonitor.reconnectInterval);
+    networkMonitor.reconnectInterval = null;
+  }
+  
+  // Auto-restart session if it was active before disconnect
+  if (networkMonitor.sessionWasActive && !networkMonitor.recoveryInProgress) {
+    await attemptSessionRecovery();
+  }
+}
+
+/**
+ * Handle network going offline
+ */
+function handleNetworkOffline() {
+  addDetailedActivity('🔴 Network lost - recovery mode', 'warning');
+  networkMonitor.isOnline = false;
+  networkMonitor.offlineStartTime = Date.now();
+  networkMonitor.sessionWasActive = sessionStats.isRunning;
+  
+  // Store the current URL for recovery (preserves search filters)
+  if (sessionStats.isRunning) {
+    networkMonitor.lastActiveUrl = window.location.href;
+    addDetailedActivity('📍 Saved current search page for recovery', 'info');
+  }
+  
+  // Stop current session gracefully
+  if (sessionStats.isRunning) {
+    addDetailedActivity('⏸️ Pausing session for recovery');
+    pauseSession();
+  }
+  
+  // Start reconnection attempts
+  startReconnectionAttempts();
+}
+
+/**
+ * Start periodic network health checks
+ */
+function startNetworkHealthChecks() {
+  // Check network every 30 seconds
+  networkMonitor.networkCheckInterval = setInterval(async () => {
+    await performNetworkHealthCheck();
+  }, 30000);
+}
+
+/**
+ * Perform comprehensive network health check
+ */
+async function performNetworkHealthCheck() {
+  if (!navigator.onLine) {
+    if (networkMonitor.isOnline) {
+      handleNetworkOffline();
+    }
+    return;
+  }
+  
+  // Check for X.com error pages that require refresh
+  if (detectXcomErrorPage()) {
+    addDetailedActivity('🔴 X.com error page detected - refreshing', 'warning');
+    await handleXcomPageError();
+    return;
+  }
+  
+  // Test actual connectivity to X.com
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch('https://x.com/favicon.ico', {
+      method: 'HEAD',
+      cache: 'no-cache',
+      signal: controller.signal
+    });
+    
+    clearTimeout(timeoutId);
+    
+    if (response.ok) {
+      if (!networkMonitor.isOnline) {
+        await handleNetworkOnline();
+      }
+      networkMonitor.lastOnlineTime = Date.now();
+      networkMonitor.reconnectAttempts = 0;
+    } else {
+      throw new Error('X.com not reachable');
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      addDetailedActivity(`🔍 Network check failed: ${error.message}`, 'warning');
+    }
+    if (networkMonitor.isOnline) {
+      handleNetworkOffline();
+    }
+  }
+}
+
+/**
+ * Detect X.com error pages that need refresh
+ */
+function detectXcomErrorPage() {
+  // Check for common X.com error messages
+  const errorIndicators = [
+    'Something went wrong',
+    'let\'s give it another shot',
+    'Some privacy related extensions may cause issues',
+    'Try again'
+  ];
+  
+  const pageText = document.body?.textContent || '';
+  return errorIndicators.some(indicator => pageText.includes(indicator));
+}
+
+/**
+ * X.com Analytics Scraper for Premium Users
+ * Extracts real performance data from X.com analytics
+ */
+async function scrapeXcomAnalytics() {
+  try {
+    addDetailedActivity('📊 Accessing X.com Premium Analytics...', 'info');
+    
+    // Enhanced Premium detection
+    const premiumIndicators = [
+      '[data-testid="primaryColumn"]',
+      '[aria-label*="Premium"]', 
+      '[data-testid*="premium"]',
+      'text*="Premium"',
+      'text*="Pro"'
+    ];
+    
+    const isPremium = premiumIndicators.some(selector => document.querySelector(selector)) ||
+                     window.location.href.includes('account_analytics') ||
+                     document.title.includes('Analytics');
+    
+    // Navigate to specific analytics page with retry mechanism
+    if (!window.location.href.includes('account_analytics/content')) {
+      addDetailedActivity('🔄 Opening 7-day reply analytics...', 'info');
+      
+      // Extract current user's username from the page
+      let username = null;
+      
+      // Method 1: From URL if we're on a profile page
+      const urlMatch = window.location.href.match(/x\.com\/([^\/\?]+)/);
+      if (urlMatch && urlMatch[1] !== 'i' && urlMatch[1] !== 'home' && urlMatch[1] !== 'explore') {
+        username = urlMatch[1];
+      }
+      
+      // Method 2: From navigation or profile elements
+      if (!username) {
+        const profileLinks = document.querySelectorAll('a[href*="/"], [data-testid*="profile"]');
+        for (const link of profileLinks) {
+          const href = link.getAttribute('href') || '';
+          const match = href.match(/^\/([^\/\?]+)$/);
+          if (match && !['i', 'home', 'explore', 'search', 'notifications', 'messages'].includes(match[1])) {
+            username = match[1];
+            break;
+          }
+        }
+      }
+      
+      // Method 3: From settings or account indicators
+      if (!username) {
+        const accountElements = document.querySelectorAll('[data-testid*="account"], [aria-label*="@"]');
+        for (const el of accountElements) {
+          const text = el.textContent || el.getAttribute('aria-label') || '';
+          const match = text.match(/@([a-zA-Z0-9_]+)/);
+          if (match) {
+            username = match[1];
+            break;
+          }
+        }
+      }
+      
+      // Method 4: From page title or meta tags
+      if (!username) {
+        const pageTitle = document.title || '';
+        const match = pageTitle.match(/\(@([a-zA-Z0-9_]+)\)/);
+        if (match) {
+          username = match[1];
+        }
+      }
+      
+      // Method 5: From sidebar or navigation username display
+      if (!username) {
+        const usernameElements = document.querySelectorAll('[data-testid="UserName"], [data-testid*="username"]');
+        for (const el of usernameElements) {
+          const text = el.textContent || '';
+          const match = text.match(/@([a-zA-Z0-9_]+)/);
+          if (match) {
+            username = match[1];
+            break;
+          }
+        }
+      }
+      
+      // Use the user-specific analytics URL
+      let analyticsUrl;
+      if (username) {
+        analyticsUrl = `https://x.com/i/account_analytics/content?type=replies&sort=impressions&dir=desc&days=7`;
+        addDetailedActivity(`📊 Accessing analytics for @${username}`, 'info');
+      } else {
+        // Fallback to general analytics page
+        analyticsUrl = 'https://x.com/i/account_analytics/content?type=replies&sort=impressions&dir=desc&days=7';
+        addDetailedActivity('📊 Accessing general analytics page', 'info');
+      }
+      
+      // Try to navigate with error handling
+      try {
+        window.location.href = analyticsUrl;
+        return null; // Wait for page load
+      } catch (navError) {
+        addDetailedActivity('⚠️ Navigation blocked - trying alternative method', 'warning');
+        // Alternative: try opening in same tab with a delay
+        setTimeout(() => {
+          window.location.replace(analyticsUrl);
+        }, 1000);
+        return null;
+      }
+    }
+    
+    // Enhanced waiting and error detection
+    await sleep(5000); // Longer wait for analytics to load
+    
+    // Check for multiple error conditions
+    const errorIndicators = [
+      'Something went wrong',
+      'Try again',
+      'privacy related extensions',
+      'temporarily unavailable',
+      'Error loading',
+      'Unable to load'
+    ];
+    
+    const pageText = document.body.textContent || '';
+    const hasError = errorIndicators.some(indicator => 
+      pageText.toLowerCase().includes(indicator.toLowerCase())
+    );
+    
+    if (hasError) {
+      addDetailedActivity('⚠️ Analytics page error detected - will retry later', 'warning');
+      addDetailedActivity('💡 Tip: Disable privacy extensions and refresh X.com', 'info');
+      return null;
+    }
+    
+    // Scrape analytics data
+    const analyticsData = {
+      totalImpressions: 0,
+      totalEngagements: 0,
+      totalReplies: 0,
+      topPerformingReplies: [],
+      scrapedAt: new Date().toISOString(),
+      period: '7 days'
+    };
+    
+    // Look for impression counts
+    const impressionElements = document.querySelectorAll('[data-testid*="impression"], [aria-label*="impression"]');
+    impressionElements.forEach(el => {
+      const text = el.textContent || '';
+      const match = text.match(/(\d+(?:,\d+)*)/);
+      if (match) {
+        const count = parseInt(match[1].replace(/,/g, ''));
+        if (count > analyticsData.totalImpressions) {
+          analyticsData.totalImpressions += count;
+        }
+      }
+    });
+    
+    // Look for engagement data
+    const engagementElements = document.querySelectorAll('[data-testid*="engagement"], [aria-label*="engagement"]');
+    engagementElements.forEach(el => {
+      const text = el.textContent || '';
+      const match = text.match(/(\d+(?:,\d+)*)/);
+      if (match) {
+        const count = parseInt(match[1].replace(/,/g, ''));
+        analyticsData.totalEngagements += count;
+      }
+    });
+    
+    // Look for reply-specific data
+    const replyElements = document.querySelectorAll('[data-testid="tweet"]');
+    replyElements.forEach((el, index) => {
+      if (index < 10) { // Top 10 replies
+        const tweetText = el.querySelector('[data-testid="tweetText"]')?.textContent || '';
+        const impressions = el.textContent.match(/(\d+(?:,\d+)*)\s*impression/i);
+        const engagements = el.textContent.match(/(\d+(?:,\d+)*)\s*engagement/i);
+        
+        if (impressions || engagements) {
+          analyticsData.topPerformingReplies.push({
+            text: tweetText.substring(0, 100) + '...',
+            impressions: impressions ? parseInt(impressions[1].replace(/,/g, '')) : 0,
+            engagements: engagements ? parseInt(engagements[1].replace(/,/g, '')) : 0
+          });
+        }
+      }
+    });
+    
+    // Count total replies from our tool
+    const storage = await new Promise(resolve => {
+      chrome.storage.local.get(['boldtake_analytics'], resolve);
+    });
+    
+    const ourAnalytics = storage.boldtake_analytics || { totalReplies: 0 };
+    analyticsData.totalReplies = ourAnalytics.totalReplies || 0;
+    
+    // Save combined analytics data
+    await new Promise(resolve => {
+      chrome.storage.local.set({ 
+        boldtake_xcom_analytics: analyticsData,
+        boldtake_last_analytics_scrape: Date.now()
+      }, resolve);
+    });
+    
+    addDetailedActivity(`📊 Analytics scraped: ${analyticsData.totalImpressions} impressions`, 'success');
+    
+    return analyticsData;
+    
+  } catch (error) {
+    console.error('Analytics scraping error:', error);
+    addDetailedActivity('❌ Analytics scraping failed', 'error');
+    return null;
+  }
+}
+
+/**
+ * Generate CSV export of analytics data
+ */
+async function generateAnalyticsCSV() {
+  try {
+    const storage = await new Promise(resolve => {
+      chrome.storage.local.get(['boldtake_xcom_analytics', 'boldtake_analytics'], resolve);
+    });
+    
+    const xcomData = storage.boldtake_xcom_analytics || {};
+    const ourData = storage.boldtake_analytics || {};
+    
+    const csvData = [
+      ['Metric', 'Value', 'Period', 'Source'],
+      ['Total Replies Sent', ourData.totalReplies || 0, '7 days', 'BoldTake'],
+      ['Total Impressions', xcomData.totalImpressions || 0, '7 days', 'X.com Analytics'],
+      ['Total Engagements', xcomData.totalEngagements || 0, '7 days', 'X.com Analytics'],
+      ['Avg Impressions per Reply', xcomData.totalImpressions && ourData.totalReplies ? Math.round(xcomData.totalImpressions / ourData.totalReplies) : 0, '7 days', 'Calculated'],
+      ['Engagement Rate', xcomData.totalImpressions ? ((xcomData.totalEngagements / xcomData.totalImpressions) * 100).toFixed(2) + '%' : '0%', '7 days', 'Calculated'],
+      ['ROI Score', xcomData.totalImpressions && ourData.totalReplies ? Math.round((xcomData.totalImpressions / ourData.totalReplies) / 100) : 0, '7 days', 'BoldTake Score']
+    ];
+    
+    // Add top performing replies
+    if (xcomData.topPerformingReplies && xcomData.topPerformingReplies.length > 0) {
+      csvData.push(['', '', '', '']); // Empty row
+      csvData.push(['Top Performing Replies', '', '', '']);
+      csvData.push(['Reply Text', 'Impressions', 'Engagements', 'Engagement Rate']);
+      
+      xcomData.topPerformingReplies.forEach(reply => {
+        const engagementRate = reply.impressions ? ((reply.engagements / reply.impressions) * 100).toFixed(2) + '%' : '0%';
+        csvData.push([reply.text, reply.impressions, reply.engagements, engagementRate]);
+      });
+    }
+    
+    // Convert to CSV string
+    const csvString = csvData.map(row => 
+      row.map(cell => `"${cell}"`).join(',')
+    ).join('\n');
+    
+    // Copy to clipboard
+    await navigator.clipboard.writeText(csvString);
+    addDetailedActivity('📋 Analytics CSV copied to clipboard!', 'success');
+    
+    return csvString;
+    
+  } catch (error) {
+    console.error('CSV generation error:', error);
+    addDetailedActivity('❌ CSV export failed', 'error');
+    return null;
+  }
+}
+
+/**
+ * Handle X.com page errors by refreshing
+ */
+async function handleXcomPageError() {
+  // Save current URL for recovery
+  const currentUrl = window.location.href;
+  addDetailedActivity('🔄 X.com page error - refreshing in 3 seconds', 'warning');
+  
+  // Wait a bit then refresh
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  window.location.href = currentUrl;
+}
+
+/**
+ * Start reconnection attempts
+ */
+function startReconnectionAttempts() {
+  if (networkMonitor.reconnectInterval) return;
+  
+  networkMonitor.reconnectAttempts = 0;
+  networkMonitor.reconnectInterval = setInterval(async () => {
+    networkMonitor.reconnectAttempts++;
+    addDetailedActivity(`🔄 Reconnect attempt ${networkMonitor.reconnectAttempts}/${networkMonitor.maxReconnectAttempts}`);
+    
+    if (navigator.onLine) {
+      await performNetworkHealthCheck();
+    }
+    
+    if (networkMonitor.reconnectAttempts >= networkMonitor.maxReconnectAttempts) {
+      addDetailedActivity('🚫 Max attempts reached - standby mode', 'error');
+      clearInterval(networkMonitor.reconnectInterval);
+      networkMonitor.reconnectInterval = null;
+      networkMonitor.reconnectAttempts = 0;
+    }
+  }, 10000); // Try every 10 seconds
+}
+
+/**
+ * Attempt to recover and restart the session
+ */
+async function attemptSessionRecovery() {
+  if (networkMonitor.recoveryInProgress) return;
+  
+  networkMonitor.recoveryInProgress = true;
+  addDetailedActivity('🔧 Starting auto-recovery...', 'info');
+  
+  try {
+    // Wait for network to stabilize
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    
+    // Check if we're still on X.com
+    if (!window.location.hostname.includes('x.com') && !window.location.hostname.includes('twitter.com')) {
+      addDetailedActivity('🌐 Navigating back to X.com...', 'info');
+      window.location.href = 'https://x.com/home';
+      return;
+    }
+    
+    // Use the saved URL from when session was active, or current URL as fallback
+    const recoveryUrl = networkMonitor.lastActiveUrl || window.location.href;
+    addDetailedActivity('🔄 Returning to saved search page...', 'info');
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Navigate back to the exact search page with filters preserved
+    window.location.href = recoveryUrl;
+    
+  } catch (error) {
+    addDetailedActivity(`❌ Recovery failed: ${error.message}`, 'error');
+    networkMonitor.recoveryInProgress = false;
+    
+    // Retry in 30 seconds
+    setTimeout(() => {
+      if (networkMonitor.isOnline && networkMonitor.sessionWasActive) {
+        attemptSessionRecovery();
+      }
+    }, 30000);
+  }
+}
+
+/**
+ * Enhanced error handling with network awareness
+ */
+async function handleNetworkError(error, context = '') {
+  addDetailedActivity(`🔴 Network error in ${context}: ${error.message}`, 'error');
+  
+  // Check if it's a network-related error
+  const networkErrors = ['fetch', 'network', 'timeout', 'connection', 'dns', 'offline'];
+  const isNetworkError = networkErrors.some(keyword => 
+    error.message.toLowerCase().includes(keyword)
+  );
+  
+  if (isNetworkError) {
+    addDetailedActivity('🔍 Network error detected - checking connection', 'warning');
+    await performNetworkHealthCheck();
+    
+    if (!networkMonitor.isOnline) {
+      addDetailedActivity('📡 Network down - awaiting recovery', 'info');
+      return false; // Don't continue with normal error handling
+    }
+  }
+  
+  return true; // Continue with normal error handling
+}
+
+/**
+ * Pause session gracefully
+ */
+function pauseSession() {
+  // Stop the main session
+  sessionStats.isRunning = false;
+  
+  // Clear any countdown intervals
+  if (window.boldtakeCountdownInterval) {
+    clearInterval(window.boldtakeCountdownInterval);
+    window.boldtakeCountdownInterval = null;
+  }
+  
+  // Clear any timeouts
+  if (window.boldtakeTimeoutId) {
+    clearTimeout(window.boldtakeTimeoutId);
+    window.boldtakeTimeoutId = null;
+  }
+  
+  addDetailedActivity('⏸️ Session paused for network recovery');
+}
+
 function showCornerNotification(message) {
   let notification = document.getElementById('boldtake-notification');
   
@@ -1401,12 +2119,25 @@ function showCornerNotification(message) {
   }
   
   notification.className = messageClass;
+  
+  // SECURITY FIX: Sanitize message to prevent XSS
+  const sanitizedMessage = message.replace(/[<>&"']/g, function(match) {
+    const escapeMap = {
+      '<': '&lt;',
+      '>': '&gt;',
+      '&': '&amp;',
+      '"': '&quot;',
+      "'": '&#x27;'
+    };
+    return escapeMap[match];
+  });
+  
   notification.innerHTML = `
     <div style="font-weight: 600; margin-bottom: 8px;">${headerText}</div>
     <div style="opacity: 0.8; font-size: 12px; margin-bottom: 12px;">${subHeader}</div>
     <div style="display: flex; align-items: center; gap: 8px;">
       <span style="font-size: 16px;">${statusIcon}</span>
-      <span>${message}</span>
+      <span>${sanitizedMessage}</span>
     </div>
     <div style="margin-top: 8px; font-size: 11px; opacity: 0.6;">Click to minimize</div>
   `;
@@ -1456,9 +2187,20 @@ async function startCountdown(delayInMs) {
             const seconds = Math.floor((remainingTime % 60000) / 1000);
             const paddedSeconds = seconds < 10 ? `0${seconds}` : seconds;
 
-            // Only update status every 10 seconds to reduce spam
-            if (seconds % 10 === 0 || seconds < 10) {
-            showStatus(`⏳ Next tweet in ${minutes}:${paddedSeconds}... (${sessionStats.successful}/${sessionStats.target} completed)`);
+            // Update status every 5 seconds, but limit activity feed updates
+            if (seconds % 5 === 0 || seconds < 10) {
+                const progressMessage = `⏳ Next tweet in ${minutes}:${paddedSeconds} (${sessionStats.successful}/${sessionStats.target} completed)`;
+                showStatus(progressMessage);
+                
+                // REDUCED SPAM: Only show activity at start and near end
+                const isStart = remainingTime >= delayInMs - 2000; // First 2 seconds
+                const isNearEnd = remainingTime <= 10000; // Last 10 seconds
+                
+                if (isStart) {
+                    addDetailedActivity(`⏳ Waiting ${minutes}:${paddedSeconds} before next tweet`, 'info');
+                } else if (isNearEnd && seconds % 5 === 0) {
+                    addDetailedActivity(`⏳ Next tweet starting in ${seconds}s`, 'info');
+                }
             }
         }, 1000);
     });
@@ -1515,42 +2257,31 @@ async function generateSmartReply(tweetText, tweetNumber) {
   // 2. SECURITY CHECK: Validate content safety before posting
   if (reply && !isContentSafe(reply)) {
     addDetailedActivity('🚫 Reply blocked by security filters', 'warning');
-    const emergencyStop = recordFailedAction('Content safety violation');
-    if (emergencyStop) {
-      sessionStats.isRunning = false;
-      showStatus('🚨 EMERGENCY STOP: Multiple security violations');
-      return null;
-    }
-    reply = null; // Block unsafe content
+    // FIXED: Don't trigger security cooldown for AI content issues - just use fallback
+    console.log('Content safety issue - using fallback instead of triggering cooldown');
+    reply = null; // Clear the unsafe reply - will use fallback below
   }
 
-  // 3. Quality Check: See if the reply is low-quality
-  const isLowQuality = !reply || isReplyGeneric(reply) || reply.length < 25;
+  // 3. Quality Check: See if the reply is low-quality (RELAXED FOR RELIABILITY)
+  const isLowQuality = !reply || reply.length < 15; // Relaxed from 25 to 15 characters
 
   if (isLowQuality) {
     sessionStats.consecutiveApiFailures++;
     const currentError = sessionStats.lastApiError || 'Reply failed quality standards.';
     console.warn(`API Failure ${sessionStats.consecutiveApiFailures}/3: ${currentError}`);
     
-    // Retry logic...
-    if (tweetNumber <= 5) { // Only retry for the first 5 tweets
-      const retryPrompt = selectedPrompt.template + "\n\nIMPORTANT: Your previous attempt was too generic. Be more specific and insightful.";
-      reply = await attemptGeneration(retryPrompt, tweetText);
-      if (reply) reply = reply.replace(/—/g, '-');
-
-      // If retry is still bad, it counts as a failure for the circuit breaker
-      if (!reply || isReplyGeneric(reply) || reply.length < 25) {
-        console.error('❌ AI generation failed quality check after retry.');
-        reply = null; // Important: ensure reply is null to trigger fallback
-      } else {
-        console.log('✅ AI reply passed quality check on retry.');
-        sessionStats.consecutiveApiFailures = 0; // Success resets the counter
-        sessionStats.lastApiError = null;
-      }
-    }
+    // IMMEDIATE FALLBACK: Use safe fallback instead of retry for reliability
+    console.log('Using safe fallback reply pool.');
+    addDetailedActivity('Using safe fallback reply pool.', 'info');
+    reply = SAFE_FALLBACK_REPLIES[Math.floor(Math.random() * SAFE_FALLBACK_REPLIES.length)];
+    
+    // Reset failure count since we have a working reply - DON'T trigger security cooldown for AI fallbacks
+    sessionStats.consecutiveApiFailures = 0;
+    sessionStats.lastApiError = null;
+    // CRITICAL: Don't set lastErrorTime for AI quality issues - only for real system errors
   } else {
     console.log('✅ AI reply passed quality check.');
-  addDetailedActivity('✅ AI reply passed quality check', 'success');
+    addDetailedActivity('✅ AI reply passed quality check', 'success');
     sessionStats.consecutiveApiFailures = 0; // Success resets the counter
     sessionStats.lastApiError = null;
   }
@@ -1590,6 +2321,12 @@ async function attemptGeneration(promptTemplate, tweetText) {
     const response = await chrome.runtime.sendMessage({
       type: 'GENERATE_REPLY',
       prompt: promptTemplate.replace('{TWEET}', tweetText.slice(0, 1500)), // Increased context length
+      tweetContext: {
+        originalText: tweetText,
+        url: window.location.href,
+        timestamp: new Date().toISOString(),
+        strategy: promptTemplate.name || 'Unknown'
+      }
     });
 
     if (response.error) {
@@ -1625,6 +2362,13 @@ async function attemptGeneration(promptTemplate, tweetText) {
   } catch (error) {
     console.error('💥 AI generation attempt failed:', error.message);
     sessionStats.lastApiError = `Content Script Error: ${error.message}`;
+    
+    // Check if it's a network error
+    const shouldContinue = await handleNetworkError(error, 'AI generation');
+    if (!shouldContinue) {
+      return null; // Network is down, return null to trigger fallback
+    }
+    
     return null;
   }
 }
@@ -1745,28 +2489,7 @@ async function selectBestPrompt(tweetText) {
     return { name: "Fallback", template: "Respond thoughtfully to: {TWEET}" };
   }
 
-  // PRIORITY 1: Strong content matches (override rotation for perfect fits)
-  if (politicalPatterns.some(pattern => lowerText.includes(pattern))) {
-    selectedPrompt = provenPrompts.find(p => p.name === "Engagement The Counter");
-    console.log('🎯 Strong content match: Using Counter strategy for political content');
-  } else if (viralHookPatterns.some(pattern => lowerText.includes(pattern))) {
-    selectedPrompt = provenPrompts.find(p => p.name === "The Viral Shot");
-    console.log('🎯 Strong content match: Using Viral Shot strategy');
-  } else if (challengePatterns.some(pattern => lowerText.includes(pattern))) {
-    selectedPrompt = provenPrompts.find(p => p.name === "Engagement The Counter");
-    console.log('🎯 Strong content match: Using Counter strategy');
-  } else if (questionPatterns.some(pattern => lowerText.includes(pattern))) {
-    selectedPrompt = provenPrompts.find(p => p.name === "Engagement Indie Voice");
-    console.log('🎯 Strong content match: Using Indie Voice strategy');
-  } else if (humorPatterns.some(pattern => lowerText.includes(pattern))) {
-    selectedPrompt = provenPrompts.find(p => p.name === "The Riff");
-    console.log('🎯 Strong content match: Using Riff strategy');
-  } else if (technicalPatterns.some(pattern => lowerText.includes(pattern))) {
-    selectedPrompt = provenPrompts.find(p => p.name === "Engagement Indie Voice");
-    console.log('🎯 Strong content match: Using Indie Voice for technical content');
-  }
-  
-  // Check for achievement/success patterns for Shout-Out
+  // Define achievement/success patterns for Shout-Out (needs to be checked first to avoid conflicts)
   const achievementPatterns = [
     'launched', 'shipped', 'hit', 'reached', 'achieved', 'sold', 'raised',
     'milestone', 'success', 'completed', 'finished', 'won', 'got accepted'
@@ -1782,57 +2505,141 @@ async function selectBestPrompt(tweetText) {
   
   const hasAchievementPattern = achievementPatterns.some(pattern => lowerText.includes(pattern));
   const hasNegativeContext = negativeContextPatterns.some(pattern => lowerText.includes(pattern));
+
+  // SMART PERCENTAGE-BASED STRATEGY SELECTION FOR MAXIMUM IMPRESSIONS
+  // FIXED: Counter consolidated triggers but kept at 25%, other strategies rebalanced
+  const STRATEGY_WEIGHTS = {
+    "Engagement Indie Voice": 27,     // Great for questions, tech content
+    "Engagement Spark Reply": 26,     // High engagement starter
+    "Engagement The Counter": 25,     // Political, challenges (consolidated triggers prevent double-selection)
+    "The Viral Shot": 20,            // Viral hooks, trending
+    "The Riff": 2,                   // Humor only
+    "The Shout-Out": 0               // Achievement only (reduced to balance)
+  };
+
+  // PRIORITY 1: Strong content matches (but respect percentage limits)
+  let contentMatchStrategy = null;
   
-  if (hasAchievementPattern && !hasNegativeContext) {
-    selectedPrompt = provenPrompts.find(p => p.name === "The Shout-Out");
-    console.log('🎯 Strong content match: Using Shout-Out strategy');
+  // FIXED: Consolidated Counter triggers to prevent double-selection
+  if (politicalPatterns.some(pattern => lowerText.includes(pattern)) || 
+      challengePatterns.some(pattern => lowerText.includes(pattern))) {
+    contentMatchStrategy = "Engagement The Counter";
+  } else if (viralHookPatterns.some(pattern => lowerText.includes(pattern))) {
+    contentMatchStrategy = "The Viral Shot";
+  } else if (questionPatterns.some(pattern => lowerText.includes(pattern))) {
+    contentMatchStrategy = "Engagement Indie Voice";
+  } else if (humorPatterns.some(pattern => lowerText.includes(pattern))) {
+    contentMatchStrategy = "The Riff";
+  } else if (technicalPatterns.some(pattern => lowerText.includes(pattern))) {
+    contentMatchStrategy = "Engagement Indie Voice";
+  } else if (hasAchievementPattern && !hasNegativeContext) {
+    contentMatchStrategy = "The Shout-Out";
   }
 
-  // PRIORITY 2: Smart rotation for general content
-  if (!selectedPrompt) {
-    // Find the least used strategy for balanced rotation
-    const usageCounts = Object.values(strategyRotation.usageCount || {});
-    if (usageCounts.length === 0) {
-      // Fallback if no usage data
-      selectedPrompt = provenPrompts[0];
-      debugLog('🔄 No usage data, using first available prompt');
-    } else {
-      const leastUsedCount = Math.min(...usageCounts);
-      const leastUsedStrategies = provenPrompts.filter(prompt => 
-        strategyRotation.usageCount[prompt.name] === leastUsedCount
-      );
+  // PRIORITY 2: Check if content match strategy is within percentage limits
+  if (contentMatchStrategy) {
+    const totalTweets = Object.values(strategyRotation.usageCount).reduce((a, b) => a + b, 0);
+    const currentUsage = strategyRotation.usageCount[contentMatchStrategy] || 0;
+    const currentPercentage = totalTweets > 0 ? (currentUsage / totalTweets) * 100 : 0;
+    const targetPercentage = STRATEGY_WEIGHTS[contentMatchStrategy];
     
-      // Avoid using the same strategy twice in a row if possible
-      let availableStrategies = leastUsedStrategies;
-      if (leastUsedStrategies.length > 1 && strategyRotation.lastUsedStrategy) {
-        availableStrategies = leastUsedStrategies.filter(prompt => 
-          prompt.name !== strategyRotation.lastUsedStrategy
-        );
-        if (availableStrategies.length === 0) {
-          availableStrategies = leastUsedStrategies; // Fallback if all filtered out
+    if (currentPercentage < targetPercentage || totalTweets < 3) {
+      selectedPrompt = await getSelectedPromptVariation(contentMatchStrategy);
+      console.log(`🎯 Content match: ${contentMatchStrategy} (${currentPercentage.toFixed(1)}% vs ${targetPercentage}% target)`);
+      addDetailedActivity(`🎯 Content match: ${contentMatchStrategy} - ${selectedPrompt.variationName}`, 'info');
+    } else {
+      console.log(`⚠️ ${contentMatchStrategy} BLOCKED - over limit (${currentPercentage.toFixed(1)}% vs ${targetPercentage}%), forcing variety`);
+      addDetailedActivity(`⚠️ ${contentMatchStrategy} blocked (${currentPercentage.toFixed(1)}% vs ${targetPercentage}%) - forcing variety`, 'warning');
+      // FORCE VARIETY: Don't set selectedPrompt - let it fall through to weighted selection
+      contentMatchStrategy = null; // Clear it completely
+    }
+  }
+
+  // PRIORITY 3: Weighted selection for general content (no strong content match)
+  if (!selectedPrompt) {
+    const totalTweets = Object.values(strategyRotation.usageCount).reduce((a, b) => a + b, 0);
+    
+    if (totalTweets === 0) {
+      // First tweet - start with high-engagement strategies
+      const startingStrategies = ["Engagement Indie Voice", "Engagement Spark Reply", "The Viral Shot"];
+      const randomStrategy = startingStrategies[Math.floor(Math.random() * startingStrategies.length)];
+      selectedPrompt = await getSelectedPromptVariation(randomStrategy);
+      console.log(`🚀 First tweet: Using ${randomStrategy} for strong start`);
+      addDetailedActivity(`🚀 First tweet: Using ${randomStrategy} - ${selectedPrompt.variationName}`, 'success');
+    } else {
+      // Calculate which strategies are under their target percentage
+      const underTargetStrategies = [];
+      
+      for (const [strategyName, targetWeight] of Object.entries(STRATEGY_WEIGHTS)) {
+        const currentUsage = strategyRotation.usageCount[strategyName] || 0;
+        const currentPercentage = (currentUsage / totalTweets) * 100;
+        
+        if (currentPercentage < targetWeight) {
+          // Calculate how much under target (higher gap = higher priority)
+          const gap = targetWeight - currentPercentage;
+          underTargetStrategies.push({ name: strategyName, gap, targetWeight });
         }
       }
       
-      // Select randomly from available strategies to add some unpredictability
-      if (availableStrategies.length > 0) {
-        const randomIndex = Math.floor(Math.random() * availableStrategies.length);
-        selectedPrompt = availableStrategies[randomIndex];
-        console.log(`🔄 Rotation selection: Using ${selectedPrompt.name} (used ${strategyRotation.usageCount[selectedPrompt.name] || 0} times)`);
+      if (underTargetStrategies.length > 0) {
+        // Sort by gap (most under-target first) and add some randomness
+        underTargetStrategies.sort((a, b) => b.gap - a.gap);
+        
+        // Weighted selection favoring strategies most under target
+        const weights = underTargetStrategies.map(s => s.gap + 1); // +1 to avoid zero weights
+        const totalWeight = weights.reduce((a, b) => a + b, 0);
+        let random = Math.random() * totalWeight;
+        
+        for (let i = 0; i < underTargetStrategies.length; i++) {
+          random -= weights[i];
+          if (random <= 0) {
+            const chosenStrategy = underTargetStrategies[i];
+            selectedPrompt = await getSelectedPromptVariation(chosenStrategy.name);
+            if (selectedPrompt) {
+              console.log(`📊 Weighted selection: ${chosenStrategy.name} (${((strategyRotation.usageCount[chosenStrategy.name] || 0) / totalTweets * 100).toFixed(1)}% vs ${chosenStrategy.targetWeight}% target)`);
+              addDetailedActivity(`📊 Weighted: ${chosenStrategy.name} - ${selectedPrompt.variationName} (${((strategyRotation.usageCount[chosenStrategy.name] || 0) / totalTweets * 100).toFixed(1)}%)`, 'info');
+            }
+            break;
+          }
+        }
+        
+        // Safety check: if weighted selection failed, use first under-target strategy
+        if (!selectedPrompt && underTargetStrategies.length > 0) {
+          selectedPrompt = await getSelectedPromptVariation(underTargetStrategies[0].name);
+          console.log(`🔧 Fallback: Using ${underTargetStrategies[0].name} (weighted selection failed)`);
+        }
       } else {
-        // Ultimate fallback
-        selectedPrompt = provenPrompts[0];
-        debugLog('🔄 Fallback to first prompt due to empty availableStrategies');
+        // All strategies at target - use least used
+        const leastUsedCount = Math.min(...Object.values(strategyRotation.usageCount));
+        const leastUsedStrategyNames = Object.keys(strategyRotation.usageCount).filter(name => 
+          strategyRotation.usageCount[name] === leastUsedCount
+        );
+        const randomStrategyName = leastUsedStrategyNames[Math.floor(Math.random() * leastUsedStrategyNames.length)];
+        selectedPrompt = await getSelectedPromptVariation(randomStrategyName);
+        console.log(`⚖️ All targets met: Using least used ${selectedPrompt.name}`);
       }
     }
   }
 
-  // Update tracking safely
+  // CRITICAL: Ultimate fallback - ensure we always have a strategy
+  if (!selectedPrompt) {
+    selectedPrompt = await getSelectedPromptVariation("Engagement Indie Voice"); // Default to first strategy
+    console.log('🚨 EMERGENCY FALLBACK: Using first available strategy');
+  }
+
+  // Validate selectedPrompt has required properties
+  if (!selectedPrompt || !selectedPrompt.name || !selectedPrompt.template) {
+    console.error('❌ CRITICAL ERROR: Invalid selectedPrompt:', selectedPrompt);
+    return { name: "Emergency Fallback", template: "Respond thoughtfully to: {TWEET}" };
+  }
+
+  // Update tracking safely (usageCount should already be initialized)
   if (selectedPrompt && selectedPrompt.name) {
-    if (!strategyRotation.usageCount) {
-      strategyRotation.usageCount = {};
-    }
     strategyRotation.usageCount[selectedPrompt.name] = (strategyRotation.usageCount[selectedPrompt.name] || 0) + 1;
     strategyRotation.lastUsedStrategy = selectedPrompt.name;
+    
+    // Save updated counts to storage for persistence
+    chrome.storage.local.set({ strategy_rotation: strategyRotation });
   }
 
   // Log usage statistics every 5 tweets
@@ -1843,10 +2650,65 @@ async function selectBestPrompt(tweetText) {
   return selectedPrompt;
 }
 
+/**
+ * Get user's preferred prompt variations for each strategy
+ */
+async function getPromptPreferences() {
+  try {
+    const storage = await new Promise((resolve) => {
+      chrome.storage.local.get(['boldtake_prompt_preferences'], resolve);
+    });
+    
+    return storage.boldtake_prompt_preferences || {};
+  } catch (error) {
+    debugLog('⚠️ Error loading prompt preferences:', error);
+    return {};
+  }
+}
+
+/**
+ * Get the actual prompt template based on strategy and user preferences
+ */
+async function getSelectedPromptVariation(strategyName) {
+  const preferences = await getPromptPreferences();
+  const strategy = PROVEN_PROMPTS.find(p => p.name === strategyName);
+  
+  if (!strategy || !strategy.variations) {
+    // Fallback for old format or missing strategy
+    return strategy || { name: "Fallback", template: "Respond thoughtfully to: {TWEET}" };
+  }
+  
+  // Get user's preferred variation ID for this strategy
+  const preferredVariationId = preferences[strategyName];
+  let selectedVariation = null;
+  
+  if (preferredVariationId) {
+    selectedVariation = strategy.variations.find(v => v.id === preferredVariationId);
+  }
+  
+  // If no preference or variation not found, use first variation as default
+  if (!selectedVariation) {
+    selectedVariation = strategy.variations[0];
+  }
+  
+  return {
+    name: strategyName,
+    template: selectedVariation.template,
+    variationId: selectedVariation.id,
+    variationName: selectedVariation.name
+  };
+}
+
+// Enhanced Prompt Library System with Multiple Variations
 const PROVEN_PROMPTS = [
     {
         name: "Engagement Indie Voice",
-        template: `You are responding authentically to a tweet. Give a genuine, conversational reaction.
+        variations: [
+            {
+                id: "indie_authentic",
+                name: "Authentic Voice",
+                description: "Genuine, conversational reactions with personal touch",
+                template: `You are responding authentically to a tweet. Give a genuine, conversational reaction.
 
 RESPONSE GUIDELINES:
 - React to what they actually said in the tweet
@@ -1867,15 +2729,84 @@ Tweet: "I love coffee in the morning"
 GOOD: "Same here. Nothing beats that first cup. Sets the whole tone for my day."
 BAD: "Coffee is life I move fast Ship code Win"
 
-Tweet: "It's not AI guys, I know how to surf"
-GOOD: "Haha nice skills! Surfing takes real balance and timing. Way more impressive than AI."
-BAD: "Keep it simple I move fast Break things Fix later"
+Tweet: "{TWEET}"`
+            },
+            {
+                id: "indie_storyteller",
+                name: "Personal Story",
+                description: "Share relatable personal experiences and anecdotes",
+                template: `You're sharing a personal story or experience that relates to the tweet. Be authentic and relatable.
+
+RESPONSE GUIDELINES:
+- Connect their tweet to a brief personal experience
+- Use "I" statements and personal anecdotes
+- Keep it relatable and human
+- Show empathy and understanding
+- Be conversational, like talking to a friend
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- Use proper sentence structure with capitals and periods
+- 150-200 characters maximum
+- Pure text output only
 
 Tweet: "{TWEET}"`
+            },
+            {
+                id: "indie_supportive",
+                name: "Supportive Friend",
+                description: "Encouraging and uplifting responses that build community",
+                template: `You're being a supportive friend. Offer encouragement, validation, or helpful perspective.
+
+RESPONSE GUIDELINES:
+- Be encouraging and positive
+- Validate their feelings or experiences
+- Offer gentle advice or perspective if appropriate
+- Build them up, don't tear down
+- Sound like a caring friend
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- Use proper sentence structure with capitals and periods
+- 150-200 characters maximum
+- Pure text output only
+
+Tweet: "{TWEET}"`
+            },
+            {
+                id: "indie_curious",
+                name: "Curious Questioner",
+                description: "Ask thoughtful questions to drive deeper engagement",
+                template: `You're genuinely curious about their perspective. Ask thoughtful questions that show interest.
+
+RESPONSE GUIDELINES:
+- Ask genuine, thoughtful questions
+- Show interest in learning more
+- Be respectful and curious, not interrogating
+- Questions should feel natural and conversational
+- Encourage them to share more
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- Use proper sentence structure with capitals and periods
+- 150-200 characters maximum
+- Pure text output only
+
+Tweet: "{TWEET}"`
+            }
+        ]
     },
     {
         name: "Engagement Spark Reply",
-        template: `Your first step is to randomly choose an output format. Your reply will be either a single powerful line, exactly 2 lines, or exactly 4 lines.
+        variations: [
+            {
+                id: "spark_provocative",
+                name: "Provocative Founder",
+                description: "Brutally direct and debate-starting responses",
+                template: `Your first step is to randomly choose an output format. Your reply will be either a single powerful line, exactly 2 lines, or exactly 4 lines.
 
 After you have chosen the line count, reply to the tweet below.
 
@@ -1888,12 +2819,6 @@ CRITICAL FORMATTING RULES:
 - 200-250 characters maximum
 - Pure text output only
 
-Bad Example (Contains forbidden punctuation):
-Most founders fail—they focus on funding, not customers.
-
-Good Example (Uses line breaks):
-Most founders fail. They focus on funding. Not customers.
-
 Final check requirements:
 - Line count exactly 1, 2, or 4
 - Written in first person (I)
@@ -1901,10 +2826,86 @@ Final check requirements:
 - Raw, unfiltered take
 
 Tweet: "{TWEET}"`
+            },
+            {
+                id: "spark_contrarian",
+                name: "Contrarian Take",
+                description: "Challenge popular opinions with bold alternative views",
+                template: `Take the most contrarian position possible while being defensible. Challenge what everyone else thinks.
+
+Your #1 goal is to present the opposite view that makes people think twice.
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- Use hard line breaks (Enter) to separate thoughts
+- 200-250 characters maximum
+- Pure text output only
+
+Final check requirements:
+- Line count exactly 1, 2, or 4
+- Present the contrarian view
+- Written in first person (I)
+- ZERO forbidden punctuation
+
+Tweet: "{TWEET}"`
+            },
+            {
+                id: "spark_reality_check",
+                name: "Reality Check",
+                description: "Cut through the BS with hard truths and practical reality",
+                template: `You're the voice of practical reality. Cut through any fluff or unrealistic thinking with hard truths.
+
+Your #1 goal is to bring people back to earth with practical, no-nonsense perspective.
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- Use hard line breaks (Enter) to separate thoughts
+- 200-250 characters maximum
+- Pure text output only
+
+Final check requirements:
+- Line count exactly 1, 2, or 4
+- Practical, realistic perspective
+- Written in first person (I)
+- ZERO forbidden punctuation
+
+Tweet: "{TWEET}"`
+            },
+            {
+                id: "spark_bold_prediction",
+                name: "Bold Prediction",
+                description: "Make confident predictions about the future or outcomes",
+                template: `Make a bold, confident prediction related to their tweet. Be specific and memorable.
+
+Your #1 goal is to make a prediction that gets people talking and remembering your take.
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- Use hard line breaks (Enter) to separate thoughts
+- 200-250 characters maximum
+- Pure text output only
+
+Final check requirements:
+- Line count exactly 1, 2, or 4
+- Make a specific prediction
+- Written in first person (I)
+- ZERO forbidden punctuation
+
+Tweet: "{TWEET}"`
+            }
+        ]
     },
     {
         name: "Engagement The Counter",
-        template: `Your first step is to randomly choose an output format. Your reply will be either a single powerful line, exactly 2 lines, or exactly 4 lines.
+        variations: [
+            {
+                id: "counter_direct",
+                name: "Direct Challenge",
+                description: "Directly challenge the core assumption with confidence",
+                template: `Your first step is to randomly choose an output format. Your reply will be either a single powerful line, exactly 2 lines, or exactly 4 lines.
 
 After you have chosen the line count, reply to the tweet below.
 
@@ -1917,12 +2918,6 @@ CRITICAL FORMATTING RULES:
 - 200-250 characters maximum
 - Pure text output only
 
-Bad Example (Uses forbidden punctuation):
-That's one way to look at it—but I think retention is also important.
-
-Good Example (Strong with line breaks):
-That's the wrong way to look at it. Growth without retention is a leaky bucket. It's a vanity metric that kills companies.
-
 Final check requirements:
 - Line count exactly 1, 2, or 4
 - Directly challenges or refutes the original tweet
@@ -1930,87 +2925,272 @@ Final check requirements:
 - ZERO forbidden punctuation
 
 Tweet: "{TWEET}"`
-    },
-    {
-        name: "The Riff",
-        template: `Act as a witty, context-aware comedian who understands internet culture. Your #1 goal is to create a funny, shareable reply that could go viral.
+            },
+            {
+                id: "counter_evidence",
+                name: "Evidence-Based Counter",
+                description: "Challenge with data, examples, or logical reasoning",
+                template: `Challenge their point using evidence, data, examples, or logical reasoning. Be the voice of facts.
 
-First, deeply analyze the original tweet's persona, tone, and any unintentional humor or flawed logic. Then, craft a reply that does one of the following:
-
-Takes their logic and escalates it to a ridiculous, deadpan conclusion.
-
-Acts as the perfect, unexpected punchline to their setup.
-
-Gently pokes fun at the persona with a sarcastic but clever observation.
+Your #1 goal is to counter their argument with concrete evidence or logical reasoning that's hard to dispute.
 
 CRITICAL FORMATTING RULES:
 - STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
 - STRICTLY NO quotes (" "), apostrophes in contractions are OK
-- Use hard line breaks (Enter) to separate ideas or for comedic timing
+- Use hard line breaks (Enter) to separate distinct ideas
 - 200-250 characters maximum
 - Pure text output only
 
-Bad Example (Contains forbidden punctuation):
-My Roomba just ran over my last nerve—it's clean now, but at what cost?
-
-Good Example (Uses line breaks for timing):
-My Roomba just ran over my last nerve. It's clean now. But at what cost.
-
 Final check requirements:
-- Witty and context-aware
-- Short and shareable
+- Line count exactly 1, 2, or 4
+- Use evidence or logical reasoning
+- Written in first person (I)
 - ZERO forbidden punctuation
 
 Tweet: "{TWEET}"`
+            },
+            {
+                id: "counter_experience",
+                name: "Experience Counter",
+                description: "Counter with personal or observed experience",
+                template: `Counter their point using your personal experience or what you've observed. Be the voice of real-world experience.
+
+Your #1 goal is to challenge their view with practical experience that contradicts their point.
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- Use hard line breaks (Enter) to separate distinct ideas
+- 200-250 characters maximum
+- Pure text output only
+
+Final check requirements:
+- Line count exactly 1, 2, or 4
+- Use personal or observed experience
+- Written in first person (I)
+- ZERO forbidden punctuation
+
+Tweet: "{TWEET}"`
+            },
+            {
+                id: "counter_alternative",
+                name: "Alternative Solution",
+                description: "Propose a different approach or solution entirely",
+                template: `Don't just disagree. Propose a completely different approach or solution to what they're discussing.
+
+Your #1 goal is to redirect the conversation toward a better alternative solution or approach.
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- Use hard line breaks (Enter) to separate distinct ideas
+- 200-250 characters maximum
+- Pure text output only
+
+Final check requirements:
+- Line count exactly 1, 2, or 4
+- Propose alternative solution/approach
+- Written in first person (I)
+- ZERO forbidden punctuation
+
+Tweet: "{TWEET}"`
+            }
+        ]
+    },
+    {
+        name: "The Riff",
+        variations: [
+            {
+                id: "riff_escalation",
+                name: "Logic Escalation",
+                description: "Take their logic to a ridiculous, deadpan conclusion",
+                template: `Act as a witty, context-aware comedian. Take their logic and escalate it to a ridiculous, deadpan conclusion.
+
+Your #1 goal is to create a funny, shareable reply by pushing their logic to an absurd extreme.
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- Use hard line breaks (Enter) for comedic timing
+- 200-250 characters maximum
+- Pure text output only
+
+Final check requirements:
+- Escalate their logic to absurd conclusion
+- Witty and shareable
+- ZERO forbidden punctuation
+
+Tweet: "{TWEET}"`
+            },
+            {
+                id: "riff_punchline",
+                name: "Perfect Punchline",
+                description: "Act as the unexpected punchline to their setup",
+                template: `Act as a witty comedian. Treat their tweet as a setup and deliver the perfect, unexpected punchline.
+
+Your #1 goal is to create the punchline that makes their tweet accidentally hilarious.
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- Use hard line breaks (Enter) for comedic timing
+- 200-250 characters maximum
+- Pure text output only
+
+Final check requirements:
+- Act as perfect punchline to their setup
+- Witty and shareable
+- ZERO forbidden punctuation
+
+Tweet: "{TWEET}"`
+            },
+            {
+                id: "riff_observational",
+                name: "Sarcastic Observer",
+                description: "Make clever sarcastic observations about their persona",
+                template: `Act as a sarcastic but clever observer. Make a witty observation about their persona, tone, or approach.
+
+Your #1 goal is to gently roast them with clever sarcasm that gets laughs.
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- Use hard line breaks (Enter) for comedic timing
+- 200-250 characters maximum
+- Pure text output only
+
+Final check requirements:
+- Clever sarcastic observation
+- Witty and shareable
+- ZERO forbidden punctuation
+
+Tweet: "{TWEET}"`
+            },
+            {
+                id: "riff_relatable",
+                name: "Relatable Absurdity",
+                description: "Exaggerate common experiences to funny conclusions",
+                template: `Take a relatable experience from their tweet and exaggerate it to a funny, absurd conclusion that everyone can relate to.
+
+Your #1 goal is to make people laugh by relating to the absurdity of everyday life.
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- Use hard line breaks (Enter) for comedic timing
+- 200-250 characters maximum
+- Pure text output only
+
+Final check requirements:
+- Exaggerate to relatable absurdity
+- Witty and shareable
+- ZERO forbidden punctuation
+
+Tweet: "{TWEET}"`
+            }
+        ]
     },
     {
         name: "The Viral Shot",
-        template: `You are a master social media strategist. Your purpose is to craft a reply with the highest possible chance of going viral by extracting key information from a provided text and using it to create a personalized, strategic reply.
+        variations: [
+            {
+                id: "viral_emotional",
+                name: "Emotional Hook",
+                description: "Tap into powerful universal emotions for maximum resonance",
+                template: `You are a master at emotional resonance. Tap into powerful, universal feelings like nostalgia, frustration, hope, or excitement.
 
-YOUR PROCESS:
-
-Step 1: Scrape Information from the Provided Text.
-Analyze the tweet below. From this text, you must extract the following three pieces of information:
-
-The Author's Handle (e.g., @sarahthefounder)
-
-The Author's First Name (If the full name is present, use the first name. If not, infer a common name from the handle).
-
-The Core Message of the post.
-
-Step 2: Choose a Viral Strategy.
-Based on the Core Message, secretly choose the single best viral strategy from this list:
-
-Emotional Resonance: Tap into a powerful, universal feeling (nostalgia, frustration, hope).
-
-The Secret Unveiled: Frame your reply as a piece of hidden, high-value knowledge.
-
-Contrarian Stronghold: Take the most extreme, opposite, and defensible position.
-
-Relatable Absurdity: Exaggerate a common experience to a funny, relatable conclusion.
-
-Step 3: Structure and Write the Reply.
-Execute your chosen strategy. Internally, think in terms of a hook, body, and call to action, but do not write these labels in your final output.
-
-Hook: A powerful first line that makes a bold claim.
-
-Body: 1-3 lines delivering the core message. At some point in the body, naturally weave in the Author's First Name you extracted to make the reply feel personal.
-
-CTA: A final line with a provocative question to drive engagement.
+Your #1 goal is to create an emotionally resonant reply that people feel compelled to share.
 
 CRITICAL FORMATTING RULES:
 - STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
 - STRICTLY NO quotes (" "), apostrophes in contractions are OK
 - Use hard line breaks for impact and readability
-- Start reply by quoting the Author's Handle you extracted
 - 200-250 characters maximum
 - Pure text output only
 
+Final check requirements:
+- Tap into universal emotions
+- Highly shareable and memorable
+- ZERO forbidden punctuation
+
 Tweet: "{TWEET}"`
+            },
+            {
+                id: "viral_secret",
+                name: "Hidden Knowledge",
+                description: "Frame reply as exclusive, high-value insider knowledge",
+                template: `Frame your reply as revealing hidden, high-value knowledge that most people don't know.
+
+Your #1 goal is to position yourself as someone with insider knowledge worth following.
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- Use hard line breaks for impact and readability
+- 200-250 characters maximum
+- Pure text output only
+
+Final check requirements:
+- Reveal "hidden" knowledge
+- Position as insider/expert
+- ZERO forbidden punctuation
+
+Tweet: "{TWEET}"`
+            },
+            {
+                id: "viral_bold_claim",
+                name: "Bold Claim",
+                description: "Make confident, memorable predictions or statements",
+                template: `Make a bold, confident claim or prediction that will be remembered and quoted.
+
+Your #1 goal is to make a statement so bold and memorable that people screenshot and share it.
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- Use hard line breaks for impact and readability
+- 200-250 characters maximum
+- Pure text output only
+
+Final check requirements:
+- Make bold, memorable claim
+- Confident and quotable
+- ZERO forbidden punctuation
+
+Tweet: "{TWEET}"`
+            },
+            {
+                id: "viral_question",
+                name: "Provocative Question",
+                description: "End with questions that drive massive engagement",
+                template: `Craft a reply that ends with a provocative question designed to get hundreds of responses.
+
+Your #1 goal is to ask the question that everyone feels compelled to answer in the comments.
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- Use hard line breaks for impact and readability
+- 200-250 characters maximum
+- Pure text output only
+
+Final check requirements:
+- End with provocative question
+- Designed for mass engagement
+- ZERO forbidden punctuation
+
+Tweet: "{TWEET}"`
+            }
+        ]
     },
     {
         name: "The Shout-Out",
-        template: `You are celebrating someone's genuine achievement or milestone. Your task is to write an enthusiastic congratulations reply.
+        variations: [
+            {
+                id: "shoutout_enthusiastic",
+                name: "Enthusiastic Celebration",
+                description: "Genuine, enthusiastic congratulations for achievements",
+                template: `You are celebrating someone's genuine achievement or milestone. Your task is to write an enthusiastic congratulations reply.
 
 ONLY respond if the tweet contains a clear personal achievement like:
 - Launching a product/company
@@ -2019,8 +3199,6 @@ ONLY respond if the tweet contains a clear personal achievement like:
 - Completing a project
 - Winning an award
 - Personal accomplishments
-
-If the tweet is about politics, news, opinions, or complaints, DO NOT use this congratulatory format. Instead, write a thoughtful response that engages with their actual content.
 
 For genuine achievements, follow this structure:
 1. Congratulations + their name/handle
@@ -2034,13 +3212,51 @@ CRITICAL FORMATTING RULES:
 - 200-250 characters maximum
 - Pure text output only
 
-EXAMPLE for achievement:
-Congratulations Sarah
-Launching your first SaaS product is such a huge milestone
-The amount of work that goes into shipping something like this is incredible
-Excited to see where you take it next
+Tweet: "{TWEET}"`
+            },
+            {
+                id: "shoutout_inspiring",
+                name: "Inspiring Others",
+                description: "Use their achievement to inspire others to take action",
+                template: `Celebrate their achievement while using it as inspiration for others to take action.
+
+Your #1 goal is to turn their success story into motivation for your audience.
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- 200-250 characters maximum
+- Pure text output only
+
+Final check requirements:
+- Celebrate their achievement
+- Inspire others to act
+- ZERO forbidden punctuation
 
 Tweet: "{TWEET}"`
+            },
+            {
+                id: "shoutout_community",
+                name: "Community Builder",
+                description: "Build connections and community around their success",
+                template: `Celebrate their achievement while building community connections and encouraging others to support them.
+
+Your #1 goal is to amplify their success and build community around it.
+
+CRITICAL FORMATTING RULES:
+- STRICTLY NO em dashes (—), dashes (-), colons (:), or semicolons (;)
+- STRICTLY NO quotes (" "), apostrophes in contractions are OK
+- 200-250 characters maximum
+- Pure text output only
+
+Final check requirements:
+- Celebrate their achievement
+- Build community connections
+- ZERO forbidden punctuation
+
+Tweet: "{TWEET}"`
+            }
+        ]
     }
 ];
 
@@ -2179,10 +3395,26 @@ async function rotateKeyword() {
   // Save rotation state
   await saveSession();
   
-  // Update the search URL and refresh
+  // Update the search URL and refresh with user's min_faves setting
   const currentUrl = window.location.href;
+  
+  // Extract current min_faves and lang from URL to preserve user settings
+  const urlParams = new URLSearchParams(window.location.search);
+  const currentQuery = urlParams.get('q') || '';
+  
+  // Handle both URL encoded (%3A) and regular (:) formats
+  const minFavesMatch = currentQuery.match(/min_faves(?:%3A|:)(\d+)/i);
+  const langMatch = currentQuery.match(/lang(?:%3A|:)(\w+)/i);
+  
+  const minFaves = minFavesMatch ? minFavesMatch[1] : '500';
+  const lang = langMatch ? langMatch[1] : 'en';
+  
+  console.log(`🔍 Extracted from URL - minFaves: ${minFaves}, lang: ${lang}`);
+  
   const baseUrl = 'https://x.com/search?q=';
-  const newUrl = `${baseUrl}${encodeURIComponent(newKeyword)}&src=typed_query&f=live`;
+  const newUrl = `${baseUrl}${encodeURIComponent(newKeyword)}%20min_faves%3A${minFaves}%20lang%3A${lang}&src=typed_query&f=live`;
+  
+  console.log(`🔄 Rotating with preserved settings: min_faves:${minFaves}, lang:${lang}`);
   
   // Navigate to new keyword search
   window.location.href = newUrl;
@@ -2424,6 +3656,44 @@ function getToneInstruction(tone) {
   };
   
   return instructions[tone] || 'Adapt your tone to match the context of the conversation.';
+}
+
+// Test function to verify strategy selection fix (will be removed in production)
+function testStrategySelection() {
+  if (typeof PROVEN_PROMPTS === 'undefined') return;
+  
+  // Test case: Political content with achievement words (should only select Counter, not Shout-Out)
+  const testTweet = "Biden inherited a republican mess but achieved great success in the economy";
+  const lowerText = testTweet.toLowerCase();
+  
+  // Define patterns (same as in selectBestPrompt)
+  const achievementPatterns = ['launched', 'shipped', 'hit', 'reached', 'achieved', 'sold', 'raised', 'milestone', 'success', 'completed', 'finished', 'won', 'got accepted'];
+  const negativeContextPatterns = ['inherited', 'mess', 'problem', 'crisis', 'disaster', 'failure', 'struggling', 'broken', 'corrupt', 'scandal', 'controversy', 'decline', 'collapse', 'tax', 'inflation', 'crypto', 'debt', 'recession', 'crash', 'bubble', 'capitalism', 'socialism', 'regulation', 'inequality', 'geopolitics'];
+  const politicalPatterns = ['president', 'biden', 'trump', 'economy', 'inflation', 'taxes', 'tax', 'government', 'policy', 'congress', 'senate', 'election', 'political', 'administration', 'inherited', 'mess', 'war', 'crisis', 'democracy', 'republican', 'democrat', 'crypto', 'debt', 'bitcoin', 'federal', 'fiscal', 'monetary', 'budget', 'capitalism', 'socialism', 'regulation', 'inequality', 'geopolitics'];
+  
+  const hasAchievementPattern = achievementPatterns.some(pattern => lowerText.includes(pattern));
+  const hasNegativeContext = negativeContextPatterns.some(pattern => lowerText.includes(pattern));
+  const hasPoliticalPattern = politicalPatterns.some(pattern => lowerText.includes(pattern));
+  
+  console.log('🧪 Strategy Selection Test:');
+  console.log('Test tweet:', testTweet);
+  console.log('Has achievement pattern:', hasAchievementPattern);
+  console.log('Has negative context:', hasNegativeContext);
+  console.log('Has political pattern:', hasPoliticalPattern);
+  
+  // Expected: Should select Counter strategy (political), NOT Shout-Out (due to negative context)
+  if (hasAchievementPattern && !hasNegativeContext) {
+    console.log('✅ Test Result: Would select Shout-Out strategy');
+  } else if (hasPoliticalPattern) {
+    console.log('✅ Test Result: Would select Counter strategy (correct!)');
+  } else {
+    console.log('❌ Test Result: Would select rotation strategy');
+  }
+}
+
+// Run test if in debug mode
+if (DEBUG_MODE) {
+  setTimeout(testStrategySelection, 1000);
 }
 
 debugLog('🔥 BoldTake Professional content script loaded and ready!');

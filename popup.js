@@ -14,27 +14,65 @@ let startBtn, stopBtn, sessionStatus, successfulCount, successRate;
 let keywordInput, minFavesInput, liveStatus, activityFeed;
 let settingsBtn, analyticsBtn, roadmapBtn, settingsPanel, analyticsPanel, roadmapPanel;
 let languageSelect, toneSelect;
+let nicheSelect, suggestedKeywords;
 
-// Keyword Rotation Elements
-let dailyTargetInput, addKeywordBtn, rotationKeywordsList;
-let categorySelect, addCategoryBtn, categoryKeywords;
-let rotationKeywords = [];
+// Settings Elements
+let dailyTargetInput;
 
-// Custom Prompt Elements
-let customPromptToggle, customPromptBuilder, customPromptName, customPromptText;
+// Custom Prompt Elements (removed)
 
-// Keyword Categories Data
-const KEYWORD_CATEGORIES = {
-    business: ['startup', 'entrepreneur', 'business', 'founder', 'investment', 'venture', 'growth', 'strategy', 'leadership', 'innovation'],
-    technology: ['AI', 'technology', 'software', 'coding', 'machine learning', 'blockchain', 'cybersecurity', 'cloud', 'automation', 'digital'],
-    marketing: ['marketing', 'sales', 'branding', 'advertising', 'content', 'SEO', 'social media', 'conversion', 'customer', 'growth hacking'],
-    finance: ['investment', 'finance', 'trading', 'stocks', 'portfolio', 'wealth', 'money', 'financial', 'market', 'economy'],
-    fitness: ['fitness', 'health', 'workout', 'nutrition', 'wellness', 'exercise', 'diet', 'mental health', 'lifestyle', 'training'],
-    education: ['education', 'learning', 'skills', 'development', 'coaching', 'productivity', 'mindset', 'success', 'motivation', 'knowledge'],
-    sustainability: ['sustainability', 'environment', 'climate', 'renewable', 'green', 'eco-friendly', 'carbon', 'clean energy', 'conservation', 'sustainable'],
-    creative: ['design', 'creative', 'art', 'branding', 'UX', 'UI', 'visual', 'photography', 'illustration', 'creativity'],
-    realestate: ['real estate', 'property', 'housing', 'investment', 'mortgage', 'market', 'construction', 'development', 'commercial', 'residential'],
-    politics: ['politics', 'economy', 'policy', 'government', 'tax', 'inflation', 'regulation', 'democracy', 'election', 'geopolitics']
+// Comprehensive Keyword Suggestions by Niche
+const NICHE_KEYWORDS = {
+    fitness: {
+        title: 'Fitness & Health',
+        description: 'Target health-conscious audiences with fitness, nutrition, and wellness content',
+        keywords: ['fitness', 'workout', 'nutrition', 'health', 'wellness', 'exercise', 'diet', 'training', 'mental health', 'lifestyle']
+    },
+    tech: {
+        title: 'Technology & AI',
+        description: 'Engage with tech enthusiasts, developers, and AI innovators',
+        keywords: ['AI', 'technology', 'software', 'coding', 'machine learning', 'blockchain', 'cybersecurity', 'automation', 'startup', 'innovation']
+    },
+    business: {
+        title: 'Business & Entrepreneurship', 
+        description: 'Connect with entrepreneurs, founders, and business leaders',
+        keywords: ['startup', 'entrepreneur', 'business', 'founder', 'leadership', 'strategy', 'growth', 'venture', 'investment', 'innovation']
+    },
+    finance: {
+        title: 'Finance & Investing',
+        description: 'Reach investors, traders, and financial advisors',
+        keywords: ['investment', 'finance', 'trading', 'stocks', 'crypto', 'portfolio', 'wealth', 'money', 'market', 'economy']
+    },
+    marketing: {
+        title: 'Marketing & Growth',
+        description: 'Target marketers, growth hackers, and brand builders',
+        keywords: ['marketing', 'growth', 'branding', 'content', 'SEO', 'social media', 'advertising', 'conversion', 'sales', 'customer']
+    },
+    lifestyle: {
+        title: 'Lifestyle & Wellness',
+        description: 'Connect with lifestyle influencers and wellness enthusiasts',
+        keywords: ['lifestyle', 'wellness', 'mindfulness', 'productivity', 'motivation', 'self care', 'minimalism', 'happiness', 'balance', 'mindset']
+    },
+    education: {
+        title: 'Education & Learning',
+        description: 'Engage with educators, students, and lifelong learners',
+        keywords: ['education', 'learning', 'skills', 'development', 'coaching', 'teaching', 'knowledge', 'training', 'online course', 'study']
+    },
+    travel: {
+        title: 'Travel & Adventure',
+        description: 'Reach travel enthusiasts and adventure seekers',
+        keywords: ['travel', 'adventure', 'vacation', 'explore', 'wanderlust', 'backpacking', 'culture', 'tourism', 'destination', 'journey']
+    },
+    food: {
+        title: 'Food & Cooking',
+        description: 'Connect with food lovers, chefs, and cooking enthusiasts',
+        keywords: ['food', 'cooking', 'recipe', 'chef', 'cuisine', 'restaurant', 'foodie', 'nutrition', 'baking', 'culinary']
+    },
+    gaming: {
+        title: 'Gaming & Entertainment',
+        description: 'Engage with gamers and entertainment enthusiasts',
+        keywords: ['gaming', 'esports', 'streamer', 'entertainment', 'video games', 'twitch', 'content creator', 'streaming', 'gamer', 'game dev']
+    }
 };
 
 // Analytics Elements
@@ -43,6 +81,8 @@ let commentHistoryList, analyticsInsights, clearHistoryBtn;
 
 // Activity log storage
 let activityLog = [];
+let activityUpdatesPaused = false;
+let totalActivityEvents = 0;
 
 /**
  * Get language code for X.com search URL
@@ -98,6 +138,15 @@ function getLanguageCode(language) {
 document.addEventListener('DOMContentLoaded', async () => {
     debugLog('📱 Initializing BoldTake Professional interface...');
     
+    // PHASE 1: Initialize Authentication System
+    try {
+        await window.BoldTakeAuthManager.initializeAuth();
+        debugLog('✅ Authentication system initialized');
+    } catch (error) {
+        console.error('❌ Failed to initialize authentication:', error);
+        // Continue with limited functionality
+    }
+    
     // Get DOM elements
     startBtn = document.getElementById('start-button');
     stopBtn = document.getElementById('stop-button');
@@ -108,9 +157,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     minFavesInput = document.getElementById('min-faves-input');
     liveStatus = document.getElementById('liveStatus');
     activityFeed = document.getElementById('activityFeed');
-    settingsBtn = document.getElementById('settings-button');
-    analyticsBtn = document.getElementById('analytics-button');
-    roadmapBtn = document.getElementById('roadmap-button');
     settingsPanel = document.getElementById('settings-panel');
     analyticsPanel = document.getElementById('analytics-panel');
     roadmapPanel = document.getElementById('roadmap-panel');
@@ -128,28 +174,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     languageSelect = document.getElementById('language-select');
     toneSelect = document.getElementById('tone-select');
     
-    // Keyword rotation elements
+    // Keyword suggestions elements
+    nicheSelect = document.getElementById('niche-select');
+    suggestedKeywords = document.getElementById('suggested-keywords');
+    
+    // Settings elements
     dailyTargetInput = document.getElementById('daily-target-input');
-    addKeywordBtn = document.getElementById('add-keyword-btn');
-    rotationKeywordsList = document.getElementById('rotation-keywords-list');
     
-    // Category elements
-    categorySelect = document.getElementById('category-select');
-    addCategoryBtn = document.getElementById('add-category-btn');
-    categoryKeywords = document.getElementById('category-keywords');
+    // Prompt Library elements
+    const promptSelects = {
+        'Engagement Indie Voice': document.getElementById('indie-voice-select'),
+        'Engagement Spark Reply': document.getElementById('spark-reply-select'),
+        'Engagement The Counter': document.getElementById('counter-select'),
+        'The Riff': document.getElementById('riff-select'),
+        'The Viral Shot': document.getElementById('viral-shot-select'),
+        'The Shout-Out': document.getElementById('shout-out-select')
+    };
+    const resetPromptsBtn = document.getElementById('reset-prompts-btn');
     
-    // Custom prompt elements
-    customPromptToggle = document.getElementById('customPromptToggle');
-    customPromptBuilder = document.getElementById('customPromptBuilder');
-    customPromptName = document.getElementById('customPromptName');
-    customPromptText = document.getElementById('customPromptText');
-    
-    // Load saved settings including personalization
+    // Load saved settings including personalization, prompt preferences, and filtering options
     chrome.storage.local.get([
         'boldtake_keyword', 
         'boldtake_min_faves', 
         'boldtake_language', 
-        'boldtake_tone'
+        'boldtake_tone',
+        'boldtake_timing_range',
+        'boldtake_prompt_preferences',
+        'boldtake_exclude_links_media',
+        'boldtake_prioritize_questions',
+        'boldtake_min_char_count',
+        'boldtake_spam_keywords',
+        'boldtake_negative_keywords'
     ], (result) => {
         if (result.boldtake_keyword) {
             keywordInput.value = result.boldtake_keyword;
@@ -157,21 +212,77 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (result.boldtake_min_faves) {
             minFavesInput.value = result.boldtake_min_faves;
         }
+        // Load language preference (restrict to English only for current tier)
         if (result.boldtake_language) {
+            if (result.boldtake_language === 'english') {
             languageSelect.value = result.boldtake_language;
+            } else {
+                languageSelect.value = 'english'; // Force English for current tier
+                debugLog('🚫 Language restricted to English for current tier');
+            }
         }
         if (result.boldtake_tone) {
             toneSelect.value = result.boldtake_tone;
+        }
+        
+        // Load timing preference (restrict to allowed options)
+        const timingSelect = document.getElementById('timing-range');
+        if (result.boldtake_timing_range && timingSelect) {
+            const allowedTimings = ['60-300', '120-600']; // Safe and Stealth only
+            if (allowedTimings.includes(result.boldtake_timing_range)) {
+                timingSelect.value = result.boldtake_timing_range;
+            } else {
+                timingSelect.value = '60-300'; // Default to Safe
+            }
+        }
+        
+        // Load advanced filtering settings
+        if (result.boldtake_exclude_links_media !== undefined) {
+            document.getElementById('exclude-links-media').checked = result.boldtake_exclude_links_media;
+        }
+        if (result.boldtake_prioritize_questions !== undefined) {
+            document.getElementById('prioritize-questions').checked = result.boldtake_prioritize_questions;
+        }
+        if (result.boldtake_min_char_count) {
+            document.getElementById('min-char-count').value = result.boldtake_min_char_count;
+        }
+        if (result.boldtake_spam_keywords) {
+            document.getElementById('spam-keywords').value = result.boldtake_spam_keywords;
+        }
+        if (result.boldtake_negative_keywords) {
+            document.getElementById('negative-keywords').value = result.boldtake_negative_keywords;
         }
     });
     
     // Set up event listeners
     startBtn.addEventListener('click', startSession);
     stopBtn.addEventListener('click', stopSession);
-    settingsBtn.addEventListener('click', toggleSettings);
-    analyticsBtn.addEventListener('click', toggleAnalytics);
-    roadmapBtn.addEventListener('click', toggleRoadmap);
+    
+    // CRITICAL SAFETY: Stop button ALWAYS enabled for panic stops
+    stopBtn.disabled = false;
+    stopBtn.classList.remove('btn-disabled');
+    
+    // Authentication event listeners
+    setupAuthEventListeners();
+    // Old button event listeners removed - using tab navigation system now
     clearHistoryBtn.addEventListener('click', clearCommentHistory);
+    
+    // Launch session from settings button
+    const launchFromSettingsBtn = document.getElementById('launch-from-settings-btn');
+    if (launchFromSettingsBtn) {
+        launchFromSettingsBtn.addEventListener('click', async () => {
+            // Save settings first
+            savePersonalizationSettings();
+            saveFilteringSettings();
+            // Switch to dashboard tab
+            const dashboardTab = document.querySelector('[data-tab="dashboard"]');
+            if (dashboardTab) {
+                dashboardTab.click();
+            }
+            // Start session
+            await startSession();
+        });
+    }
     
     // Set up keyword chip listeners
     document.querySelectorAll('.keyword-chip').forEach(chip => {
@@ -180,38 +291,228 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
     
-    // Set up personalization listeners
-    languageSelect.addEventListener('change', savePersonalizationSettings);
+    // Set up personalization listeners with premium restrictions
+    languageSelect.addEventListener('change', (e) => {
+        // Prevent selection of disabled options
+        if (e.target.selectedOptions[0].disabled) {
+            e.target.value = 'english'; // Reset to English
+            debugLog('🚫 Premium feature: Language selection restricted to English for current tier');
+            return;
+        }
+        savePersonalizationSettings();
+    });
+    
     toneSelect.addEventListener('change', savePersonalizationSettings);
     
-    // Set up keyword rotation listeners
-    addKeywordBtn.addEventListener('click', addKeywordToRotation);
-    keywordInput.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            addKeywordToRotation();
+    // Set up timing restrictions
+    const timingSelect = document.getElementById('timing-range');
+    if (timingSelect) {
+        timingSelect.addEventListener('change', (e) => {
+            // Prevent selection of disabled options
+            if (e.target.selectedOptions[0].disabled) {
+                e.target.value = '60-300'; // Reset to Safe
+                debugLog('🚫 Premium feature: Advanced timing options restricted to current tier');
+                return;
+            }
+            // Save timing preference if valid
+            chrome.storage.local.set({ 'boldtake_timing_range': e.target.value });
+            debugLog('⏱️ Timing range updated:', e.target.value);
+        });
+    }
+    
+    // Set up advanced filtering listeners
+    document.getElementById('exclude-links-media').addEventListener('change', saveFilteringSettings);
+    document.getElementById('prioritize-questions').addEventListener('change', saveFilteringSettings);
+    document.getElementById('min-char-count').addEventListener('change', saveFilteringSettings);
+    document.getElementById('spam-keywords').addEventListener('change', saveFilteringSettings);
+    document.getElementById('negative-keywords').addEventListener('change', saveFilteringSettings);
+    
+    // Set up keyword suggestions listener
+    nicheSelect.addEventListener('change', handleNicheSelection);
+    
+    // Set up Main Tabs Navigation
+    setupTabNavigation();
+    
+    // Set up Quick Start Guide listeners
+    const dismissGuideBtn = document.getElementById('dismiss-guide');
+    const quickSettingsBtn = document.getElementById('quick-settings-btn');
+    const quickStartGuide = document.getElementById('quick-start-guide');
+    
+    if (dismissGuideBtn) {
+        dismissGuideBtn.addEventListener('click', () => {
+            quickStartGuide.classList.add('hidden');
+            // Save preference to not show again
+            chrome.storage.local.set({ boldtake_hide_quick_guide: true });
+            debugLog('🚫 Quick start guide dismissed permanently');
+        });
+    }
+    
+    if (quickSettingsBtn) {
+        quickSettingsBtn.addEventListener('click', () => {
+            // Open settings panel using new tab system
+            const settingsTab = document.querySelector('[data-tab="settings"]');
+            if (settingsTab) {
+                settingsTab.click();
+            }
+            // Hide the quick start guide
+            quickStartGuide.classList.add('hidden');
+            // Save preference
+            chrome.storage.local.set({ boldtake_hide_quick_guide: true });
+            debugLog('⚡ Quick setup opened, guide hidden');
+        });
+    }
+    
+    // Set up prompt library listeners
+    Object.entries(promptSelects).forEach(([strategyName, selectElement]) => {
+        if (selectElement) {
+            selectElement.addEventListener('change', (e) => {
+                savePromptPreference(strategyName, e.target.value);
+            });
         }
     });
     
-    // Set up category listeners
-    categorySelect.addEventListener('change', displayCategoryKeywords);
-    addCategoryBtn.addEventListener('click', addAllCategoryKeywords);
+    // Set up reset prompts button
+    if (resetPromptsBtn) {
+        resetPromptsBtn.addEventListener('click', resetPromptPreferences);
+    }
     
-    // Load saved keyword rotation settings
-    loadKeywordRotationSettings();
+    // Load prompt preferences
+    loadPromptPreferences();
+    
+    // Keyword rotation removed - using simple single keyword now
     
     // Load current session state and analytics
     await loadSessionState();
     await loadAnalyticsData();
     
-    // Initialize custom prompt functionality
-    initializeCustomPrompts();
+    // Auto-trigger analytics scraping on startup (once per session)
+    triggerAnalyticsScrapingOnStartup();
+    
+    // Check if Quick Start Guide should be shown
+    const result = await chrome.storage.local.get(['boldtake_hide_quick_guide']);
+    if (result.boldtake_hide_quick_guide && quickStartGuide) {
+        quickStartGuide.classList.add('hidden');
+        debugLog('🚫 Quick start guide hidden per user preference');
+    }
+    
+    // AUTO-OPEN SETTINGS for better UX - help users get started immediately
+    const shouldAutoOpenSettings = await checkIfShouldAutoOpenSettings();
+    if (shouldAutoOpenSettings) {
+        // Open settings panel using new tab system
+        const settingsTab = document.querySelector('[data-tab="settings"]');
+        if (settingsTab) {
+            settingsTab.click();
+        }
+        debugLog('🎯 Auto-opened settings for new user experience');
+    }
+    
+    // Custom prompt functionality removed
     
     // Set up periodic updates
     setInterval(loadSessionState, 2000);
     setInterval(loadAnalyticsData, 5000); // Update analytics every 5 seconds // Update every 2 seconds
     
+    // Setup activity controls
+    setupActivityControls();
+    
     debugLog('✅ BoldTake Professional popup ready!');
 });
+
+/**
+ * Setup activity control buttons and functionality
+ */
+function setupActivityControls() {
+    const pauseBtn = document.getElementById('pauseActivityBtn');
+    const clearBtn = document.getElementById('clearActivityBtn');
+    const exportBtn = document.getElementById('exportActivityBtn');
+    
+    if (pauseBtn) {
+        pauseBtn.addEventListener('click', () => {
+            activityUpdatesPaused = !activityUpdatesPaused;
+            pauseBtn.textContent = activityUpdatesPaused ? '▶️' : '⏸️';
+            pauseBtn.title = activityUpdatesPaused ? 'Resume Activity Updates' : 'Pause Activity Updates';
+        });
+    }
+    
+    if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+            activityLog = [];
+            updateActivityFeed();
+            updateActivityStats();
+        });
+    }
+    
+    if (exportBtn) {
+        exportBtn.addEventListener('click', exportActivityLog);
+    }
+    
+    // Update activity stats initially
+    updateActivityStats();
+}
+
+/**
+ * Export activity log to clipboard
+ */
+function exportActivityLog() {
+    const timestamp = new Date().toISOString();
+    const logText = `BoldTake Activity Log - ${timestamp}\n\n` + 
+        activityLog.map(item => `[${item.timestamp}] ${item.message}`).join('\n');
+    
+    navigator.clipboard.writeText(logText).then(() => {
+        // Show temporary success message
+        const exportBtn = document.getElementById('exportActivityBtn');
+        const originalText = exportBtn.textContent;
+        exportBtn.textContent = '✅';
+        setTimeout(() => {
+            exportBtn.textContent = originalText;
+        }, 1000);
+    }).catch(err => {
+        console.error('Failed to copy activity log:', err);
+    });
+}
+
+/**
+ * Update activity statistics display
+ */
+function updateActivityStats() {
+    const countElement = document.getElementById('activityCount');
+    const updateElement = document.getElementById('lastUpdate');
+    
+    if (countElement) {
+        countElement.textContent = `${activityLog.length} events`;
+    }
+    
+    if (updateElement && activityLog.length > 0) {
+        const lastActivity = activityLog[0]; // Most recent is first
+        updateElement.textContent = `Last: ${lastActivity.timestamp}`;
+    } else if (updateElement) {
+        updateElement.textContent = 'Never';
+    }
+}
+
+/**
+ * Check if settings should auto-open for better UX
+ */
+async function checkIfShouldAutoOpenSettings() {
+    return new Promise(resolve => {
+        chrome.storage.local.get(['boldtake_keyword', 'boldtake_first_time'], (result) => {
+            // Auto-open if:
+            // 1. No keyword is set (new user)
+            // 2. First time flag is not set
+            // 3. Keyword is empty or default
+            const hasKeyword = result.boldtake_keyword && result.boldtake_keyword.trim() && result.boldtake_keyword !== 'startup';
+            const isFirstTime = !result.boldtake_first_time;
+            
+            if (!hasKeyword || isFirstTime) {
+                // Mark as not first time anymore
+                chrome.storage.local.set({ boldtake_first_time: true });
+                resolve(true);
+            } else {
+                resolve(false);
+            }
+        });
+    });
+}
 
 /**
  * Starts a new BoldTake automation session
@@ -258,9 +559,29 @@ async function startSession() {
             isNewSession: true
         });
 
-        // Construct the search URL with proper language code
+        // Construct the ENHANCED search URL with "Broad Net" filters
         const languageCode = getLanguageCode(languageSelect?.value || 'english');
-        const searchURL = `https://x.com/search?q=${encodeURIComponent(keyword)}%20min_faves%3A${minFaves}%20lang%3A${languageCode}&src=typed_query&f=live`;
+        
+        // Get current filtering settings
+        const excludeLinksMedia = document.getElementById('exclude-links-media')?.checked ?? true;
+        
+        // ENHANCED QUERY: Use X.com's built-in filters as first line of defense
+        const broadNetFilters = [];
+        
+        if (excludeLinksMedia) {
+            broadNetFilters.push('-filter:links');        // Exclude tweets with links (often spam/promotional)
+            broadNetFilters.push('-filter:media');        // Exclude tweets with media (focus on text discussions)
+        }
+        
+        // Always exclude these for quality
+        broadNetFilters.push('-filter:replies');      // Exclude reply threads (focus on original content)
+        broadNetFilters.push('-filter:retweets');     // Exclude retweets (focus on original thoughts)
+        
+        const filtersString = broadNetFilters.length > 0 ? '%20' + broadNetFilters.join('%20') : '';
+        const enhancedQuery = `${encodeURIComponent(keyword)}%20min_faves%3A${minFaves}%20lang%3A${languageCode}${filtersString}`;
+        const searchURL = `https://x.com/search?q=${enhancedQuery}&src=typed_query&f=live`;
+        
+        debugLog('🎯 Enhanced query:', enhancedQuery);
 
         // Find an existing X.com tab or create a new one
         chrome.tabs.query({ url: "*://x.com/*" }, (tabs) => {
@@ -349,6 +670,9 @@ function updateSessionDisplay(stats) {
     // Update counters
     successfulCount.textContent = stats.successful || 0;
     
+    // Update progress bar
+    updateProgressBar(stats.successful || 0, stats.target || 120);
+    
     // Calculate and update success rate
     const rate = stats.processed > 0 
         ? Math.round((stats.successful / stats.processed) * 100) 
@@ -360,6 +684,13 @@ function updateSessionDisplay(stats) {
         updateSessionStatus('Running', 'status-running');
         updateLiveStatus('Active', true);
         updateUIForRunningSession();
+        
+        // CRITICAL FIX: Ensure stop button is properly enabled
+        if (stopBtn) {
+            stopBtn.disabled = false;
+            stopBtn.classList.remove('btn-disabled');
+            stopBtn.classList.add('btn-stop');
+        }
         
         // Add recent activities if available
         if (stats.recentActivities && stats.recentActivities.length > 0) {
@@ -388,15 +719,10 @@ function updateSessionStatus(message, statusClass) {
  * Updates the live status indicator in top-right corner
  */
 function updateLiveStatus(status, isRunning = false) {
-    const dot = liveStatus.querySelector('.status-dot');
-    const text = liveStatus.querySelector('span');
-    
-    text.textContent = status;
-    
-    if (isRunning) {
-        dot.classList.add('running');
-    } else {
-        dot.classList.remove('running');
+    const statusElement = document.getElementById('sessionStatus');
+    if (statusElement) {
+        statusElement.textContent = status;
+        statusElement.className = isRunning ? 'stat-status running' : 'stat-status';
     }
 }
 
@@ -404,20 +730,55 @@ function updateLiveStatus(status, isRunning = false) {
  * Updates UI for running session state
  */
 function updateUIForRunningSession() {
+    const startBtn = document.getElementById('start-button');
+    const pauseBtn = document.getElementById('pause-button');
+    const stopBtn = document.getElementById('stop-button');
+    
+    if (startBtn) {
     startBtn.disabled = true;
-    startBtn.innerHTML = '⏳ Session Running';
+        startBtn.innerHTML = 'Session Active';
+        startBtn.classList.add('btn-disabled');
+    }
+    
+    if (pauseBtn) {
+        pauseBtn.disabled = false;
+        pauseBtn.classList.remove('btn-disabled');
+    }
+    
+    // CRITICAL: Stop button ALWAYS active for panic stops
+    if (stopBtn) {
     stopBtn.disabled = false;
     stopBtn.innerHTML = 'Stop Session';
+        stopBtn.classList.add('btn-stop');
+        stopBtn.classList.remove('btn-disabled');
+    }
 }
 
 /**
  * Updates UI for stopped session state
  */
 function updateUIForStoppedSession() {
+    const startBtn = document.getElementById('start-button');
+    const pauseBtn = document.getElementById('pause-button');
+    const stopBtn = document.getElementById('stop-button');
+    
+    if (startBtn) {
     startBtn.disabled = false;
-    startBtn.innerHTML = 'Launch Session';
+        startBtn.innerHTML = 'Start Session';
+        startBtn.classList.remove('btn-disabled');
+    }
+    
+    if (pauseBtn) {
+        pauseBtn.disabled = true;
+        pauseBtn.classList.add('btn-disabled');
+    }
+    
+    if (stopBtn) {
     stopBtn.disabled = true;
     stopBtn.innerHTML = 'Stop Session';
+        stopBtn.classList.remove('btn-stop');
+        stopBtn.classList.add('btn-disabled');
+    }
 }
 
 /**
@@ -448,9 +809,68 @@ function showAlert(message) {
 }
 
 /**
+ * Save prompt preference for a strategy
+ */
+function savePromptPreference(strategyName, variationId) {
+    chrome.storage.local.get(['boldtake_prompt_preferences'], (result) => {
+        const preferences = result.boldtake_prompt_preferences || {};
+        preferences[strategyName] = variationId;
+        
+        chrome.storage.local.set({ boldtake_prompt_preferences: preferences }, () => {
+            debugLog(`💾 Saved prompt preference: ${strategyName} -> ${variationId}`);
+        });
+    });
+}
+
+/**
+ * Load prompt preferences and update UI
+ */
+function loadPromptPreferences() {
+    chrome.storage.local.get(['boldtake_prompt_preferences'], (result) => {
+        const preferences = result.boldtake_prompt_preferences || {};
+        
+        // Update each dropdown with saved preference
+        const promptSelects = {
+            'Engagement Indie Voice': document.getElementById('indie-voice-select'),
+            'Engagement Spark Reply': document.getElementById('spark-reply-select'),
+            'Engagement The Counter': document.getElementById('counter-select'),
+            'The Riff': document.getElementById('riff-select'),
+            'The Viral Shot': document.getElementById('viral-shot-select'),
+            'The Shout-Out': document.getElementById('shout-out-select')
+        };
+        
+        Object.entries(promptSelects).forEach(([strategyName, selectElement]) => {
+            if (selectElement && preferences[strategyName]) {
+                selectElement.value = preferences[strategyName];
+            }
+        });
+    });
+}
+
+/**
+ * Reset all prompt preferences to defaults
+ */
+function resetPromptPreferences() {
+    if (confirm('Reset all prompt variations to defaults?')) {
+        chrome.storage.local.remove('boldtake_prompt_preferences', () => {
+            // Reset all dropdowns to first option
+            document.querySelectorAll('.prompt-variation-select').forEach(select => {
+                select.selectedIndex = 0;
+            });
+            
+            showAlert('✅ Prompt preferences reset to defaults');
+            debugLog('🔄 Reset all prompt preferences to defaults');
+        });
+    }
+}
+
+/**
  * Adds an activity to the live feed
  */
 function addActivity(message, type = 'info') {
+    // Skip if activity updates are paused
+    if (activityUpdatesPaused) return;
+    
     const timestamp = new Date().toLocaleTimeString('en-US', { 
         hour12: false, 
         hour: '2-digit', 
@@ -464,10 +884,11 @@ function addActivity(message, type = 'info') {
     };
     
     activityLog.unshift(activity);
+    totalActivityEvents++;
     
-    // Keep only last 4 activities
-    if (activityLog.length > 4) {
-        activityLog = activityLog.slice(0, 4);
+    // Keep only last 8 activities (increased for better enterprise visibility)
+    if (activityLog.length > 8) {
+        activityLog = activityLog.slice(0, 8);
     }
     
     updateActivityFeed();
@@ -481,6 +902,7 @@ function updateActivityFeed() {
     
     if (activityLog.length === 0) {
         activityFeed.innerHTML = '<div class="activity-item">Ready to start...</div>';
+        updateActivityStats();
         return;
     }
     
@@ -489,70 +911,15 @@ function updateActivityFeed() {
             <span style="opacity: 0.6">${activity.timestamp}</span> ${activity.message}
         </div>`
     ).join('');
+    
+    // Update activity stats
+    updateActivityStats();
+    
+    // Auto-scroll to bottom to show latest activity
+    activityFeed.scrollTop = activityFeed.scrollHeight;
 }
 
-/**
- * Toggle settings panel visibility
- */
-function toggleSettings() {
-    const isHidden = settingsPanel.classList.contains('hidden');
-    
-    // Hide other panels
-    analyticsPanel.classList.add('hidden');
-    analyticsBtn.classList.remove('active');
-    roadmapPanel.classList.add('hidden');
-    roadmapBtn.classList.remove('active');
-    
-    if (isHidden) {
-        settingsPanel.classList.remove('hidden');
-        settingsBtn.classList.add('active');
-    } else {
-        settingsPanel.classList.add('hidden');
-        settingsBtn.classList.remove('active');
-    }
-}
-
-/**
- * Toggle analytics panel visibility
- */
-function toggleAnalytics() {
-    const isHidden = analyticsPanel.classList.contains('hidden');
-    
-    // Hide other panels
-    settingsPanel.classList.add('hidden');
-    settingsBtn.classList.remove('active');
-    roadmapPanel.classList.add('hidden');
-    roadmapBtn.classList.remove('active');
-    
-    if (isHidden) {
-        analyticsPanel.classList.remove('hidden');
-        analyticsBtn.classList.add('active');
-        // Refresh analytics when opened
-        loadAnalyticsData();
-    } else {
-        analyticsPanel.classList.add('hidden');
-        analyticsBtn.classList.remove('active');
-    }
-}
-
-/**
- * Toggle roadmap panel visibility
- */
-function toggleRoadmap() {
-    const isHidden = roadmapPanel.classList.contains('hidden');
-    
-    // Hide settings if open
-    settingsPanel.classList.add('hidden');
-    settingsBtn.classList.remove('active');
-    
-    if (isHidden) {
-        roadmapPanel.classList.remove('hidden');
-        roadmapBtn.classList.add('active');
-    } else {
-        roadmapPanel.classList.add('hidden');
-        roadmapBtn.classList.remove('active');
-    }
-}
+// Old toggle functions removed - using new tab navigation system
 
 /**
  * Save personalization settings (language and tone)
@@ -570,6 +937,706 @@ function savePersonalizationSettings() {
 }
 
 /**
+ * Set up main tabs navigation system
+ */
+function setupTabNavigation() {
+    const tabButtons = document.querySelectorAll('.tab-btn');
+    
+    // Hide all panels initially
+    const allPanels = [
+        document.getElementById('settings-panel'),
+        document.getElementById('analytics-panel'),
+        document.getElementById('roadmap-panel'),
+        document.getElementById('guide-panel')
+    ];
+    
+    // Main dashboard content (activity log, etc.)
+    const dashboardContent = document.querySelector('.tab-content');
+    
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetTab = button.getAttribute('data-tab');
+            
+            // Remove active class from all buttons
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+            
+            // Hide all panels first
+            allPanels.forEach(panel => {
+                if (panel) {
+                    panel.classList.add('hidden');
+                    panel.style.display = 'none';
+                }
+            });
+            
+            // Show the appropriate content based on tab
+            if (targetTab === 'dashboard') {
+                // Show main dashboard content
+                if (dashboardContent) dashboardContent.style.display = 'block';
+            } else if (targetTab === 'settings') {
+                // Hide dashboard, show settings
+                if (dashboardContent) dashboardContent.style.display = 'none';
+                const settingsPanel = document.getElementById('settings-panel');
+                if (settingsPanel) {
+        settingsPanel.classList.remove('hidden');
+                    settingsPanel.style.display = 'block';
+                }
+            } else if (targetTab === 'analytics') {
+                // Hide dashboard, show analytics
+                if (dashboardContent) dashboardContent.style.display = 'none';
+                const analyticsPanel = document.getElementById('analytics-panel');
+                if (analyticsPanel) {
+                    analyticsPanel.classList.remove('hidden');
+                    analyticsPanel.style.display = 'block';
+                }
+            } else if (targetTab === 'roadmap') {
+                // Hide dashboard, show roadmap
+                if (dashboardContent) dashboardContent.style.display = 'none';
+                const roadmapPanel = document.getElementById('roadmap-panel');
+                if (roadmapPanel) {
+                    roadmapPanel.classList.remove('hidden');
+                    roadmapPanel.style.display = 'block';
+                }
+            } else if (targetTab === 'guide') {
+                // Hide dashboard, show guide (we'll create this)
+                if (dashboardContent) dashboardContent.style.display = 'none';
+                showGuideContent();
+            }
+            
+            debugLog(`📑 Switched to ${targetTab} tab`);
+        });
+    });
+}
+
+/**
+ * CSV Reply Analysis System
+ * Processes performance data to improve AI quality
+ */
+function setupReplyAnalysis() {
+    // Add CSV upload functionality to Analytics tab
+    const analyticsPanel = document.getElementById('analytics-panel');
+    if (analyticsPanel && !document.getElementById('csv-analyzer')) {
+        const analyzerHTML = `
+            <div id="csv-analyzer" class="csv-analyzer-section">
+                <div class="analyzer-header">
+                    <h3>🧠 AI Learning System</h3>
+                    <p class="analyzer-description">Upload your reply performance CSV to improve AI quality</p>
+                </div>
+                
+                <div class="csv-upload-area">
+                    <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+                    <button id="upload-csv-btn" class="btn btn-secondary">
+                        📊 Upload Performance CSV
+                    </button>
+                    <div class="upload-hint">Upload your X.com analytics CSV to analyze reply patterns</div>
+                </div>
+                
+                <div id="analysis-results" class="analysis-results hidden">
+                    <div class="results-header">
+                        <h4>🎯 Performance Insights</h4>
+                        <button id="apply-insights-btn" class="btn btn-start">Apply AI Improvements</button>
+                    </div>
+                    <div id="insights-display" class="insights-display"></div>
+                </div>
+            </div>
+        `;
+        
+        analyticsPanel.insertAdjacentHTML('afterbegin', analyzerHTML);
+        setupCSVAnalysisListeners();
+    }
+}
+
+/**
+ * Set up CSV analysis event listeners
+ */
+function setupCSVAnalysisListeners() {
+    const uploadBtn = document.getElementById('upload-csv-btn');
+    const fileInput = document.getElementById('csv-file-input');
+    const applyBtn = document.getElementById('apply-insights-btn');
+    
+    if (uploadBtn && fileInput) {
+        uploadBtn.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        fileInput.addEventListener('change', handleCSVUpload);
+    }
+    
+    if (applyBtn) {
+        applyBtn.addEventListener('click', applyAIImprovements);
+    }
+}
+
+/**
+ * Handle CSV file upload and analysis
+ */
+async function handleCSVUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    try {
+        const csvText = await readFileAsText(file);
+        const csvData = parseCSV(csvText);
+        
+        debugLog('📊 CSV uploaded:', csvData.length, 'replies');
+        
+        // Send data to content script for analysis
+        const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+        if (tab?.url?.includes('x.com') || tab?.url?.includes('twitter.com')) {
+            chrome.tabs.sendMessage(tab.id, {
+                type: 'ANALYZE_REPLY_PERFORMANCE',
+                data: csvData
+            }, (response) => {
+                if (response?.success) {
+                    displayAnalysisResults(response.insights);
+    } else {
+                    debugLog('❌ Analysis failed:', response?.error);
+                }
+            });
+        } else {
+            // Fallback: analyze locally
+            const insights = analyzeRepliesLocally(csvData);
+            displayAnalysisResults(insights);
+        }
+        
+    } catch (error) {
+        debugLog('❌ CSV processing error:', error);
+        showNotification('Error processing CSV file', 'error');
+    }
+}
+
+/**
+ * Read file as text
+ */
+function readFileAsText(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsText(file);
+    });
+}
+
+/**
+ * Parse CSV data into structured format
+ */
+function parseCSV(csvText) {
+    const lines = csvText.split('\n').filter(line => line.trim());
+    const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+    
+    return lines.slice(1).map(line => {
+        const values = line.split(',');
+        const reply = {};
+        
+        headers.forEach((header, index) => {
+            const value = values[index]?.trim() || '';
+            
+            // Map common CSV column names
+            if (header.includes('text') || header.includes('reply')) {
+                reply.text = value;
+            } else if (header.includes('like')) {
+                reply.likes = parseInt(value) || 0;
+            } else if (header.includes('retweet')) {
+                reply.retweets = parseInt(value) || 0;
+            } else if (header.includes('reply') || header.includes('comment')) {
+                reply.replies = parseInt(value) || 0;
+            } else if (header.includes('strategy')) {
+                reply.strategy = value;
+            } else if (header.includes('impression')) {
+                reply.impressions = parseInt(value) || 0;
+            }
+        });
+        
+        return reply;
+    }).filter(reply => reply.text && reply.text.length > 10);
+}
+
+/**
+ * Local reply analysis (fallback)
+ */
+function analyzeRepliesLocally(csvData) {
+    // Simple local analysis
+    const totalReplies = csvData.length;
+    const avgLikes = csvData.reduce((sum, r) => sum + (r.likes || 0), 0) / totalReplies;
+    const topPerformers = csvData
+        .sort((a, b) => ((b.likes || 0) + (b.retweets || 0)) - ((a.likes || 0) + (a.retweets || 0)))
+        .slice(0, 5);
+    
+    return {
+        totalReplies,
+        avgLikes: Math.round(avgLikes),
+        topPerformers,
+        recommendations: [
+            {
+                type: 'general',
+                priority: 'medium',
+                message: `Analyzed ${totalReplies} replies with ${avgLikes} avg likes`,
+                action: 'info'
+            }
+        ]
+    };
+}
+
+/**
+ * Display analysis results in the UI
+ */
+function displayAnalysisResults(insights) {
+    const resultsDiv = document.getElementById('analysis-results');
+    const displayDiv = document.getElementById('insights-display');
+    
+    if (!resultsDiv || !displayDiv) return;
+    
+    resultsDiv.classList.remove('hidden');
+    
+    let html = `
+        <div class="insights-summary">
+            <div class="insight-card">
+                <div class="insight-icon">📊</div>
+                <div class="insight-content">
+                    <div class="insight-number">${insights.totalReplies || 0}</div>
+                    <div class="insight-label">Replies Analyzed</div>
+                </div>
+            </div>
+            <div class="insight-card">
+                <div class="insight-icon">👍</div>
+                <div class="insight-content">
+                    <div class="insight-number">${insights.avgLikes || 0}</div>
+                    <div class="insight-label">Avg Likes</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="recommendations-list">
+            <h5>🎯 AI Improvement Recommendations:</h5>
+    `;
+    
+    if (insights.recommendations && insights.recommendations.length > 0) {
+        insights.recommendations.forEach(rec => {
+            const priorityClass = rec.priority === 'high' ? 'priority-high' : 
+                                 rec.priority === 'medium' ? 'priority-medium' : 'priority-low';
+            
+            html += `
+                <div class="recommendation-item ${priorityClass}">
+                    <div class="rec-priority">${rec.priority.toUpperCase()}</div>
+                    <div class="rec-message">${rec.message}</div>
+                </div>
+            `;
+        });
+    }
+    
+    html += '</div>';
+    
+    if (insights.topPerformers && insights.topPerformers.length > 0) {
+        html += `
+            <div class="top-performers">
+                <h5>🏆 Top Performing Replies:</h5>
+        `;
+        
+        insights.topPerformers.slice(0, 3).forEach((reply, index) => {
+            const engagement = (reply.likes || 0) + (reply.retweets || 0) + (reply.replies || 0);
+            html += `
+                <div class="performer-item">
+                    <div class="performer-rank">#${index + 1}</div>
+                    <div class="performer-content">
+                        <div class="performer-text">"${reply.text.substring(0, 80)}..."</div>
+                        <div class="performer-stats">${engagement} total engagement</div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += '</div>';
+    }
+    
+    displayDiv.innerHTML = html;
+    
+    // Store insights for application
+    chrome.storage.local.set({
+        'boldtake_pending_insights': insights,
+        'boldtake_analysis_timestamp': Date.now()
+    });
+    
+    debugLog('🧠 Analysis results displayed:', insights);
+}
+
+/**
+ * Apply AI improvements based on insights
+ */
+async function applyAIImprovements() {
+    try {
+        const result = await chrome.storage.local.get(['boldtake_pending_insights']);
+        const insights = result.boldtake_pending_insights;
+        
+        if (!insights) {
+            showNotification('No insights available to apply', 'error');
+            return;
+        }
+        
+        // Send insights to content script for application
+        const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+        if (tab?.url?.includes('x.com') || tab?.url?.includes('twitter.com')) {
+            chrome.tabs.sendMessage(tab.id, {
+                type: 'APPLY_AI_INSIGHTS',
+                insights: insights
+            }, (response) => {
+                if (response?.success) {
+                    showNotification('AI improvements applied successfully!', 'success');
+                    debugLog('🚀 AI improvements applied:', response.enhancements);
+    } else {
+                    showNotification('Failed to apply improvements', 'error');
+                }
+            });
+        }
+        
+    } catch (error) {
+        debugLog('❌ Error applying insights:', error);
+        showNotification('Error applying AI improvements', 'error');
+    }
+}
+
+/**
+ * Show notification to user
+ */
+function showNotification(message, type = 'info') {
+    // Simple notification system
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 6px;
+        color: white;
+        font-weight: 600;
+        z-index: 10000;
+        background: ${type === 'success' ? '#10B981' : type === 'error' ? '#EF4444' : '#3B82F6'};
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.remove();
+    }, 3000);
+}
+
+/**
+ * Set up authentication-related event listeners
+ */
+function setupAuthEventListeners() {
+    // Login form submission
+    const loginBtn = document.getElementById('login-btn');
+    const loginForm = document.getElementById('login-form');
+    const loginEmail = document.getElementById('login-email');
+    const loginPassword = document.getElementById('login-password');
+    const loginError = document.getElementById('login-error');
+    const loginBtnText = document.querySelector('.login-btn-text');
+    const loginLoading = document.querySelector('.login-loading');
+    
+    if (loginBtn && loginEmail && loginPassword) {
+        // Handle login button click
+        loginBtn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await handleLoginSubmission();
+        });
+        
+        // Handle Enter key in form fields
+        loginEmail.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleLoginSubmission();
+            }
+        });
+        
+        loginPassword.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                handleLoginSubmission();
+            }
+        });
+        
+        async function handleLoginSubmission() {
+            const email = loginEmail.value.trim();
+            const password = loginPassword.value;
+            
+            // Validate inputs
+            if (!email || !password) {
+                showLoginError('Please enter both email and password');
+                return;
+            }
+            
+            if (!isValidEmail(email)) {
+                showLoginError('Please enter a valid email address');
+                return;
+            }
+            
+            // Show loading state
+            loginBtn.disabled = true;
+            loginBtnText.style.display = 'none';
+            loginLoading.style.display = 'flex';
+            hideLoginError();
+            
+            try {
+                // Attempt login
+                const result = await window.BoldTakeAuthManager.handleLogin(email, password);
+                
+                if (result.success) {
+                    // Success - UI will be updated by auth manager
+                    debugLog('✅ Login successful');
+                } else {
+                    showLoginError(result.error || 'Login failed. Please check your credentials.');
+                }
+            } catch (error) {
+                console.error('❌ Login error:', error);
+                showLoginError('An unexpected error occurred. Please try again.');
+            } finally {
+                // Reset button state
+                loginBtn.disabled = false;
+                loginBtnText.style.display = 'block';
+                loginLoading.style.display = 'none';
+            }
+        }
+        
+        function showLoginError(message) {
+            if (loginError) {
+                loginError.textContent = message;
+                loginError.style.display = 'block';
+            }
+        }
+        
+        function hideLoginError() {
+            if (loginError) {
+                loginError.style.display = 'none';
+            }
+        }
+        
+        function isValidEmail(email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            return emailRegex.test(email);
+        }
+    }
+    
+    // Logout functionality (add logout button if needed)
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async () => {
+            try {
+                await window.BoldTakeAuthManager.handleLogout();
+                debugLog('✅ Logout successful');
+            } catch (error) {
+                console.error('❌ Logout error:', error);
+            }
+        });
+    }
+    
+    // Refresh subscription status button
+    const refreshSubscriptionBtn = document.getElementById('refresh-subscription');
+    if (refreshSubscriptionBtn) {
+        refreshSubscriptionBtn.addEventListener('click', async () => {
+            try {
+                refreshSubscriptionBtn.disabled = true;
+                refreshSubscriptionBtn.textContent = 'Checking...';
+                
+                await window.BoldTakeAuthManager.refreshSubscriptionStatus();
+                debugLog('✅ Subscription status refreshed');
+                
+                refreshSubscriptionBtn.textContent = 'Check Subscription Status';
+            } catch (error) {
+                console.error('❌ Refresh subscription error:', error);
+                refreshSubscriptionBtn.textContent = 'Try Again';
+            } finally {
+                refreshSubscriptionBtn.disabled = false;
+            }
+        });
+    }
+}
+
+/**
+ * Show guide content (Expert Growth Strategies + Browser Tips)
+ */
+function showGuideContent() {
+    // Create guide panel if it doesn't exist
+    let guidePanel = document.getElementById('guide-panel');
+    if (!guidePanel) {
+        guidePanel = document.createElement('div');
+        guidePanel.id = 'guide-panel';
+        guidePanel.className = 'guide-panel';
+        guidePanel.innerHTML = `
+            <div class="guide-section">
+                <h3>🎯 Expert Growth Strategies</h3>
+                <div class="guide-accordion">
+                    <div class="guide-item">
+                        <div class="guide-header">
+                            <strong>1. Quality Over Quantity</strong>
+                        </div>
+                        <div class="guide-content">
+                            Target tweets with 300+ engagement for maximum visibility and authentic conversations. High-engagement tweets = higher reach for your replies.
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-header">
+                            <strong>2. Double Strategy</strong>
+                        </div>
+                        <div class="guide-content">
+                            Run 2 sessions daily with different keywords (60+60 only) for maximum niche coverage within 120/day limit. Example: "AI startup" morning, "SaaS growth" afternoon.
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-header">
+                            <strong>3. Niche Authority</strong>
+                        </div>
+                        <div class="guide-content">
+                            Focus on 2-3 specific topics (AI, SaaS, Marketing) to build consistent thought leadership. Scattered engagement dilutes your expertise signal.
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-header">
+                            <strong>4. Optimal Sessions</strong>
+                        </div>
+                        <div class="guide-content">
+                            Run sessions during peak hours (9-11 AM, 1-3 PM EST) with 2-3 hour breaks between. Higher user activity = more engagement opportunities.
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-header">
+                            <strong>5. Stealth Operations</strong>
+                        </div>
+                        <div class="guide-content">
+                            Use varied timing and natural breaks - our system mimics human behavior patterns automatically. No manual stealth configuration needed.
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-header">
+                            <strong>6. Strategic Languages</strong>
+                        </div>
+                        <div class="guide-content">
+                            English for global reach, Spanish for LATAM markets, or target specific regions. Match language to your audience geography for better engagement.
+                        </div>
+                    </div>
+                </div>
+                
+                <h3>🌐 Browser Optimization Tips</h3>
+                <div class="guide-accordion">
+                    <div class="guide-item">
+                        <div class="guide-header">
+                            <strong>1. Keep X.com Tab Active</strong>
+                        </div>
+                        <div class="guide-content">
+                            Always keep X.com as the active/focused tab for maximum performance and reliability. Chrome throttles background tabs, reducing success rates.
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-header">
+                            <strong>2. Use Brave Browser</strong>
+                        </div>
+                        <div class="guide-content">
+                            Run BoldTake in Brave (Chromium-based) while doing other work in different browser. Isolates automation from your regular browsing.
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-header">
+                            <strong>3. Minimize Window</strong>
+                        </div>
+                        <div class="guide-content">
+                            Minimize entire browser window (not tab) to prevent accidental tab switching. Window minimization doesn't affect performance.
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-header">
+                            <strong>4. Avoid Tab Switching</strong>
+                        </div>
+                        <div class="guide-content">
+                            Never switch tabs in same window - Chrome throttles background tabs reducing success rate. Use separate browser instances if needed.
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-header">
+                            <strong>5. Stable Connection</strong>
+                        </div>
+                        <div class="guide-content">
+                            Use wired internet when possible - BoldTake auto-recovers from disconnections but stable connection ensures optimal performance.
+                        </div>
+                    </div>
+                </div>
+                
+                <h3>🔐 Multi-Account Strategy (Advanced)</h3>
+                <div class="guide-accordion">
+                    <div class="guide-item">
+                        <div class="guide-header">
+                            <strong>Brave + Proxy Setup</strong>
+                        </div>
+                        <div class="guide-content">
+                            For multiple accounts: Use Brave browser with different proxy configurations per account. Each account should have its own browser profile and proxy to maintain separation.
+                        </div>
+                    </div>
+                    <div class="guide-item">
+                        <div class="guide-header">
+                            <strong>Account Isolation</strong>
+                        </div>
+                        <div class="guide-content">
+                            Never run multiple accounts from the same IP or browser session. Use separate devices, VPNs, or proxy services to maintain account safety and avoid linking.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Insert guide panel after the main content
+        const mainContent = document.querySelector('.main-content');
+        if (mainContent) {
+            mainContent.appendChild(guidePanel);
+        }
+    }
+    
+    // Show guide panel
+    guidePanel.classList.remove('hidden');
+    guidePanel.style.display = 'block';
+}
+
+/**
+ * Update progress bar based on replies sent
+ */
+function updateProgressBar(current, goal = 120) {
+    const progressFill = document.getElementById('progressFill');
+    const statGoal = document.querySelector('.stat-goal');
+    
+    if (progressFill) {
+        const percentage = Math.min((current / goal) * 100, 100);
+        progressFill.style.width = `${percentage}%`;
+    }
+    
+    if (statGoal) {
+        statGoal.textContent = `/ ${goal}`;
+    }
+}
+
+/**
+ * Save advanced filtering settings
+ */
+function saveFilteringSettings() {
+    const excludeLinksMedia = document.getElementById('exclude-links-media').checked;
+    const prioritizeQuestions = document.getElementById('prioritize-questions').checked;
+    const minCharCount = parseInt(document.getElementById('min-char-count').value) || 80;
+    const spamKeywords = document.getElementById('spam-keywords').value;
+    const negativeKeywords = document.getElementById('negative-keywords').value;
+    
+    chrome.storage.local.set({
+        'boldtake_exclude_links_media': excludeLinksMedia,
+        'boldtake_prioritize_questions': prioritizeQuestions,
+        'boldtake_min_char_count': minCharCount,
+        'boldtake_spam_keywords': spamKeywords,
+        'boldtake_negative_keywords': negativeKeywords
+    });
+    
+    debugLog('🎯 Filtering settings saved:', { 
+        excludeLinksMedia, 
+        prioritizeQuestions, 
+        minCharCount, 
+        spamKeywords: spamKeywords.split('\n').length + ' keywords',
+        negativeKeywords: negativeKeywords.split('\n').length + ' keywords'
+    });
+}
+
+/**
  * Load analytics data from storage and content script
  */
 async function loadAnalyticsData() {
@@ -579,7 +1646,9 @@ async function loadAnalyticsData() {
             'boldtake_total_comments',
             'boldtake_daily_comments',
             'boldtake_comment_history',
-            'boldtake_last_reset_date'
+            'boldtake_last_reset_date',
+            'boldtake_xcom_analytics',
+            'boldtake_analytics'
         ]);
         
         // Update total comments
@@ -621,8 +1690,62 @@ async function loadAnalyticsData() {
         const history = result.boldtake_comment_history || [];
         updateCommentHistory(history);
         
+        // Update 7-day performance dashboard
+        updatePerformanceDashboard(result);
+        
     } catch (error) {
         debugLog('❌ Error loading analytics:', error);
+    }
+}
+
+/**
+ * Update the 7-day performance dashboard with real data
+ */
+function updatePerformanceDashboard(data) {
+    // Analytics are now a Bold Tier premium feature
+    // Show compelling demo data to encourage upgrades
+    debugLog('📊 Analytics dashboard is now a Bold Tier premium feature - showing demo data');
+}
+
+/**
+ * Format numbers for display (e.g., 1234 -> 1.2K)
+ */
+function formatNumber(num) {
+    if (num >= 1000000) {
+        return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+        return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
+}
+
+/**
+ * Trigger analytics scraping on startup (once per session)
+ */
+function triggerAnalyticsScrapingOnStartup() {
+    // Check if we've already scraped this session
+    const sessionKey = `analytics_scraped_${Date.now()}`;
+    const lastScraped = sessionStorage.getItem('boldtake_analytics_scraped');
+    
+    // Only scrape once per browser session
+    if (!lastScraped) {
+        setTimeout(async () => {
+            try {
+                // Check if we're on X.com
+                const [tab] = await chrome.tabs.query({active: true, currentWindow: true});
+                if (tab?.url?.includes('x.com') || tab?.url?.includes('twitter.com')) {
+                    // Send message to content script to scrape analytics
+                    chrome.tabs.sendMessage(tab.id, {type: 'SCRAPE_ANALYTICS'}, (response) => {
+                        if (response?.success) {
+                            debugLog('📊 Analytics scraping triggered on startup');
+                            sessionStorage.setItem('boldtake_analytics_scraped', 'true');
+                        }
+                    });
+                }
+            } catch (error) {
+                debugLog('Analytics scraping not available:', error.message);
+            }
+        }, 3000); // Wait 3 seconds after popup loads
     }
 }
 
@@ -673,682 +1796,58 @@ function clearCommentHistory() {
     }
 }
 
-// ========================================
-// CUSTOM PROMPT FUNCTIONALITY
-// ========================================
-
 /**
- * Initialize custom prompt functionality
+ * Handle niche selection and display keyword suggestions
  */
-function initializeCustomPrompts() {
-    // Toggle custom prompt builder visibility
-    customPromptToggle.addEventListener('change', () => {
-        if (customPromptToggle.checked) {
-            customPromptBuilder.classList.remove('hidden');
-            loadSavedPrompts();
-        } else {
-            customPromptBuilder.classList.add('hidden');
-        }
-    });
-
-    // Test custom prompt
-    testCustomPromptBtn.addEventListener('click', testCustomPrompt);
+function handleNicheSelection() {
+    const selectedNiche = nicheSelect.value;
     
-    // Save custom prompt
-    saveCustomPromptBtn.addEventListener('click', saveCustomPrompt);
-    
-    // Viral hook example functionality
-    viewViralHookBtn.addEventListener('click', toggleViralHookDetails);
-    editViralHookBtn.addEventListener('click', editViralHook);
-    copyViralHookBtn.addEventListener('click', copyViralHookToEditor);
-    useViralHookBtn.addEventListener('click', useViralHookPrompt);
-    
-    // Load saved prompts on startup
-    loadSavedPrompts();
-}
-
-/**
- * Test a custom prompt with sample content
- */
-async function testCustomPrompt() {
-    const promptName = customPromptName.value.trim();
-    const promptText = customPromptText.value.trim();
-    
-    if (!promptName || !promptText) {
-        showAlert('Please enter both a prompt name and prompt text before testing.');
+    if (!selectedNiche || !NICHE_KEYWORDS[selectedNiche]) {
+        // Show default message when no niche is selected
+        suggestedKeywords.innerHTML = `
+            <div class="no-niche">Select a niche above to see popular keyword suggestions for that category</div>
+        `;
         return;
     }
     
-    testCustomPromptBtn.disabled = true;
-    testCustomPromptBtn.innerHTML = '<div class="loading"></div>Testing...';
+    const niche = NICHE_KEYWORDS[selectedNiche];
     
-    try {
-        // Sample tweet content for testing
-        const sampleTweet = "Just launched my new startup! Excited to change the world with AI technology. #startup #AI #innovation";
-        
-        // Send test request to background script
-        const response = await new Promise((resolve) => {
-            chrome.runtime.sendMessage({
-                type: 'TEST_CUSTOM_PROMPT',
-                prompt: promptText,
-                tweetContent: sampleTweet,
-                language: 'english',
-                tone: 'professional'
-            }, resolve);
-        });
-        
-        if (response.success) {
-            // Show preview
-            const previewDiv = document.getElementById('custom-prompt-preview');
-            const responseDiv = document.getElementById('preview-response');
-            
-            responseDiv.innerHTML = `
-                <div class="preview-sample-tweet">
-                    <strong>Sample Tweet:</strong> "${sampleTweet}"
+    // Create keyword suggestions display
+    suggestedKeywords.innerHTML = `
+        <div class="niche-title">${niche.title}</div>
+        <div class="niche-description">${niche.description}</div>
+        <div class="suggestion-keywords-grid">
+            ${niche.keywords.map(keyword => `
+                <div class="suggestion-keyword-chip" data-keyword="${keyword}">
+                    ${keyword}
                 </div>
-                <div class="preview-ai-response">
-                    <strong>AI Response:</strong> "${response.reply}"
-                </div>
-                <div class="preview-stats">
-                    <span class="stat">✅ Length: ${response.reply.length}/280</span>
-                    <span class="stat">🎯 Strategy: Custom</span>
-                    <span class="stat">⚡ Generated in ${response.processingTime}ms</span>
-                </div>
-            `;
-            
-            previewDiv.classList.remove('hidden');
-            
-            // Auto-hide preview after 10 seconds
-            setTimeout(() => {
-                previewDiv.classList.add('hidden');
-            }, 10000);
-            
-        } else {
-            showAlert(`Test failed: ${response.error || 'Unknown error'}`);
-        }
-        
-    } catch (error) {
-        debugLog('💥 Error testing custom prompt:', error);
-        showAlert('Error testing prompt. Please check your API key and try again.');
-    }
-    
-    testCustomPromptBtn.disabled = false;
-    testCustomPromptBtn.innerHTML = '🧪 Test Prompt';
-}
-
-/**
- * Save a custom prompt
- */
-async function saveCustomPrompt() {
-    const promptName = customPromptName.value.trim();
-    const promptText = customPromptText.value.trim();
-    
-    if (!promptName || !promptText) {
-        showAlert('Please enter both a prompt name and prompt text before saving.');
-        return;
-    }
-    
-    // Validate prompt length
-    if (promptText.length < 50) {
-        showAlert('Prompt is too short. Please provide more detailed instructions (minimum 50 characters).');
-        return;
-    }
-    
-    if (promptText.length > 2000) {
-        showAlert('Prompt is too long. Please keep it under 2000 characters for optimal performance.');
-        return;
-    }
-    
-    saveCustomPromptBtn.disabled = true;
-    saveCustomPromptBtn.innerHTML = '<div class="loading"></div>Saving...';
-    
-    try {
-        // Get existing saved prompts
-        const storage = await chrome.storage.local.get(['boldtake_custom_prompts']);
-        const savedPrompts = storage.boldtake_custom_prompts || [];
-        
-        // Check for duplicate names
-        const existingIndex = savedPrompts.findIndex(p => p.name === promptName);
-        
-        const newPrompt = {
-            id: existingIndex >= 0 ? savedPrompts[existingIndex].id : Date.now().toString(),
-            name: promptName,
-            text: promptText,
-            createdAt: existingIndex >= 0 ? savedPrompts[existingIndex].createdAt : new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            usageCount: existingIndex >= 0 ? savedPrompts[existingIndex].usageCount : 0
-        };
-        
-        if (existingIndex >= 0) {
-            // Update existing prompt
-            savedPrompts[existingIndex] = newPrompt;
-            showAlert(`✅ Updated prompt "${promptName}" successfully!`);
-        } else {
-            // Add new prompt
-            savedPrompts.push(newPrompt);
-            showAlert(`✅ Saved new prompt "${promptName}" successfully!`);
-        }
-        
-        // Save to storage
-        await chrome.storage.local.set({ 'boldtake_custom_prompts': savedPrompts });
-        
-        // Clear form
-        customPromptName.value = '';
-        customPromptText.value = '';
-        
-        // Refresh the saved prompts list
-        loadSavedPrompts();
-        
-    } catch (error) {
-        debugLog('💥 Error saving custom prompt:', error);
-        showAlert('Error saving prompt. Please try again.');
-    }
-    
-    saveCustomPromptBtn.disabled = false;
-    saveCustomPromptBtn.innerHTML = '💾 Save Prompt';
-}
-
-/**
- * Load and display saved custom prompts
- */
-async function loadSavedPrompts() {
-    try {
-        const storage = await chrome.storage.local.get(['boldtake_custom_prompts']);
-        const savedPrompts = storage.boldtake_custom_prompts || [];
-        
-        if (savedPrompts.length === 0) {
-            savedPromptsList.innerHTML = '<div class="no-prompts">No custom prompts saved yet</div>';
-            return;
-        }
-        
-        savedPromptsList.innerHTML = savedPrompts.map(prompt => `
-            <div class="saved-prompt-item" data-prompt-id="${prompt.id}">
-                <div class="prompt-header">
-                    <div class="prompt-name">🎯 ${prompt.name}</div>
-                    <div class="prompt-meta">
-                        <span class="usage-count">Used ${prompt.usageCount} times</span>
-                        <span class="created-date">${new Date(prompt.createdAt).toLocaleDateString()}</span>
-                    </div>
-                </div>
-                <div class="prompt-preview">${prompt.text.substring(0, 150)}${prompt.text.length > 150 ? '...' : ''}</div>
-                <div class="prompt-actions">
-                    <button class="edit-prompt-btn" onclick="editSavedPrompt('${prompt.id}')">✏️ Edit</button>
-                    <button class="use-prompt-btn" onclick="useSavedPrompt('${prompt.id}')">🚀 Use</button>
-                    <button class="delete-prompt-btn" onclick="deleteSavedPrompt('${prompt.id}')">🗑️ Delete</button>
-                </div>
-            </div>
-        `).join('');
-        
-    } catch (error) {
-        debugLog('💥 Error loading saved prompts:', error);
-        savedPromptsList.innerHTML = '<div class="no-prompts">Error loading prompts</div>';
-    }
-}
-
-/**
- * Edit a saved prompt
- */
-async function editSavedPrompt(promptId) {
-    try {
-        const storage = await chrome.storage.local.get(['boldtake_custom_prompts']);
-        const savedPrompts = storage.boldtake_custom_prompts || [];
-        const prompt = savedPrompts.find(p => p.id === promptId);
-        
-        if (prompt) {
-            customPromptName.value = prompt.name;
-            customPromptText.value = prompt.text;
-            customPromptToggle.checked = true;
-            customPromptBuilder.classList.remove('hidden');
-            
-            // Scroll to the editor
-            customPromptBuilder.scrollIntoView({ behavior: 'smooth' });
-        }
-        
-    } catch (error) {
-        debugLog('💥 Error editing prompt:', error);
-        showAlert('Error loading prompt for editing.');
-    }
-}
-
-/**
- * Use a saved prompt (activate it for the session)
- */
-async function useSavedPrompt(promptId) {
-    try {
-        const storage = await chrome.storage.local.get(['boldtake_custom_prompts']);
-        const savedPrompts = storage.boldtake_custom_prompts || [];
-        const prompt = savedPrompts.find(p => p.id === promptId);
-        
-        if (prompt) {
-            // Increment usage count
-            prompt.usageCount = (prompt.usageCount || 0) + 1;
-            prompt.lastUsed = new Date().toISOString();
-            
-            // Save updated prompts
-            await chrome.storage.local.set({ 'boldtake_custom_prompts': savedPrompts });
-            
-            // Set as active custom prompt
-            await chrome.storage.local.set({ 
-                'boldtake_active_custom_prompt': prompt,
-                'boldtake_use_custom_prompt': true
-            });
-            
-            customPromptToggle.checked = true;
-            showAlert(`✅ Activated custom prompt: "${prompt.name}"`);
-            
-            // Refresh the list to show updated usage count
-            loadSavedPrompts();
-        }
-        
-    } catch (error) {
-        debugLog('💥 Error using prompt:', error);
-        showAlert('Error activating prompt.');
-    }
-}
-
-/**
- * Delete a saved prompt
- */
-async function deleteSavedPrompt(promptId) {
-    if (!confirm('Are you sure you want to delete this custom prompt? This cannot be undone.')) {
-        return;
-    }
-    
-    try {
-        const storage = await chrome.storage.local.get(['boldtake_custom_prompts']);
-        const savedPrompts = storage.boldtake_custom_prompts || [];
-        const updatedPrompts = savedPrompts.filter(p => p.id !== promptId);
-        
-        await chrome.storage.local.set({ 'boldtake_custom_prompts': updatedPrompts });
-        
-        showAlert('✅ Prompt deleted successfully!');
-        loadSavedPrompts();
-        
-    } catch (error) {
-        debugLog('💥 Error deleting prompt:', error);
-        showAlert('Error deleting prompt.');
-    }
-}
-
-// ========================================
-// VIRAL HOOK EXAMPLE FUNCTIONALITY
-// ========================================
-
-/**
- * Toggle viral hook details visibility
- */
-function toggleViralHookDetails() {
-    const details = viralHookDetails;
-    const isHidden = details.classList.contains('hidden');
-    
-    if (isHidden) {
-        details.classList.remove('hidden');
-        viewViralHookBtn.innerHTML = '👁️ Hide Structure';
-    } else {
-        details.classList.add('hidden');
-        viewViralHookBtn.innerHTML = '👁️ View Structure';
-    }
-}
-
-/**
- * Edit viral hook (load into custom prompt editor)
- */
-function editViralHook() {
-    const viralHookPrompt = `You are a viral content strategist with deep understanding of social psychology. When replying to tweets about {TWEET}, you should:
-1. **HOOK**: Start with a contrarian or surprising angle that makes people stop scrolling
-2. **BRIDGE**: Connect your hook to the original tweet's topic with "Here's why..."
-3. **VALUE**: Provide a specific insight, statistic, or actionable tip
-4. **ENGAGEMENT**: End with a thought-provoking question or bold statement
-EXAMPLES:
-❌ Bad: "Great point!"
-✅ Good: "Actually, 73% of 'overnight successes' took 7+ years. Here's why patience beats speed in startups: [insight]. What's your biggest misconception about success?"
-TONE: Confident but not arrogant, insightful, slightly contrarian
-LENGTH: 180-280 characters for maximum engagement
-GOAL: Make people think "I never thought of it that way" and want to reply`;
-
-    customPromptName.value = 'Viral Hook Master (Custom)';
-    customPromptText.value = viralHookPrompt;
-    customPromptToggle.checked = true;
-    customPromptBuilder.classList.remove('hidden');
-    
-    // Scroll to the editor
-    customPromptBuilder.scrollIntoView({ behavior: 'smooth' });
-    
-    showAlert('✅ Viral Hook loaded into editor! Customize it and save as your own.');
-}
-
-/**
- * Copy viral hook to clipboard
- */
-function copyViralHookToEditor() {
-    const viralHookPrompt = `You are a viral content strategist with deep understanding of social psychology. When replying to tweets about {TWEET}, you should:
-1. **HOOK**: Start with a contrarian or surprising angle that makes people stop scrolling
-2. **BRIDGE**: Connect your hook to the original tweet's topic with "Here's why..."
-3. **VALUE**: Provide a specific insight, statistic, or actionable tip
-4. **ENGAGEMENT**: End with a thought-provoking question or bold statement
-EXAMPLES:
-❌ Bad: "Great point!"
-✅ Good: "Actually, 73% of 'overnight successes' took 7+ years. Here's why patience beats speed in startups: [insight]. What's your biggest misconception about success?"
-TONE: Confident but not arrogant, insightful, slightly contrarian
-LENGTH: 180-280 characters for maximum engagement
-GOAL: Make people think "I never thought of it that way" and want to reply`;
-
-    navigator.clipboard.writeText(viralHookPrompt).then(() => {
-        showAlert('✅ Viral Hook structure copied to clipboard!');
-    }).catch(() => {
-        showAlert('❌ Failed to copy to clipboard. Please copy manually.');
-    });
-}
-
-/**
- * Use viral hook as active prompt
- */
-async function useViralHookPrompt() {
-    try {
-        const viralHookPrompt = {
-            id: 'viral-hook-builtin',
-            name: 'Viral Hook Master (Built-in)',
-            text: `You are a viral content strategist with deep understanding of social psychology. When replying to tweets about {TWEET}, you should:
-1. **HOOK**: Start with a contrarian or surprising angle that makes people stop scrolling
-2. **BRIDGE**: Connect your hook to the original tweet's topic with "Here's why..."
-3. **VALUE**: Provide a specific insight, statistic, or actionable tip
-4. **ENGAGEMENT**: End with a thought-provoking question or bold statement
-EXAMPLES:
-❌ Bad: "Great point!"
-✅ Good: "Actually, 73% of 'overnight successes' took 7+ years. Here's why patience beats speed in startups: [insight]. What's your biggest misconception about success?"
-TONE: Confident but not arrogant, insightful, slightly contrarian
-LENGTH: 180-280 characters for maximum engagement
-GOAL: Make people think "I never thought of it that way" and want to reply`,
-            createdAt: new Date().toISOString(),
-            usageCount: 0,
-            isBuiltIn: true
-        };
-        
-        // Set as active custom prompt
-        await chrome.storage.local.set({ 
-            'boldtake_active_custom_prompt': viralHookPrompt,
-            'boldtake_use_custom_prompt': true
-        });
-        
-        customPromptToggle.checked = true;
-        showAlert('✅ Activated Viral Hook Master strategy!');
-        
-    } catch (error) {
-        debugLog('💥 Error using viral hook:', error);
-        showAlert('Error activating Viral Hook strategy.');
-    }
-}
-
-// ========================================
-// KEYWORD ROTATION FUNCTIONALITY
-// ========================================
-
-/**
- * Add a keyword to the rotation list
- */
-function addKeywordToRotation() {
-    const keyword = keywordInput.value.trim();
-    
-    if (!keyword) {
-        showAlert('Please enter a keyword');
-        return;
-    }
-    
-    if (keyword.length > 50) {
-        showAlert('Keyword too long. Keep it under 50 characters.');
-        return;
-    }
-    
-    if (rotationKeywords.length >= 5) {
-        showAlert('Maximum 5 keywords allowed for optimal rotation');
-        return;
-    }
-    
-    if (rotationKeywords.some(k => k.keyword.toLowerCase() === keyword.toLowerCase())) {
-        showAlert('This keyword is already in your rotation');
-        return;
-    }
-    
-    const keywordObj = {
-        id: Date.now().toString(),
-        keyword: keyword,
-        addedAt: new Date().toISOString(),
-        timesUsed: 0,
-        lastUsed: null
-    };
-    
-    rotationKeywords.push(keywordObj);
-    keywordInput.value = '';
-    
-    saveKeywordRotationSettings();
-    updateKeywordRotationDisplay();
-    
-    debugLog('✅ Added keyword to rotation:', keyword);
-}
-
-/**
- * Remove a keyword from rotation
- */
-function removeKeywordFromRotation(keywordId) {
-    rotationKeywords = rotationKeywords.filter(k => k.id !== keywordId);
-    saveKeywordRotationSettings();
-    updateKeywordRotationDisplay();
-    debugLog('🗑️ Removed keyword from rotation');
-}
-
-/**
- * Load keyword rotation settings from storage
- */
-async function loadKeywordRotationSettings() {
-    try {
-        const result = await chrome.storage.local.get([
-            'boldtake_rotation_keywords',
-            'boldtake_daily_target',
-            'boldtake_current_rotation_index'
-        ]);
-        
-        rotationKeywords = result.boldtake_rotation_keywords || [];
-        
-        if (dailyTargetInput && result.boldtake_daily_target) {
-            dailyTargetInput.value = result.boldtake_daily_target;
-        }
-        
-        updateKeywordRotationDisplay();
-        debugLog('📥 Loaded keyword rotation settings');
-    } catch (error) {
-        debugLog('❌ Error loading keyword rotation settings:', error);
-    }
-}
-
-/**
- * Save keyword rotation settings to storage
- */
-async function saveKeywordRotationSettings() {
-    try {
-        await chrome.storage.local.set({
-            'boldtake_rotation_keywords': rotationKeywords,
-            'boldtake_daily_target': dailyTargetInput?.value || 120
-        });
-        debugLog('💾 Saved keyword rotation settings');
-    } catch (error) {
-        debugLog('❌ Error saving keyword rotation settings:', error);
-    }
-}
-
-/**
- * Update the keyword rotation display
- */
-function updateKeywordRotationDisplay() {
-    if (!rotationKeywordsList) return;
-    
-    if (rotationKeywords.length === 0) {
-        rotationKeywordsList.innerHTML = '<div class="no-keywords">No keywords added yet. Add 3-5 keywords for optimal rotation.</div>';
-        return;
-    }
-    
-    rotationKeywordsList.innerHTML = `
-        ${rotationKeywords.length > 0 ? `
-            <div class="keyword-management">
-                <div class="bulk-actions">
-                    <button class="bulk-action-btn" onclick="clearAllKeywords()" title="Remove all keywords">🗑️ Clear All</button>
-                    <button class="bulk-action-btn" onclick="shuffleKeywords()" title="Randomize order">🔀 Shuffle</button>
-                    <button class="bulk-action-btn" onclick="sortKeywords()" title="Sort alphabetically">📝 Sort A-Z</button>
-                    <button class="bulk-action-btn" onclick="resetUsageStats()" title="Reset usage counts">📊 Reset Stats</button>
-                </div>
-            </div>
-        ` : ''}
-        ${rotationKeywords.map((keyword, index) => `
-            <div class="rotation-keyword-item" data-keyword-id="${keyword.id}" data-index="${index}">
-                <div class="keyword-info">
-                    <button class="reorder-handle" onclick="moveKeyword('${keyword.id}', 'up')" ${index === 0 ? 'disabled' : ''} title="Move up">▲</button>
-                    <button class="reorder-handle" onclick="moveKeyword('${keyword.id}', 'down')" ${index === rotationKeywords.length - 1 ? 'disabled' : ''} title="Move down">▼</button>
-                    <div class="keyword-name" onclick="editKeywordInline('${keyword.id}')" title="Click to edit">${keyword.keyword}</div>
-                    <div class="keyword-status">Used ${keyword.timesUsed} times</div>
-                </div>
-                <div class="keyword-actions">
-                    <button class="edit-keyword-btn" onclick="editKeywordInline('${keyword.id}')" title="Edit keyword">✏️</button>
-                    <button class="remove-keyword-btn" onclick="removeKeywordFromRotation('${keyword.id}')" title="Remove keyword">×</button>
-                </div>
-            </div>
-        `).join('')}
-    `;
-    
-    // Add rotation stats
-    const statsHtml = `
-        <div class="rotation-stats">
-            <span>${rotationKeywords.length}/5 keywords added</span>
-            <span>Ready for rotation</span>
+            `).join('')}
         </div>
     `;
     
-    rotationKeywordsList.innerHTML += statsHtml;
-}
-
-/**
- * Get next keyword in rotation
- */
-function getNextRotationKeyword() {
-    if (rotationKeywords.length === 0) {
-        return null;
-    }
-    
-    // Find least used keyword
-    const leastUsedCount = Math.min(...rotationKeywords.map(k => k.timesUsed));
-    const availableKeywords = rotationKeywords.filter(k => k.timesUsed === leastUsedCount);
-    
-    // Select randomly from least used
-    const randomIndex = Math.floor(Math.random() * availableKeywords.length);
-    const selectedKeyword = availableKeywords[randomIndex];
-    
-    // Update usage stats
-    selectedKeyword.timesUsed++;
-    selectedKeyword.lastUsed = new Date().toISOString();
-    
-    saveKeywordRotationSettings();
-    
-    return selectedKeyword.keyword;
-}
-
-/**
- * Display keywords for selected category
- */
-function displayCategoryKeywords() {
-    const selectedCategory = categorySelect.value;
-    
-    if (!selectedCategory || !KEYWORD_CATEGORIES[selectedCategory]) {
-        categoryKeywords.innerHTML = '<p class="no-category">Select a category above to see keyword suggestions</p>';
-        return;
-    }
-    
-    const keywords = KEYWORD_CATEGORIES[selectedCategory];
-    categoryKeywords.innerHTML = keywords.map(keyword => 
-        `<span class="keyword-chip" data-keyword="${keyword}" onclick="addSingleKeywordFromChip('${keyword}')">${keyword}</span>`
-    ).join('');
-    
-    debugLog('📋 Displayed keywords for category:', selectedCategory);
-}
-
-/**
- * Add all keywords from selected category to rotation
- */
-function addAllCategoryKeywords() {
-    const selectedCategory = categorySelect.value;
-    
-    if (!selectedCategory || !KEYWORD_CATEGORIES[selectedCategory]) {
-        showAlert('Please select a category first');
-        return;
-    }
-    
-    const keywords = KEYWORD_CATEGORIES[selectedCategory];
-    let addedCount = 0;
-    
-    keywords.forEach(keyword => {
-        if (rotationKeywords.length >= 5) {
-            return; // Stop if we reach the limit
-        }
-        
-        if (!rotationKeywords.some(k => k.keyword.toLowerCase() === keyword.toLowerCase())) {
-            const keywordObj = {
-                id: Date.now().toString() + Math.random(),
-                keyword: keyword,
-                addedAt: new Date().toISOString(),
-                timesUsed: 0,
-                lastUsed: null
-            };
-            rotationKeywords.push(keywordObj);
-            addedCount++;
-        }
+    // Add click listeners to keyword chips
+    suggestedKeywords.querySelectorAll('.suggestion-keyword-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            const keyword = chip.dataset.keyword;
+            keywordInput.value = keyword;
+            
+            // Add visual feedback
+            chip.style.background = 'hsl(var(--brand-green))';
+            chip.style.color = 'hsl(var(--bg-primary))';
+            chip.style.borderColor = 'hsl(var(--brand-green))';
+            
+            // Reset after a short delay
+            setTimeout(() => {
+                chip.style.background = '';
+                chip.style.color = '';
+                chip.style.borderColor = '';
+            }, 200);
+            
+            debugLog(`📝 Keyword suggestion selected: ${keyword}`);
+        });
     });
-    
-    if (addedCount > 0) {
-        saveKeywordRotationSettings();
-        updateKeywordRotationDisplay();
-        showAlert(`Added ${addedCount} keywords from ${selectedCategory} category!`);
-        debugLog(`✅ Added ${addedCount} keywords from category:`, selectedCategory);
-    } else {
-        showAlert('No new keywords to add (limit reached or already exists)');
-    }
-    
-    // Reset category selection
-    categorySelect.value = '';
-    displayCategoryKeywords();
 }
 
-/**
- * Add single keyword from chip click
- */
-function addSingleKeywordFromChip(keyword) {
-    if (rotationKeywords.length >= 5) {
-        showAlert('Maximum 5 keywords allowed for optimal rotation');
-        return;
-    }
-    
-    if (rotationKeywords.some(k => k.keyword.toLowerCase() === keyword.toLowerCase())) {
-        showAlert('This keyword is already in your rotation');
-        return;
-    }
-    
-    const keywordObj = {
-        id: Date.now().toString(),
-        keyword: keyword,
-        addedAt: new Date().toISOString(),
-        timesUsed: 0,
-        lastUsed: null
-    };
-    
-    rotationKeywords.push(keywordObj);
-    saveKeywordRotationSettings();
-    updateKeywordRotationDisplay();
-    
-    showAlert(`Added "${keyword}" to rotation!`);
-    debugLog('✅ Added keyword from chip:', keyword);
-}
-
-// Make functions globally available
-window.editSavedPrompt = editSavedPrompt;
-window.useSavedPrompt = useSavedPrompt;
-window.deleteSavedPrompt = deleteSavedPrompt;
-window.removeKeywordFromRotation = removeKeywordFromRotation;
-window.addSingleKeywordFromChip = addSingleKeywordFromChip;
+// ========================================
 
 debugLog('✅ BoldTake Professional popup script ready!');

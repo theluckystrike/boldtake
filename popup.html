@@ -102,25 +102,10 @@
             right: 20px;
             display: flex;
             align-items: center;
-            gap: 6px;
             font-size: 12px;
             font-weight: 500;
             color: hsl(var(--bg-primary));
             opacity: 0.9;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: hsl(var(--text-secondary));
-            transition: var(--transition-smooth);
-        }
-
-        .status-dot.running {
-            background: hsl(var(--brand-green));
-            box-shadow: 0 0 8px hsl(var(--brand-green) / 0.6);
-            animation: pulse 2s ease-in-out infinite;
         }
 
         @keyframes pulse {
@@ -371,6 +356,47 @@
             font-weight: 500;
             background: hsl(var(--bg-primary));
             color: hsl(var(--text-primary));
+        }
+
+        .daily-target-select option:disabled,
+        .timing-select option:disabled {
+            color: hsl(var(--brand-green));
+            font-weight: 700;
+            background: linear-gradient(135deg, hsl(var(--brand-green) / 0.1), hsl(var(--brand-green) / 0.05));
+        }
+
+        /* Clean Input Styling */
+        .clean-input {
+            background: linear-gradient(135deg, hsl(var(--bg-primary)), hsl(var(--bg-secondary)));
+            border: 2px solid hsl(var(--brand-green) / 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 14px;
+            color: hsl(var(--text-primary));
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            width: 100%;
+        }
+
+        .clean-input:hover {
+            border-color: hsl(var(--brand-green) / 0.6);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            transform: translateY(-1px);
+        }
+
+        .clean-input:focus {
+            outline: none;
+            border-color: hsl(var(--brand-green));
+            box-shadow: 0 0 0 3px hsl(var(--brand-green) / 0.1);
+        }
+
+        /* Improved spacing */
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        .input-group:last-child {
+            margin-bottom: 0;
         }
 
         .keyword-chips {
@@ -889,6 +915,7 @@
             background: hsl(var(--bg-secondary));
             border-radius: var(--radius);
             padding: 20px;
+            margin: 20px 0;
             border: 1px solid hsl(var(--bg-secondary));
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
         }
@@ -896,15 +923,57 @@
         .activity-log h3 {
             color: hsl(var(--brand-green));
             font-size: 14px;
-            margin-bottom: 12px;
+            margin: 0 0 16px 0;
             font-weight: 600;
         }
 
+        .activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .activity-controls {
+            display: flex;
+            gap: 4px;
+        }
+
+        .activity-control-btn {
+            background: hsl(var(--bg-secondary));
+            border: 1px solid hsl(var(--text-secondary) / 0.2);
+            border-radius: 4px;
+            padding: 4px 6px;
+            font-size: 10px;
+            color: hsl(var(--text-secondary));
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .activity-control-btn:hover {
+            background: hsl(var(--bg-secondary) / 0.8);
+            color: hsl(var(--text-primary));
+            transform: translateY(-1px);
+        }
+
         .activity-feed {
-            max-height: 120px;
+            max-height: 180px;
             overflow-y: auto;
             font-size: 11px;
             line-height: 1.4;
+            border: 1px solid hsl(var(--text-secondary) / 0.1);
+            border-radius: 6px;
+            padding: 8px;
+            background: hsl(var(--bg-secondary) / 0.3);
+        }
+
+        .activity-stats {
+            margin-top: 8px;
+            font-size: 10px;
+            color: hsl(var(--text-secondary));
+            text-align: center;
+            padding: 4px 0;
+            border-top: 1px solid hsl(var(--text-secondary) / 0.1);
         }
 
         .activity-item {
@@ -1281,6 +1350,1283 @@
             font-size: 12px;
             color: hsl(var(--text-secondary));
         }
+
+        /* Keyword Suggestions Styles */
+        .keyword-suggestions-section {
+            margin-top: 20px;
+        }
+
+        .suggested-keywords {
+            margin-top: 12px;
+            min-height: 60px;
+        }
+
+        .suggested-keywords .no-niche {
+            color: hsl(var(--text-secondary));
+            font-size: 12px;
+            font-style: italic;
+            text-align: center;
+            padding: 16px;
+            background: hsl(var(--bg-primary));
+            border-radius: 8px;
+            border: 2px dashed hsl(var(--bg-primary));
+        }
+
+        .suggestion-keywords-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .suggestion-keyword-chip {
+            background: hsl(var(--bg-primary));
+            color: hsl(var(--text-primary));
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            border: 1px solid hsl(var(--bg-primary));
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .suggestion-keyword-chip:hover {
+            background: hsl(var(--brand-green) / 0.1);
+            color: hsl(var(--brand-green));
+            border-color: hsl(var(--brand-green) / 0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px hsl(var(--brand-green) / 0.2);
+        }
+
+        .suggestion-keyword-chip:active {
+            transform: translateY(0);
+            background: hsl(var(--brand-green));
+            color: hsl(var(--bg-primary));
+            border-color: hsl(var(--brand-green));
+        }
+
+        .niche-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: hsl(var(--brand-green));
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Prompt Library Styles */
+        .prompt-library-section {
+            margin-top: 20px;
+        }
+
+        .strategy-prompt-group {
+            background: hsl(var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid hsl(var(--bg-secondary));
+        }
+
+        .strategy-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: hsl(var(--brand-green));
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .prompt-variation-select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: calc(var(--radius) - 2px);
+            border: 1px solid hsl(var(--bg-primary));
+            background: hsl(var(--bg-primary));
+            color: hsl(var(--text-primary));
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .prompt-variation-select:hover {
+            border-color: hsl(var(--brand-green) / 0.3);
+            background: hsl(var(--brand-green) / 0.05);
+        }
+
+        .prompt-variation-select:focus {
+            outline: none;
+            border-color: hsl(var(--brand-green));
+            background: hsl(var(--brand-green) / 0.05);
+            box-shadow: 0 0 0 3px hsl(var(--brand-green) / 0.1);
+        }
+
+        .variation-description {
+            font-size: 11px;
+            color: hsl(var(--text-secondary));
+            margin-top: 6px;
+            font-style: italic;
+        }
+
+        .prompt-library-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .reset-prompts-btn {
+            padding: 6px 12px;
+            font-size: 11px;
+            font-weight: 500;
+            border-radius: calc(var(--radius) - 2px);
+            border: 1px solid hsl(var(--text-secondary) / 0.3);
+            background: transparent;
+            color: hsl(var(--text-secondary));
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .reset-prompts-btn:hover {
+            border-color: hsl(var(--brand-green) / 0.5);
+            color: hsl(var(--brand-green));
+            background: hsl(var(--brand-green) / 0.05);
+        }
+
+        .niche-description {
+            font-size: 11px;
+            color: hsl(var(--text-secondary));
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+
+        /* 7-Day Performance Dashboard Styles */
+        .performance-dashboard {
+            background: linear-gradient(135deg, hsl(var(--bg-secondary)), hsl(var(--bg-primary)));
+            border-radius: calc(var(--radius) + 2px);
+            padding: 24px;
+            margin: 20px 0;
+            border: 1px solid hsl(var(--brand-green) / 0.1);
+            box-shadow: 0 8px 25px -5px hsl(var(--brand-green) / 0.1);
+        }
+
+        .performance-dashboard h3 {
+            color: hsl(var(--brand-green));
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0 0 20px 0;
+            text-align: center;
+            text-shadow: 0 1px 2px hsl(var(--brand-green) / 0.2);
+        }
+
+        .performance-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .performance-card {
+            background: hsl(var(--bg-primary));
+            border-radius: var(--radius);
+            padding: 16px;
+            border: 1px solid hsl(var(--bg-secondary));
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: var(--transition-smooth);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .performance-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, hsl(var(--brand-green)), hsl(var(--brand-green) / 0.6));
+            opacity: 0.8;
+        }
+
+        .performance-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px hsl(var(--brand-green) / 0.15);
+            border-color: hsl(var(--brand-green) / 0.3);
+        }
+
+        .performance-icon {
+            font-size: 20px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: hsl(var(--brand-green) / 0.1);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .performance-data {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .performance-number {
+            font-size: 18px;
+            font-weight: 700;
+            color: hsl(var(--brand-green));
+            line-height: 1.1;
+            margin-bottom: 2px;
+        }
+
+        .performance-label {
+            font-size: 11px;
+            color: hsl(var(--text-secondary));
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .performance-growth {
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+        .performance-growth.positive {
+            background: hsl(var(--brand-green) / 0.15);
+            color: hsl(var(--brand-green));
+            border: 1px solid hsl(var(--brand-green) / 0.3);
+        }
+
+        .performance-growth.neutral {
+            background: hsl(var(--text-secondary) / 0.1);
+            color: hsl(var(--text-secondary));
+            border: 1px solid hsl(var(--text-secondary) / 0.2);
+        }
+
+        .performance-summary {
+            text-align: center;
+            padding-top: 16px;
+            border-top: 1px solid hsl(var(--bg-secondary));
+        }
+
+        .summary-text {
+            font-size: 13px;
+            color: hsl(var(--text-primary));
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .last-updated {
+            font-size: 11px;
+            color: hsl(var(--text-secondary));
+            font-style: italic;
+        }
+
+        .last-updated span {
+            color: hsl(var(--brand-green));
+            font-weight: 500;
+        }
+
+        /* Quick Start Guide Styles */
+        .quick-start-guide {
+            background: linear-gradient(135deg, hsl(var(--brand-green) / 0.05), hsl(var(--brand-green) / 0.02));
+            border: 2px solid hsl(var(--brand-green) / 0.3);
+            border-radius: calc(var(--radius) + 4px);
+            padding: 24px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .quick-start-guide::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, hsl(var(--brand-green)), hsl(var(--brand-green) / 0.6));
+        }
+
+        .quick-start-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .quick-start-header h3 {
+            color: hsl(var(--brand-green));
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .dismiss-btn {
+            background: none;
+            border: none;
+            color: hsl(var(--text-secondary));
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-smooth);
+        }
+
+        .dismiss-btn:hover {
+            background: hsl(var(--text-secondary) / 0.1);
+            color: hsl(var(--text-primary));
+        }
+
+        .quick-start-steps {
+            margin-bottom: 20px;
+        }
+
+        .quick-step {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 12px 0;
+            border-bottom: 1px solid hsl(var(--bg-secondary));
+        }
+
+        .quick-step:last-child {
+            border-bottom: none;
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            background: hsl(var(--brand-green));
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: hsl(var(--text-primary));
+            margin-bottom: 4px;
+        }
+
+        .step-description {
+            font-size: 12px;
+            color: hsl(var(--text-secondary));
+            line-height: 1.4;
+        }
+
+        .quick-start-cta {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            padding-top: 16px;
+            border-top: 1px solid hsl(var(--bg-secondary));
+        }
+
+        .cta-btn {
+            background: hsl(var(--brand-green));
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: var(--radius);
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .cta-btn:hover {
+            background: hsl(var(--brand-green) / 0.9);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px hsl(var(--brand-green) / 0.3);
+        }
+
+        .cta-text {
+            font-size: 12px;
+            color: hsl(var(--text-secondary));
+            font-style: italic;
+        }
+
+        .quick-start-guide.hidden {
+            display: none;
+        }
+
+        /* Premium Feature Styles */
+        .premium-feature {
+            position: relative;
+            opacity: 0.7;
+        }
+
+        .premium-badge {
+            background: linear-gradient(45deg, #ff6b6b, #ffa500);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .premium-disabled {
+            background: hsl(var(--bg-secondary)) !important;
+            color: hsl(var(--text-secondary)) !important;
+            cursor: not-allowed !important;
+        }
+
+        .premium-description {
+            font-size: 11px;
+            color: hsl(var(--text-secondary));
+            margin-top: 8px;
+            line-height: 1.4;
+            font-style: italic;
+        }
+
+        .upgrade-prompt {
+            margin-top: 8px;
+            text-align: center;
+        }
+
+        .upgrade-link {
+            color: hsl(var(--brand-green));
+            text-decoration: none;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 4px 12px;
+            border: 1px solid hsl(var(--brand-green) / 0.3);
+            border-radius: 16px;
+            display: inline-block;
+            transition: var(--transition-smooth);
+        }
+
+        .upgrade-link:hover {
+            background: hsl(var(--brand-green) / 0.1);
+            border-color: hsl(var(--brand-green));
+            transform: translateY(-1px);
+        }
+
+        /* Advanced Filtering Styles */
+        .checkbox-group {
+            margin-bottom: 16px;
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: hsl(var(--text-primary));
+            line-height: 1.4;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            display: none;
+        }
+
+        .checkmark {
+            width: 18px;
+            height: 18px;
+            background: hsl(var(--bg-secondary));
+            border: 2px solid hsl(var(--bg-primary));
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition-smooth);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .checkbox-label input[type="checkbox"]:checked + .checkmark {
+            background: hsl(var(--brand-green));
+            border-color: hsl(var(--brand-green));
+        }
+
+        .checkbox-label input[type="checkbox"]:checked + .checkmark::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .setting-description {
+            font-size: 11px;
+            color: hsl(var(--text-secondary));
+            margin-top: 6px;
+            line-height: 1.3;
+            font-style: italic;
+        }
+
+        .number-input {
+            width: 80px;
+            padding: 8px 12px;
+            border: 1px solid hsl(var(--bg-primary));
+            border-radius: var(--radius);
+            background: hsl(var(--bg-secondary));
+            color: hsl(var(--text-primary));
+            font-size: 13px;
+            transition: var(--transition-smooth);
+        }
+
+        .number-input:focus {
+            outline: none;
+            border-color: hsl(var(--brand-green));
+            background: hsl(var(--brand-green) / 0.05);
+            box-shadow: 0 0 0 3px hsl(var(--brand-green) / 0.1);
+        }
+
+        .keywords-textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 10px 12px;
+            border: 1px solid hsl(var(--bg-primary));
+            border-radius: var(--radius);
+            background: hsl(var(--bg-secondary));
+            color: hsl(var(--text-primary));
+            font-size: 12px;
+            font-family: monospace;
+            line-height: 1.4;
+            resize: vertical;
+            transition: var(--transition-smooth);
+        }
+
+        .keywords-textarea:focus {
+            outline: none;
+            border-color: hsl(var(--brand-green));
+            background: hsl(var(--brand-green) / 0.05);
+            box-shadow: 0 0 0 3px hsl(var(--brand-green) / 0.1);
+        }
+
+        .keywords-textarea::placeholder {
+            color: hsl(var(--text-secondary));
+            opacity: 0.7;
+        }
+
+        /* Premium Tier Restrictions */
+        .premium-note {
+            font-size: 10px;
+            color: hsl(var(--text-secondary));
+            font-weight: 400;
+            font-style: italic;
+            margin-left: 8px;
+            opacity: 0.8;
+        }
+
+        .timing-select option:disabled {
+            color: hsl(var(--text-secondary));
+            opacity: 0.6;
+            font-style: italic;
+        }
+
+        /* Premium Analytics Styling */
+        .premium-feature {
+            position: relative;
+        }
+
+        .premium-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .premium-blur {
+            filter: blur(1px);
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        .premium-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: hsl(var(--bg-primary) / 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: var(--radius);
+            padding: 32px;
+            text-align: center;
+            border: 1px solid hsl(var(--bg-secondary));
+            box-shadow: 0 8px 32px hsl(var(--shadow) / 0.3);
+            z-index: 10;
+            min-width: 280px;
+        }
+
+        .premium-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            display: block;
+        }
+
+        .premium-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: hsl(var(--text-primary));
+            margin-bottom: 8px;
+        }
+
+        .premium-subtitle {
+            font-size: 13px;
+            color: hsl(var(--text-secondary));
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .premium-cta {
+            display: inline-block;
+            background: linear-gradient(135deg, hsl(var(--brand-green)), hsl(var(--brand-green) / 0.8));
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: var(--radius);
+            font-weight: 600;
+            font-size: 14px;
+            transition: var(--transition-smooth);
+            box-shadow: 0 4px 12px hsl(var(--brand-green) / 0.3);
+        }
+
+        .premium-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px hsl(var(--brand-green) / 0.4);
+        }
+
+        .premium-disabled {
+            opacity: 0.7;
+        }
+
+        .premium-badge {
+            background: linear-gradient(135deg, hsl(var(--brand-green)), hsl(var(--brand-green) / 0.8));
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* A+++ Dashboard Header Styling */
+        .dashboard-header {
+            background: linear-gradient(135deg, hsl(var(--bg-primary)), hsl(var(--bg-secondary)));
+            border: 1px solid hsl(var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px hsl(var(--shadow) / 0.1);
+        }
+
+        .dashboard-stats {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 24px;
+            align-items: start;
+        }
+
+        .stat-primary {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .stat-secondary {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: hsl(var(--text-secondary));
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+        }
+
+        .stat-value {
+            display: flex;
+            align-items: baseline;
+            gap: 4px;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: 800;
+            color: hsl(var(--text-primary));
+            line-height: 1;
+        }
+
+        .stat-secondary .stat-number {
+            font-size: 18px;
+        }
+
+        .stat-goal {
+            font-size: 16px;
+            font-weight: 600;
+            color: hsl(var(--text-secondary));
+        }
+
+        .stat-status {
+            font-size: 14px;
+            font-weight: 600;
+            color: hsl(var(--brand-green));
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-progress {
+            margin-top: 8px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #059669);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+        }
+
+        .dashboard-controls {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .btn-pause {
+            background: hsl(var(--bg-secondary));
+            color: hsl(var(--text-primary));
+            border: 1px solid hsl(var(--bg-primary));
+        }
+
+        .btn-pause:hover:not(:disabled) {
+            background: hsl(var(--text-secondary) / 0.1);
+            transform: translateY(-1px);
+        }
+
+        .btn-pause:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Activity Controls Improvements */
+        .activity-control-btn {
+            background: hsl(var(--bg-secondary));
+            border: 1px solid hsl(var(--bg-primary));
+            color: hsl(var(--text-secondary));
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        .activity-control-btn:hover {
+            background: hsl(var(--bg-primary));
+            color: hsl(var(--text-primary));
+        }
+
+        /* Main Tabs Navigation */
+        .main-tabs {
+            display: flex;
+            background: hsl(var(--bg-secondary));
+            border-radius: var(--radius);
+            padding: 4px;
+            margin-bottom: 20px;
+            gap: 2px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 12px 8px;
+            border-radius: calc(var(--radius) - 2px);
+            font-size: 12px;
+            font-weight: 600;
+            color: hsl(var(--text-secondary));
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            text-align: center;
+        }
+
+        .tab-btn:hover {
+            background: hsl(var(--bg-primary) / 0.5);
+            color: hsl(var(--text-primary));
+        }
+
+        .tab-btn.active {
+            background: hsl(var(--bg-primary));
+            color: hsl(var(--text-primary));
+            box-shadow: 0 2px 4px hsl(var(--shadow) / 0.1);
+        }
+
+        /* Tab Content */
+        .tab-content {
+            position: relative;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* Guide Panel Styling */
+        .guide-panel {
+            padding: 20px 0;
+        }
+
+        .guide-section h3 {
+            font-size: 16px;
+            font-weight: 700;
+            color: hsl(var(--text-primary));
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid hsl(var(--brand-green));
+        }
+
+        .guide-accordion {
+            margin-bottom: 32px;
+        }
+
+        .guide-item {
+            background: hsl(var(--bg-secondary));
+            border: 1px solid hsl(var(--bg-primary));
+            border-radius: var(--radius);
+            margin-bottom: 12px;
+            overflow: hidden;
+            transition: var(--transition-smooth);
+        }
+
+        .guide-item:hover {
+            border-color: hsl(var(--brand-green) / 0.3);
+            box-shadow: 0 2px 8px hsl(var(--shadow) / 0.1);
+        }
+
+        .guide-header {
+            padding: 16px 20px;
+            background: hsl(var(--bg-primary));
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: hsl(var(--text-primary));
+            border-bottom: 1px solid hsl(var(--bg-secondary));
+        }
+
+        .guide-content {
+            padding: 16px 20px;
+            font-size: 13px;
+            line-height: 1.6;
+            color: hsl(var(--text-secondary));
+        }
+
+        .guide-panel.hidden {
+            display: none;
+        }
+
+        /* Launch from Settings Button */
+        .launch-from-settings {
+            text-align: center;
+            padding: 24px 0;
+            margin: 20px 0;
+            background: hsl(var(--bg-secondary));
+            border-radius: 12px;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .launch-btn {
+            background: linear-gradient(135deg, hsl(var(--brand-green)), hsl(var(--brand-green) / 0.8));
+            color: white;
+            border: none;
+            padding: 14px 32px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            min-width: 240px;
+        }
+
+        .launch-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+            background: linear-gradient(135deg, hsl(var(--brand-green) / 1.1), hsl(var(--brand-green)));
+        }
+
+        .launch-btn:active {
+            transform: translateY(0);
+        }
+
+        .launch-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Login Form Styles */
+        .login-form {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 32px 24px;
+            background: hsl(var(--bg-primary));
+            border-radius: 16px;
+            border: 1px solid hsl(var(--border-primary));
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .login-header h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: hsl(var(--text-primary));
+            margin: 0 0 8px 0;
+        }
+
+        .login-header p {
+            font-size: 14px;
+            color: hsl(var(--text-secondary));
+            margin: 0;
+        }
+
+        .login-content {
+            gap: 24px;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid hsl(var(--border-primary));
+            border-radius: 8px;
+            background: hsl(var(--bg-secondary));
+            color: hsl(var(--text-primary));
+            font-size: 14px;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .login-input:focus {
+            outline: none;
+            border-color: hsl(var(--brand-green));
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .login-input::placeholder {
+            color: hsl(var(--text-secondary));
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 14px 24px;
+            background: linear-gradient(135deg, hsl(var(--brand-green)), hsl(var(--brand-green) / 0.8));
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-top: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+        }
+
+        .login-btn:active {
+            transform: translateY(0);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .login-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .login-loading::before {
+            content: '';
+            width: 16px;
+            height: 16px;
+            border: 2px solid transparent;
+            border-top: 2px solid currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .login-error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 16px;
+        }
+
+        .login-footer {
+            text-align: center;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid hsl(var(--border-primary));
+        }
+
+        .login-footer p {
+            margin: 8px 0;
+            font-size: 13px;
+            color: hsl(var(--text-secondary));
+        }
+
+        .login-footer a {
+            color: hsl(var(--brand-green));
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .login-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Hide main content when showing login */
+        .main-content.hidden {
+            display: none;
+        }
+
+        /* Subscription State Styles */
+        
+        /* Locked/Inactive State */
+        .subscription-locked {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .lock-screen {
+            text-align: center;
+            padding: 40px 24px;
+            background: hsl(var(--bg-primary));
+            border-radius: 16px;
+            border: 1px solid hsl(var(--border-primary));
+            max-width: 320px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .lock-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.8;
+        }
+
+        .lock-screen h2 {
+            font-size: 20px;
+            font-weight: 700;
+            color: hsl(var(--text-primary));
+            margin: 0 0 8px 0;
+        }
+
+        .lock-screen p {
+            font-size: 14px;
+            color: hsl(var(--text-secondary));
+            margin: 0 0 24px 0;
+        }
+
+        .lock-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .upgrade-btn-primary {
+            background: linear-gradient(135deg, hsl(var(--brand-green)), hsl(var(--brand-green) / 0.8));
+            color: white;
+            text-decoration: none;
+            padding: 14px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 15px;
+            transition: all 0.2s ease;
+            text-align: center;
+            display: block;
+        }
+
+        .upgrade-btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+        }
+
+        .refresh-btn {
+            background: hsl(var(--bg-secondary));
+            color: hsl(var(--text-secondary));
+            border: 1px solid hsl(var(--border-primary));
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .refresh-btn:hover {
+            background: hsl(var(--bg-tertiary));
+            color: hsl(var(--text-primary));
+        }
+
+        /* Trial State Banner */
+        .trial-banner {
+            background: linear-gradient(135deg, #f59e0b, #f97316);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        .trial-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .trial-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .trial-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .trial-limit {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .trial-upgrade-btn {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            white-space: nowrap;
+        }
+
+        .trial-upgrade-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+
+        /* Active State Indicators */
+        .subscription-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-active {
+            color: hsl(var(--brand-green));
+        }
+
+        .status-trialing {
+            color: #f59e0b;
+        }
+
+        .status-inactive {
+            color: #ef4444;
+        }
+
+        .status-active::before {
+            content: "●";
+            color: hsl(var(--brand-green));
+        }
+
+        .status-trialing::before {
+            content: "●";
+            color: #f59e0b;
+        }
+
+        .status-inactive::before {
+            content: "●";
+            color: #ef4444;
+        }
     </style>
 </head>
 <body>
@@ -1288,82 +2634,298 @@
         <div class="header-content">
             <h1><span class="brand-name">Bold</span><span class="brand-take">Take</span></h1>
             <div class="status-indicator" id="liveStatus">
-                <div class="status-dot"></div>
                 <span>Ready</span>
             </div>
         </div>
     </div>
 
     <div class="content">
+        <!-- Login Form (shown when not authenticated) -->
+        <div id="login-form" class="login-form" style="display: none;">
+            <div class="login-header">
+                <h2>Welcome to BoldTake Professional</h2>
+                <p>Sign in to access your X.com automation tools</p>
+            </div>
+            
+            <div class="login-content">
+                <div id="login-error" class="login-error" style="display: none;"></div>
+                
+                <div class="input-group">
+                    <label for="login-email">Email Address</label>
+                    <input type="email" id="login-email" class="login-input" placeholder="Enter your email" required>
+                </div>
+                
+                <div class="input-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" class="login-input" placeholder="Enter your password" required>
+                </div>
+                
+                <button id="login-btn" class="login-btn">
+                    <span class="login-btn-text">Sign In</span>
+                    <div class="login-loading" style="display: none;">Signing in...</div>
+                </button>
+                
+                <div class="login-footer">
+                    <p>Don't have an account? <a href="https://boldtake.io/auth" target="_blank">Sign up at boldtake.io</a></p>
+                    <p><a href="https://boldtake.io/forgot-password" target="_blank">Forgot your password?</a></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inactive/Expired Subscription Overlay -->
+        <div id="subscription-locked" class="subscription-locked" style="display: none;">
+            <div class="lock-screen">
+                <div class="lock-icon">🔒</div>
+                <h2>Subscription Required</h2>
+                <p>Your trial has ended or subscription is inactive.</p>
+                <div class="lock-actions">
+                    <a href="https://buy.stripe.com/7sY6oIaUG4Jygst3wx43S0e" target="_blank" class="upgrade-btn-primary">
+                        Subscribe Now - $49/month
+                    </a>
+                    <button id="refresh-subscription" class="refresh-btn">Check Subscription Status</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Extension Content (shown when authenticated) -->
+        <div class="main-content">
+        
+        <!-- Subscription Status Banner (for trial users) -->
+        <div id="trial-banner" class="trial-banner" style="display: none;">
+            <div class="trial-content">
+                <div class="trial-info">
+                    <span class="trial-badge">TRIAL</span>
+                    <span class="trial-limit">Daily Limit: <span id="trial-current">0</span>/<span id="trial-max">5</span></span>
+                </div>
+                <a href="https://buy.stripe.com/7sY6oIaUG4Jygst3wx43S0e" target="_blank" class="trial-upgrade-btn">
+                    Upgrade to 120 Replies/Day
+                </a>
+            </div>
+        </div>
+        
+        <!-- Quick Start Guide -->
+        <div id="quick-start-guide" class="quick-start-guide">
+            <div class="quick-start-header">
+                <h3>What Now? Get Started in 3 Steps</h3>
+                <button id="dismiss-guide" class="dismiss-btn">×</button>
+            </div>
+            <div class="quick-start-steps">
+                <div class="quick-step">
+                    <div class="step-number">1</div>
+                    <div class="step-content">
+                        <div class="step-title">Go to X.com Homepage</div>
+                        <div class="step-description">Navigate to your X.com feed or search page</div>
+                    </div>
+                </div>
+                <div class="quick-step">
+                    <div class="step-number">2</div>
+                    <div class="step-content">
+                        <div class="step-title">Click Settings Below</div>
+                        <div class="step-description">Set your keyword & engagement target</div>
+                    </div>
+                </div>
+                <div class="quick-step">
+                    <div class="step-number">3</div>
+                    <div class="step-content">
+                        <div class="step-title">Launch Session</div>
+                        <div class="step-description">Hit the green button and watch the magic happen!</div>
+                    </div>
+                </div>
+            </div>
+            <div class="quick-start-cta">
+                <button id="quick-settings-btn" class="cta-btn">Quick Setup</button>
+                <span class="cta-text">Takes 30 seconds</span>
+            </div>
+        </div>
+
         <div id="settings-panel" class="settings-panel hidden">
             <div class="settings-section">
                 <div class="settings-title">Target Settings</div>
                 <div class="input-group">
                     <label for="daily-target-input">Daily Target</label>
                     <select id="daily-target-input" class="daily-target-select">
-                        <option value="60">🌱 60 replies/day (Light & Steady)</option>
-                        <option value="120" selected>⚡ 120 replies/day (Optimal Growth)</option>
-                        <option value="180">🚀 180 replies/day (High Impact)</option>
-                        <option value="240">🔥 240 replies/day (Maximum Reach)</option>
+                        <option value="60">60 replies/day (Creator)</option>
+                        <option value="120" selected>120 replies/day (Creator)</option>
+                        <option value="240" disabled>240 replies/day (Bold)</option>
+                        <option value="350" disabled>350 replies/day (Bold)</option>
                     </select>
                 </div>
 
                 <div class="input-group">
-                    <label for="keyword-rotation">🔄 Keyword Rotation Strategy</label>
-                    <p class="section-description">Add 3-5 keywords to rotate through automatically. BoldTake will switch keywords and refresh the page to prevent getting stuck on one topic.</p>
-                    <div class="keyword-rotation-builder">
-                        <div class="keyword-input-row">
-                            <input type="text" id="keyword-input" placeholder="Enter keyword (e.g., 'AI', 'startup')">
-                            <button type="button" id="add-keyword-btn" class="add-keyword-btn">+ Add</button>
-                        </div>
-                        <div id="rotation-keywords-list" class="rotation-keywords-list">
-                            <div class="no-keywords">No keywords added yet. Add 3-5 keywords for optimal rotation.</div>
-                        </div>
+                    <label for="keyword-input">Target Keyword</label>
+                    <input type="text" id="keyword-input" placeholder="Enter keyword (e.g., 'tax', 'startup', 'AI')" class="clean-input">
+                </div>
+                
+                <!-- Launch Session Button - Prominently Placed -->
+                <div class="launch-from-settings">
+                    <button id="launch-from-settings-btn" class="btn btn-primary launch-btn">
+                        🚀 Launch Session with These Settings
+                    </button>
+                    <div class="setting-description">Start your BoldTake session immediately with the configured settings above</div>
+                </div>
+            </div>
+
+            <!-- Advanced Filtering Section -->
+            <div class="settings-section">
+                <div class="section-divider"></div>
+                <div class="settings-title">🎯 Advanced Tweet Filtering</div>
+                
+                <div class="input-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="exclude-links-media" checked>
+                        <span class="checkmark"></span>
+                        Exclude links & media in search
+                    </label>
+                    <div class="setting-description">Uses X.com filters to exclude promotional links and media tweets</div>
+                </div>
+                
+                <div class="input-group checkbox-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="prioritize-questions">
+                        <span class="checkmark"></span>
+                        Prioritize replying to questions
+                    </label>
+                    <div class="setting-description">Questions (tweets with ?) get priority in the reply queue</div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="min-char-count">Minimum Character Count</label>
+                    <input type="number" id="min-char-count" class="clean-input" value="80" min="20" max="280">
+                    <div class="setting-description">Skip tweets shorter than this (filters out low-effort content)</div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="spam-keywords">Spam Keywords (one per line)</label>
+                    <textarea id="spam-keywords" class="keywords-textarea" placeholder="onlyfans&#10;dm me&#10;check bio&#10;link in bio&#10;follow for follow&#10;subscribe to"></textarea>
+                    <div class="setting-description">Automatically skip tweets containing these spam indicators</div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="negative-keywords">Negative Keywords (one per line)</label>
+                    <textarea id="negative-keywords" class="keywords-textarea" placeholder="hate&#10;toxic&#10;scam&#10;fake&#10;spam&#10;bot"></textarea>
+                    <div class="setting-description">Avoid tweets with negative or controversial content</div>
+                </div>
+            </div>
+
+                <!-- Keyword Suggestions Section -->
+                <div class="keyword-suggestions-section">
+                    <div class="section-divider"></div>
+                    <div class="settings-subtitle">Keyword Suggestions</div>
+                    
+                    <div class="input-group">
+                        <label for="niche-select">Browse by Niche</label>
+                        <select id="niche-select" class="timing-select">
+                            <option value="">Select a niche to see keyword suggestions...</option>
+                            <option value="fitness">Fitness & Health</option>
+                            <option value="tech">Technology & AI</option>
+                            <option value="business">Business & Entrepreneurship</option>
+                            <option value="finance">Finance & Investing</option>
+                            <option value="marketing">Marketing & Growth</option>
+                            <option value="lifestyle">Lifestyle & Wellness</option>
+                            <option value="education">Education & Learning</option>
+                            <option value="travel">Travel & Adventure</option>
+                            <option value="food">Food & Cooking</option>
+                            <option value="gaming">Gaming & Entertainment</option>
+                        </select>
+                    </div>
+                    
+                    <div id="suggested-keywords" class="suggested-keywords">
+                        <div class="no-niche">Select a niche above to see popular keyword suggestions for that category</div>
+                    </div>
+                </div>
+
+                <!-- Prompt Library Section -->
+                <div class="prompt-library-section">
+                    <div class="section-divider"></div>
+                    <div class="prompt-library-header">
+                        <div class="settings-subtitle">🧠 Prompt Library</div>
+                        <button id="reset-prompts-btn" class="reset-prompts-btn">Reset to Defaults</button>
+                    </div>
+                    
+                    <div class="strategy-prompt-group">
+                        <div class="strategy-name">🎯 Engagement Indie Voice</div>
+                        <select id="indie-voice-select" class="prompt-variation-select">
+                            <option value="indie_authentic">Authentic Voice</option>
+                            <option value="indie_storyteller">Personal Story</option>
+                            <option value="indie_supportive">Supportive Friend</option>
+                            <option value="indie_curious">Curious Questioner</option>
+                        </select>
+                        <div class="variation-description">Genuine, conversational reactions with personal touch</div>
+                    </div>
+
+                    <div class="strategy-prompt-group">
+                        <div class="strategy-name">💥 Engagement Spark Reply</div>
+                        <select id="spark-reply-select" class="prompt-variation-select">
+                            <option value="spark_provocative">Provocative Founder</option>
+                            <option value="spark_contrarian">Contrarian Take</option>
+                            <option value="spark_reality_check">Reality Check</option>
+                            <option value="spark_bold_prediction">Bold Prediction</option>
+                        </select>
+                        <div class="variation-description">Brutally direct and debate-starting responses</div>
+                    </div>
+
+                    <div class="strategy-prompt-group">
+                        <div class="strategy-name">🤔 Engagement The Counter</div>
+                        <select id="counter-select" class="prompt-variation-select">
+                            <option value="counter_direct">Direct Challenge</option>
+                            <option value="counter_evidence">Evidence-Based Counter</option>
+                            <option value="counter_experience">Experience Counter</option>
+                            <option value="counter_alternative">Alternative Solution</option>
+                        </select>
+                        <div class="variation-description">Directly challenge the core assumption with confidence</div>
+                    </div>
+
+                    <div class="strategy-prompt-group">
+                        <div class="strategy-name">😄 The Riff</div>
+                        <select id="riff-select" class="prompt-variation-select">
+                            <option value="riff_escalation">Logic Escalation</option>
+                            <option value="riff_punchline">Perfect Punchline</option>
+                            <option value="riff_observational">Sarcastic Observer</option>
+                            <option value="riff_relatable">Relatable Absurdity</option>
+                        </select>
+                        <div class="variation-description">Take their logic to a ridiculous, deadpan conclusion</div>
+                    </div>
+
+                    <div class="strategy-prompt-group">
+                        <div class="strategy-name">🚀 The Viral Shot</div>
+                        <select id="viral-shot-select" class="prompt-variation-select">
+                            <option value="viral_emotional">Emotional Hook</option>
+                            <option value="viral_secret">Hidden Knowledge</option>
+                            <option value="viral_bold_claim">Bold Claim</option>
+                            <option value="viral_question">Provocative Question</option>
+                        </select>
+                        <div class="variation-description">Tap into powerful universal emotions for maximum resonance</div>
+                    </div>
+
+                    <div class="strategy-prompt-group">
+                        <div class="strategy-name">📢 The Shout-Out</div>
+                        <select id="shout-out-select" class="prompt-variation-select">
+                            <option value="shoutout_enthusiastic">Enthusiastic Celebration</option>
+                            <option value="shoutout_inspiring">Inspiring Others</option>
+                            <option value="shoutout_community">Community Builder</option>
+                        </select>
+                        <div class="variation-description">Genuine, enthusiastic congratulations for achievements</div>
                     </div>
                 </div>
 
                 <div class="input-group">
                     <label for="min-faves-input">Minimum Engagement</label>
-                    <input type="number" id="min-faves-input" placeholder="e.g., 500" value="500">
+                    <input type="number" id="min-faves-input" placeholder="e.g., 500" value="500" class="clean-input">
                 </div>
 
                 <div class="input-group">
-                    <label for="timing-range">Tweet Timing Range</label>
+                    <label for="timing-range">
+                        Tweet Timing Range
+                        <span class="premium-note">Bold tier unlocks all timing options</span>
+                    </label>
                     <select id="timing-range" class="timing-select">
-                        <option value="30-120">Quick (30s - 2m)</option>
-                        <option value="30-300" selected>Balanced (30s - 5m)</option>
-                        <option value="60-300">Safe (1m - 5m)</option>
+                        <option value="30-120" disabled>Quick (30s - 2m) - Bold Tier</option>
+                        <option value="30-300" disabled>Balanced (30s - 5m) - Bold Tier</option>
+                        <option value="60-300" selected>Safe (1m - 5m)</option>
                         <option value="120-600">Stealth (2m - 10m)</option>
+                        <option value="180-900" disabled>Ultra Stealth (3m - 15m) - Bold Tier</option>
+                        <option value="300-1200" disabled>Ghost Mode (5m - 20m) - Bold Tier</option>
                     </select>
-                </div>
-
-                <div class="input-group">
-                    <label for="keyword-suggestions">⚡ Niche Categories & Keywords</label>
-                    <p class="section-description">Choose your niche and get proven keywords for maximum engagement:</p>
-                    
-                    <div class="keyword-categories">
-                        <select id="category-select">
-                            <option value="">Choose your niche...</option>
-                            <option value="business">💼 Business & Entrepreneurship</option>
-                            <option value="technology">💻 Technology & AI</option>
-                            <option value="marketing">📈 Marketing & Sales</option>
-                            <option value="finance">💰 Finance & Investment</option>
-                            <option value="fitness">🏃‍♂️ Health & Fitness</option>
-                            <option value="education">🎓 Education & Development</option>
-                            <option value="sustainability">🌍 Sustainability & Environment</option>
-                            <option value="creative">🎨 Creative & Design</option>
-                            <option value="realestate">🏘️ Real Estate & Property</option>
-                            <option value="politics">🏛️ Politics & Economics</option>
-                        </select>
-                    </div>
-                    
-                    <div class="keyword-chips" id="category-keywords">
-                        <p class="no-category">Select a category above to see keyword suggestions</p>
-                    </div>
-                    
-                    <div class="add-all-section">
-                        <button type="button" id="add-category-btn" class="add-category-btn">+ Add All Keywords</button>
-                    </div>
                 </div>
                 
                 <div class="personalization-section">
@@ -1371,103 +2933,89 @@
                     <div class="settings-subtitle">🌍 Personalization</div>
                     
                     <div class="input-group">
-                        <label for="language-select">Response Language</label>
+                        <label for="language-select">
+                            Response Language
+                            <span class="premium-note">Bold tier unlocks all languages</span>
+                        </label>
                         <select id="language-select" class="timing-select">
                             <option value="english" selected>🇺🇸 English</option>
-                            <option value="spanish">🇪🇸 Spanish (Español)</option>
-                            <option value="french">🇫🇷 French (Français)</option>
-                            <option value="german">🇩🇪 German (Deutsch)</option>
-                            <option value="italian">🇮🇹 Italian (Italiano)</option>
-                            <option value="portuguese">🇵🇹 Portuguese (Português)</option>
-                            <option value="dutch">🇳🇱 Dutch (Nederlands)</option>
-                            <option value="japanese">🇯🇵 Japanese (日本語)</option>
-                            <option value="korean">🇰🇷 Korean (한국어)</option>
-                            <option value="chinese">🇨🇳 Chinese (中文)</option>
-                            <option value="russian">🇷🇺 Russian (Русский)</option>
-                            <option value="arabic">🇸🇦 Arabic (العربية)</option>
-                            <option value="hindi">🇮🇳 Hindi (हिंदी)</option>
-                            <option value="turkish">🇹🇷 Turkish (Türkçe)</option>
-                            <option value="polish">🇵🇱 Polish (Polski)</option>
-                            <option value="swedish">🇸🇪 Swedish (Svenska)</option>
-                            <option value="norwegian">🇳🇴 Norwegian (Norsk)</option>
-                            <option value="danish">🇩🇰 Danish (Dansk)</option>
-                            <option value="finnish">🇫🇮 Finnish (Suomi)</option>
-                            <option value="czech">🇨🇿 Czech (Čeština)</option>
-                            <option value="hungarian">🇭🇺 Hungarian (Magyar)</option>
-                            <option value="romanian">🇷🇴 Romanian (Română)</option>
-                            <option value="greek">🇬🇷 Greek (Ελληνικά)</option>
-                            <option value="hebrew">🇮🇱 Hebrew (עברית)</option>
-                            <option value="thai">🇹🇭 Thai (ไทย)</option>
-                            <option value="vietnamese">🇻🇳 Vietnamese (Tiếng Việt)</option>
-                            <option value="indonesian">🇮🇩 Indonesian (Bahasa Indonesia)</option>
-                            <option value="malay">🇲🇾 Malay (Bahasa Melayu)</option>
-                            <option value="filipino">🇵🇭 Filipino (Tagalog)</option>
-                            <option value="ukrainian">🇺🇦 Ukrainian (Українська)</option>
-                            <option value="bulgarian">🇧🇬 Bulgarian (Български)</option>
-                            <option value="croatian">🇭🇷 Croatian (Hrvatski)</option>
-                            <option value="serbian">🇷🇸 Serbian (Српски)</option>
-                            <option value="slovenian">🇸🇮 Slovenian (Slovenščina)</option>
-                            <option value="slovak">🇸🇰 Slovak (Slovenčina)</option>
-                            <option value="lithuanian">🇱🇹 Lithuanian (Lietuvių)</option>
-                            <option value="latvian">🇱🇻 Latvian (Latviešu)</option>
-                            <option value="estonian">🇪🇪 Estonian (Eesti)</option>
+                            <option value="spanish" disabled>🇪🇸 Spanish (Español) - Bold Tier</option>
+                            <option value="french" disabled>🇫🇷 French (Français) - Bold Tier</option>
+                            <option value="german" disabled>🇩🇪 German (Deutsch) - Bold Tier</option>
+                            <option value="italian" disabled>🇮🇹 Italian (Italiano) - Bold Tier</option>
+                            <option value="portuguese" disabled>🇵🇹 Portuguese (Português) - Bold Tier</option>
+                            <option value="dutch" disabled>🇳🇱 Dutch (Nederlands) - Bold Tier</option>
+                            <option value="japanese" disabled>🇯🇵 Japanese (日本語) - Bold Tier</option>
+                            <option value="korean" disabled>🇰🇷 Korean (한국어) - Bold Tier</option>
+                            <option value="chinese" disabled>🇨🇳 Chinese (中文) - Bold Tier</option>
+                            <option value="russian" disabled>🇷🇺 Russian (Русский) - Bold Tier</option>
+                            <option value="arabic" disabled>🇸🇦 Arabic (العربية) - Bold Tier</option>
+                            <option value="hindi" disabled>🇮🇳 Hindi (हिंदी) - Bold Tier</option>
+                            <option value="turkish" disabled>🇹🇷 Turkish (Türkçe) - Bold Tier</option>
+                            <option value="polish" disabled>🇵🇱 Polish (Polski) - Bold Tier</option>
+                            <option value="swedish" disabled>🇸🇪 Swedish (Svenska) - Bold Tier</option>
+                            <option value="norwegian" disabled>🇳🇴 Norwegian (Norsk) - Bold Tier</option>
+                            <option value="danish" disabled>🇩🇰 Danish (Dansk) - Bold Tier</option>
+                            <option value="finnish" disabled>🇫🇮 Finnish (Suomi) - Bold Tier</option>
+                            <option value="czech" disabled>🇨🇿 Czech (Čeština) - Bold Tier</option>
+                            <option value="hungarian" disabled>🇭🇺 Hungarian (Magyar) - Bold Tier</option>
+                            <option value="romanian" disabled>🇷🇴 Romanian (Română) - Bold Tier</option>
+                            <option value="greek" disabled>🇬🇷 Greek (Ελληνικά) - Bold Tier</option>
+                            <option value="hebrew" disabled>🇮🇱 Hebrew (עברית) - Bold Tier</option>
+                            <option value="thai" disabled>🇹🇭 Thai (ไทย) - Bold Tier</option>
+                            <option value="vietnamese" disabled>🇻🇳 Vietnamese (Tiếng Việt) - Bold Tier</option>
+                            <option value="indonesian" disabled>🇮🇩 Indonesian (Bahasa Indonesia) - Bold Tier</option>
+                            <option value="malay" disabled>🇲🇾 Malay (Bahasa Melayu) - Bold Tier</option>
+                            <option value="filipino" disabled>🇵🇭 Filipino (Tagalog) - Bold Tier</option>
+                            <option value="ukrainian" disabled>🇺🇦 Ukrainian (Українська) - Bold Tier</option>
+                            <option value="bulgarian" disabled>🇧🇬 Bulgarian (Български) - Bold Tier</option>
+                            <option value="croatian" disabled>🇭🇷 Croatian (Hrvatski) - Bold Tier</option>
+                            <option value="serbian" disabled>🇷🇸 Serbian (Српски) - Bold Tier</option>
+                            <option value="slovenian" disabled>🇸🇮 Slovenian (Slovenščina) - Bold Tier</option>
+                            <option value="slovak" disabled>🇸🇰 Slovak (Slovenčina) - Bold Tier</option>
+                            <option value="lithuanian" disabled>🇱🇹 Lithuanian (Lietuvių) - Bold Tier</option>
+                            <option value="latvian" disabled>🇱🇻 Latvian (Latviešu) - Bold Tier</option>
+                            <option value="estonian" disabled>🇪🇪 Estonian (Eesti) - Bold Tier</option>
                         </select>
                     </div>
                     
                     <div class="input-group">
                         <label for="tone-select">Voice & Tone Style</label>
                         <select id="tone-select" class="timing-select">
-                            <option value="adaptive" selected>🎯 Adaptive (Smart Context)</option>
-                            <option value="professional">💼 Professional & Polished</option>
-                            <option value="casual">😊 Casual & Friendly</option>
-                            <option value="witty">😄 Witty & Humorous</option>
-                            <option value="thought-leader">🧠 Thought Leader</option>
-                            <option value="supportive">🤝 Supportive & Encouraging</option>
-                            <option value="contrarian">🤔 Contrarian & Challenging</option>
-                            <option value="storyteller">📖 Storyteller & Narrative</option>
+                            <option value="adaptive" selected>Adaptive (Creator)</option>
+                            <option value="professional" disabled>Professional & Polished (Bold)</option>
+                            <option value="casual" disabled>Casual & Friendly (Bold)</option>
+                            <option value="witty" disabled>Witty & Humorous (Bold)</option>
+                            <option value="thought-leader" disabled>Thought Leader (Bold)</option>
+                            <option value="supportive" disabled>Supportive & Encouraging (Bold)</option>
+                            <option value="contrarian" disabled>Contrarian & Challenging (Bold)</option>
+                            <option value="storyteller" disabled>Storyteller & Narrative (Bold)</option>
                         </select>
                     </div>
-                </div>
-                
-                <div class="custom-prompt-section">
-                    <div class="section-divider"></div>
-                    <div class="settings-subtitle">🤖 Custom AI Prompts</div>
                     
-                    <div class="input-group">
-                        <label for="customPromptToggle">
-                            <input type="checkbox" id="customPromptToggle" class="toggle-checkbox">
-                            Enable Custom Prompts
+                    <!-- Custom Replies Based on History - Bold Tier Feature -->
+                    <div class="input-group premium-feature">
+                        <label for="custom-history-select">
+                            Custom Replies Based on History
+                            <span class="premium-badge">Bold Tier</span>
                         </label>
-                        <p class="section-description">Create and use your own AI conversation templates</p>
-                    </div>
-                    
-                    <div id="customPromptBuilder" class="custom-prompt-builder hidden">
-                        <div class="input-group">
-                            <label for="customPromptName">Prompt Name</label>
-                            <input type="text" id="customPromptName" placeholder="e.g., Viral Hook Master">
+                        <select id="custom-history-select" class="timing-select premium-disabled" disabled>
+                            <option value="disabled">Select History Style...</option>
+                            <option value="successful_patterns">Mirror Your Best Performing Replies</option>
+                            <option value="engagement_style">Match Your High-Engagement Comments</option>
+                            <option value="topic_expertise">Learn From Your Niche Authority Replies</option>
+                            <option value="conversation_flow">Adapt Your Natural Discussion Style</option>
+                            <option value="audience_resonance">Replicate Your Most-Liked Responses</option>
+                        </select>
+                        <div class="premium-description">
+                            AI analyzes your reply history to create personalized response patterns that match your most successful engagement style.
                         </div>
-                        
-                        <div class="input-group">
-                            <label for="customPromptText">Prompt Template</label>
-                            <textarea id="customPromptText" rows="6" placeholder="Enter your custom AI prompt template here..."></textarea>
-                        </div>
-                        
-                        <div class="button-group">
-                            <button type="button" id="testCustomPrompt" class="btn-secondary">Test Prompt</button>
-                            <button type="button" id="saveCustomPrompt" class="btn-primary">Save Prompt</button>
-                        </div>
-                        
-                        <div id="custom-prompt-preview" class="prompt-preview hidden">
-                            <h4>Preview Response:</h4>
-                            <div id="preview-response" class="preview-content"></div>
-                        </div>
-                        
-                        <div id="saved-prompts" class="saved-prompts">
-                            <h4>Saved Prompts:</h4>
-                            <div id="saved-prompts-list" class="saved-prompts-list"></div>
+                        <div class="upgrade-prompt">
+                            <a href="#" class="upgrade-link">Upgrade to Bold Tier to unlock custom history-based replies</a>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
 
@@ -1507,8 +3055,66 @@
                             <div class="analytics-label">Best Daily Streak</div>
                         </div>
                     </div>
+                                </div>
+                
+                <!-- 7-Day Performance Dashboard - Premium Feature -->
+                <div class="performance-dashboard premium-feature">
+                    <div class="premium-header">
+                        <h3>7-Day Performance Impact</h3>
+                        <span class="premium-badge">Bold Tier</span>
+                    </div>
+                    <div class="performance-grid premium-blur">
+                        <div class="performance-card impressions-card">
+                            <div class="performance-icon">👁️</div>
+                            <div class="performance-data">
+                                <div class="performance-number">47.2K</div>
+                                <div class="performance-label">Total Impressions</div>
+                                <div class="performance-growth positive">+284%</div>
+                            </div>
+                        </div>
+                        <div class="performance-card engagement-card">
+                            <div class="performance-icon">💬</div>
+                            <div class="performance-data">
+                                <div class="performance-number">1,847</div>
+                                <div class="performance-label">Engagements</div>
+                                <div class="performance-growth positive">+156%</div>
+                            </div>
+                        </div>
+                        <div class="performance-card replies-card">
+                            <div class="performance-icon">🎯</div>
+                            <div class="performance-data">
+                                <div class="performance-number">124</div>
+                                <div class="performance-label">Replies Sent</div>
+                                <div class="performance-growth positive">+124</div>
+                            </div>
+                        </div>
+                        <div class="performance-card roi-card">
+                            <div class="performance-icon">📈</div>
+                            <div class="performance-data">
+                                <div class="performance-number">381</div>
+                                <div class="performance-label">Avg Impact/Reply</div>
+                                <div class="performance-growth positive">+381</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="premium-overlay">
+                        <div class="premium-unlock">
+                            <div class="premium-icon">🔓</div>
+                            <div class="premium-title">Unlock Real-Time Analytics</div>
+                            <div class="premium-subtitle">Track impressions, engagements, and ROI with Bold Tier</div>
+                            <a href="#" class="premium-cta">Upgrade to Bold Tier</a>
+                        </div>
+                    </div>
+                    <div class="performance-summary premium-disabled">
+                        <div class="summary-text">
+                            🚀 <strong>Bold Tier users</strong> see 3x higher engagement with real-time analytics
+                        </div>
+                        <div class="last-updated">
+                            Live tracking available with Bold Tier
+                        </div>
+                    </div>
                 </div>
-
+                
                 <div class="comment-history">
                     <div class="history-header">
                         <h3>📝 Recent Comment History</h3>
@@ -1525,12 +3131,31 @@
                     </div>
                 </div>
 
-                <div class="analytics-insights">
-                    <h3>🧠 Smart Insights</h3>
-                    <div id="analyticsInsights" class="insights-list">
+                <div class="analytics-insights premium-feature">
+                    <div class="premium-header">
+                        <h3>🧠 Smart Insights</h3>
+                        <span class="premium-badge">Bold Tier</span>
+                    </div>
+                    <div id="analyticsInsights" class="insights-list premium-blur">
                         <div class="insight-item">
-                            <span class="insight-icon">💡</span>
-                            <span class="insight-text">Start your first session to unlock personalized insights!</span>
+                            <span class="insight-icon">📊</span>
+                            <span class="insight-text"><strong>Strategy Optimization:</strong> "The Counter" performs 45% better on tech tweets</span>
+                        </div>
+                        <div class="insight-item">
+                            <span class="insight-icon">⏰</span>
+                            <span class="insight-text"><strong>Best Time:</strong> Your replies get 2.3x more engagement at 2-4 PM EST</span>
+                        </div>
+                        <div class="insight-item">
+                            <span class="insight-icon">🎯</span>
+                            <span class="insight-text"><strong>Keyword Performance:</strong> "AI" keywords generate 180% more impressions</span>
+                        </div>
+                    </div>
+                    <div class="premium-overlay">
+                        <div class="premium-unlock">
+                            <div class="premium-icon">🧠</div>
+                            <div class="premium-title">AI-Powered Insights</div>
+                            <div class="premium-subtitle">Get personalized optimization tips with Bold Tier</div>
+                            <a href="#" class="premium-cta">Upgrade to Bold Tier</a>
                         </div>
                     </div>
                 </div>
@@ -1558,6 +3183,11 @@
                             <div class="roadmap-feature">📝 Custom AI Prompts</div>
                             <div class="roadmap-desc">Upload your own prompts and conversation templates</div>
                             <div class="roadmap-tag">Customization</div>
+                        </div>
+                        <div class="roadmap-item">
+                            <div class="roadmap-feature">🧬 Personal Reply History</div>
+                            <div class="roadmap-desc">AI learns from your tweet history to match your unique voice and style</div>
+                            <div class="roadmap-tag">Bold</div>
                         </div>
                     </div>
                 </div>
@@ -1601,48 +3231,77 @@
             </div>
         </div>
 
-        <div class="status-section">
-            <div class="status-item">
-                <span class="status-label">Status:</span>
-                <span class="status-value status-idle" id="sessionStatus">Ready</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Completed:</span>
-                <span class="status-value" id="successfulCount">0</span>
-            </div>
-            <div class="status-item">
-                <span class="status-label">Success Rate:</span>
-                <span class="status-value" id="successRate">0%</span>
+        <!-- A+++ Dashboard Header -->
+        <div class="dashboard-header">
+            <div class="dashboard-stats">
+                <div class="stat-primary">
+                    <div class="stat-label">REPLIES SENT</div>
+                    <div class="stat-value">
+                        <span id="successfulCount" class="stat-number">0</span>
+                        <span class="stat-goal">/ 120</span>
+                    </div>
+                    <div class="stat-progress">
+                        <div class="progress-bar">
+                            <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="stat-secondary">
+                    <div class="stat-label">SUCCESS</div>
+                    <div id="successRate" class="stat-number">100%</div>
+                </div>
+                <div class="stat-secondary">
+                    <div class="stat-label">STATUS</div>
+                    <div id="sessionStatus" class="stat-status">Ready</div>
+                </div>
             </div>
         </div>
 
-        <div class="control-buttons">
-            <button id="start-button" class="btn btn-start">
-                Launch Session
-            </button>
-            <button id="stop-button" class="btn btn-stop" disabled>
-                Stop Session
-            </button>
+        <!-- Main Tabs Navigation -->
+        <div class="main-tabs">
+            <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+            <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
+            <button class="tab-btn" data-tab="analytics">📊 Analytics</button>
+            <button class="tab-btn" data-tab="guide">💡 Guide</button>
+            <button class="tab-btn" data-tab="roadmap">🗺️ Roadmap</button>
         </div>
 
-        <div class="activity-log">
-            <h3>🔄 Live Activity</h3>
+        <!-- Tab Content Panels -->
+        <div class="tab-content">
+            
+            <!-- Dashboard Tab (Default Active) -->
+            <div id="dashboard-tab" class="tab-panel active">
+                <div class="dashboard-controls">
+                    <button id="start-button" class="btn btn-start">
+                        Start Session
+                    </button>
+                    <button id="pause-button" class="btn btn-pause" disabled>
+                        Pause Session
+                    </button>
+                    <button id="stop-button" class="btn btn-stop" disabled>
+                        Stop Session
+                    </button>
+                </div>
+
+                <div class="activity-log">
+            <div class="activity-header">
+                <h3>▶️ Session Log</h3>
+                <div class="activity-controls">
+                    <button id="pauseActivityBtn" class="activity-control-btn" title="Pause Queue">Pause Queue</button>
+                    <button id="clearActivityBtn" class="activity-control-btn" title="Clear Log">Clear Log</button>
+                    <button id="exportActivityBtn" class="activity-control-btn" title="Copy Log">Copy Log</button>
+                </div>
+            </div>
             <div id="activityFeed" class="activity-feed">
                 <div class="activity-item">Ready to start...</div>
             </div>
+            <div class="activity-stats">
+                <span id="activityCount">0 events</span> • 
+                <span id="lastUpdate">Never</span>
+            </div>
         </div>
 
-        <div class="action-buttons">
-            <button id="settings-button" class="btn btn-secondary">
-                ⚙️ Settings
-            </button>
-            <button id="analytics-button" class="btn btn-secondary">
-                📊 Analytics
-            </button>
-            <button id="roadmap-button" class="btn btn-secondary">
-                🗺️ Roadmap
-            </button>
-        </div>
+
 
         <div class="settings-section">
             <div class="settings-title">⚡ AI Strategies (6 Rotating)</div>
@@ -1681,49 +3340,96 @@
                     <div class="tip-number">1.</div>
                     <div class="tip-content">
                         <div class="tip-title">Quality Over Quantity</div>
-                        <div class="tip-desc">Target tweets with 500+ engagement for maximum visibility and authentic conversations</div>
+                        <div class="tip-desc">Target tweets with 300+ engagement for maximum visibility and authentic conversations</div>
                     </div>
                 </div>
                 <div class="tip-item">
                     <div class="tip-number">2.</div>
+                    <div class="tip-content">
+                        <div class="tip-title">Double Strategy</div>
+                        <div class="tip-desc">Run 2 sessions daily with different keywords (60+60 only) for maximum niche coverage within 120/day limit</div>
+                    </div>
+                </div>
+                <div class="tip-item">
+                    <div class="tip-number">3.</div>
                     <div class="tip-content">
                         <div class="tip-title">Niche Authority</div>
                         <div class="tip-desc">Focus on 2-3 specific topics (AI, SaaS, Marketing) to build consistent thought leadership</div>
                     </div>
                 </div>
                 <div class="tip-item">
-                    <div class="tip-number">3.</div>
+                    <div class="tip-number">4.</div>
                     <div class="tip-content">
                         <div class="tip-title">Optimal Sessions</div>
-                        <div class="tip-desc">Run 2-4 hour sessions during peak hours (9-11 AM, 1-3 PM EST) for maximum reach</div>
+                        <div class="tip-desc">Run sessions during peak hours (9-11 AM, 1-3 PM EST) with 2-3 hour breaks between</div>
                     </div>
                 </div>
                 <div class="tip-item">
-                    <div class="tip-number">4.</div>
+                    <div class="tip-number">5.</div>
                     <div class="tip-content">
                         <div class="tip-title">Stealth Operations</div>
                         <div class="tip-desc">Use varied timing and natural breaks - our system mimics human behavior patterns</div>
                     </div>
                 </div>
                 <div class="tip-item">
-                    <div class="tip-number">5.</div>
+                    <div class="tip-number">6.</div>
                     <div class="tip-content">
                         <div class="tip-title">Strategic Languages</div>
                         <div class="tip-desc">English for global reach, Spanish for LATAM markets, or target specific regions</div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="tips-section">
+            <h3>🌐 Browser Optimization Tips</h3>
+            <div class="tips-list">
                 <div class="tip-item">
-                    <div class="tip-number">6.</div>
+                    <div class="tip-number">1.</div>
                     <div class="tip-content">
-                        <div class="tip-title">Voice Consistency</div>
-                        <div class="tip-desc">Choose one tone style per session to build recognizable brand personality</div>
+                        <div class="tip-title">Keep X.com Tab Active</div>
+                        <div class="tip-desc">Always keep X.com as the active/focused tab for maximum performance and reliability</div>
+                    </div>
+                </div>
+                <div class="tip-item">
+                    <div class="tip-number">2.</div>
+                    <div class="tip-content">
+                        <div class="tip-title">Use Brave Browser</div>
+                        <div class="tip-desc">Run BoldTake in Brave (Chromium-based) while doing other work in different browser</div>
+                    </div>
+                </div>
+                <div class="tip-item">
+                    <div class="tip-number">3.</div>
+                    <div class="tip-content">
+                        <div class="tip-title">Minimize Window</div>
+                        <div class="tip-desc">Minimize entire browser window (not tab) to prevent accidental tab switching</div>
+                    </div>
+                </div>
+                <div class="tip-item">
+                    <div class="tip-number">4.</div>
+                    <div class="tip-content">
+                        <div class="tip-title">Avoid Tab Switching</div>
+                        <div class="tip-desc">Never switch tabs in same window - Chrome throttles background tabs reducing success rate</div>
+                    </div>
+                </div>
+                <div class="tip-item">
+                    <div class="tip-number">5.</div>
+                    <div class="tip-content">
+                        <div class="tip-title">Stable Connection</div>
+                        <div class="tip-desc">Use wired internet when possible - BoldTake auto-recovers from disconnections</div>
                     </div>
                 </div>
             </div>
         </div>
 
+        </div> <!-- End main-content -->
+
     </div>
 
+    <!-- Include Supabase and Auth scripts -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2.39.3/dist/umd/supabase.js"></script>
+    <script src="supabase-config.js"></script>
+    <script src="auth.js"></script>
     <script src="popup.js"></script>
 </body>
 </html>
