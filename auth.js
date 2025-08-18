@@ -127,6 +127,9 @@ async function refreshSubscriptionStatus() {
         
         const result = await window.BoldTakeAuth.checkSubscriptionStatus();
         
+        // CRITICAL DEBUG: Log the exact API response for troubleshooting
+        console.log('🔍 Subscription API Response:', JSON.stringify(result, null, 2));
+        
         if (result.success) {
             authState.subscriptionStatus = {
                 status: result.status,
@@ -144,22 +147,28 @@ async function refreshSubscriptionStatus() {
             return authState.subscriptionStatus;
         } else {
             console.error('❌ Failed to check subscription:', result.error);
-            // Default to inactive if check fails
+            // CRITICAL FIX: For new users, default to trial instead of inactive
+            // This prevents the "Subscription Required" screen for legitimate new users
+            const isNewUser = !authState.subscriptionStatus || authState.subscriptionStatus.lastCheck === 0;
             authState.subscriptionStatus = {
-                status: 'inactive',
-                limit: 0,
+                status: isNewUser ? 'trialing' : 'inactive',
+                limit: isNewUser ? 5 : 0,
                 lastCheck: Date.now()
             };
+            console.log(`🔧 Subscription check failed - defaulting to ${authState.subscriptionStatus.status} for ${isNewUser ? 'new' : 'existing'} user`);
             updateUIForSubscriptionStatus();
             return authState.subscriptionStatus;
         }
     } catch (error) {
         console.error('❌ Subscription check error:', error);
+        // CRITICAL FIX: For new users, default to trial instead of inactive
+        const isNewUser = !authState.subscriptionStatus || authState.subscriptionStatus.lastCheck === 0;
         authState.subscriptionStatus = {
-            status: 'inactive',
-            limit: 0,
+            status: isNewUser ? 'trialing' : 'inactive',
+            limit: isNewUser ? 5 : 0,
             lastCheck: Date.now()
         };
+        console.log(`🔧 Network error during subscription check - defaulting to ${authState.subscriptionStatus.status} for ${isNewUser ? 'new' : 'existing'} user`);
         updateUIForSubscriptionStatus();
         return authState.subscriptionStatus;
     }
@@ -263,9 +272,13 @@ function updateAuthUI() {
  * Update UI based on subscription status
  */
 function updateUIForSubscriptionStatus() {
-    if (!authState.subscriptionStatus) return;
+    if (!authState.subscriptionStatus) {
+        console.warn('⚠️ updateUIForSubscriptionStatus called but no subscription status available');
+        return;
+    }
     
     const { status, limit } = authState.subscriptionStatus;
+    console.log(`🎨 Updating UI for subscription status: ${status} (limit: ${limit})`);
     
     // Get UI elements
     const trialBanner = document.getElementById('trial-banner');
