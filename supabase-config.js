@@ -16,23 +16,43 @@ let supabaseClient = null;
 
 /**
  * Initialize Supabase client
- * This should be called once when the extension loads
+ * CRITICAL FIX: Handle different contexts (popup vs content script)
  */
 async function initializeSupabase() {
     try {
-        // Import Supabase from CDN (for Chrome extension compatibility)
-        if (!window.supabase) {
-            console.error('❌ Supabase library not loaded. Please include supabase-js in your extension.');
+        // CONTEXT DETECTION: Check if we're in popup or content script
+        const isPopupContext = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL;
+        const isContentScript = typeof window !== 'undefined' && window.location && window.location.hostname === 'x.com';
+        
+        if (isPopupContext && window.supabase) {
+            // POPUP CONTEXT: Use CDN-loaded Supabase
+            supabaseClient = window.supabase.createClient(
+                SUPABASE_CONFIG.url,
+                SUPABASE_CONFIG.anonKey,
+                {
+                    auth: {
+                        storage: {
+                            getItem: (key) => chrome.storage.local.get([key]).then(result => result[key]),
+                            setItem: (key, value) => chrome.storage.local.set({[key]: value}),
+                            removeItem: (key) => chrome.storage.local.remove([key])
+                        },
+                        autoRefreshToken: true,
+                        persistSession: true,
+                        detectSessionInUrl: false
+                    }
+                }
+            );
+            console.log('✅ Supabase client initialized in popup context');
+            return supabaseClient;
+        } else if (isContentScript) {
+            // CONTENT SCRIPT CONTEXT: Use simplified approach without direct Supabase
+            console.log('📱 Content script detected - using message-based auth');
+            // Content scripts will communicate with popup for auth operations
+            return { isContentScript: true };
+        } else {
+            console.warn('⚠️ Unknown context - Supabase may not be available');
             return null;
         }
-        
-        supabaseClient = window.supabase.createClient(
-            SUPABASE_CONFIG.url,
-            SUPABASE_CONFIG.anonKey
-        );
-        
-        console.log('✅ Supabase client initialized successfully');
-        return supabaseClient;
     } catch (error) {
         console.error('❌ Failed to initialize Supabase client:', error);
         return null;
@@ -41,9 +61,16 @@ async function initializeSupabase() {
 
 /**
  * Get the current Supabase client instance
+ * CRITICAL FIX: Handle content script context gracefully
  */
 function getSupabaseClient() {
     if (!supabaseClient) {
+        // Check if we're in content script context
+        const isContentScript = typeof window !== 'undefined' && window.location && window.location.hostname === 'x.com';
+        if (isContentScript) {
+            console.log('📱 Content script context - auth operations will use message passing');
+            return { isContentScript: true };
+        }
         console.warn('⚠️ Supabase client not initialized. Call initializeSupabase() first.');
         return null;
     }
@@ -52,11 +79,19 @@ function getSupabaseClient() {
 
 /**
  * Check if user is currently authenticated
+ * CRITICAL FIX: Handle content script context
  */
 async function isUserAuthenticated() {
     try {
         const client = getSupabaseClient();
         if (!client) return false;
+        
+        // Handle content script context
+        if (client.isContentScript) {
+            // For content scripts, check chrome storage directly
+            const result = await chrome.storage.local.get(['boldtake_user_session']);
+            return !!(result.boldtake_user_session && result.boldtake_user_session.user);
+        }
         
         const { data: { session } } = await client.auth.getSession();
         return session !== null;
@@ -68,11 +103,19 @@ async function isUserAuthenticated() {
 
 /**
  * Get current user session
+ * CRITICAL FIX: Handle content script context
  */
 async function getCurrentUser() {
     try {
         const client = getSupabaseClient();
         if (!client) return null;
+        
+        // Handle content script context
+        if (client.isContentScript) {
+            // For content scripts, get user from chrome storage
+            const result = await chrome.storage.local.get(['boldtake_user_session']);
+            return result.boldtake_user_session?.user || null;
+        }
         
         const { data: { user } } = await client.auth.getUser();
         return user;
