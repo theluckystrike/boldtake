@@ -27,7 +27,7 @@ let networkMonitor = {
 // ADVANCED STEALTH & SECURITY SYSTEM - Undetectable Automation
 const SECURITY_CONFIG = {
   // Rate limiting - Optimized for enterprise use
-  MAX_COMMENTS_PER_DAY: 150,  // Increased for enterprise accounts
+  MAX_COMMENTS_PER_DAY: 155,  // Enterprise limit with +5 customer satisfaction buffer
   
   // Timing constraints (milliseconds) - Optimized for user experience
   MIN_DELAY_BETWEEN_ACTIONS: 30000,  // 30 seconds minimum (user-friendly)
@@ -676,10 +676,15 @@ async function startContinuousSession(isResuming = false) {
     let dailyLimit = 120; // Default fallback
     try {
       if (window.BoldTakeAuthManager) {
-        dailyLimit = window.BoldTakeAuthManager.getDailyLimit() || 120;
+        const baseLimit = window.BoldTakeAuthManager.getDailyLimit() || 120;
+        // CUSTOMER SATISFACTION: Add +5 buffer to advertised limits
+        // This ensures users get slightly more than promised (125 for Pro, 10 for Trial)
+        dailyLimit = baseLimit + 5;
+        console.log(`🎁 Daily limit with satisfaction buffer: ${dailyLimit} (base: ${baseLimit} + 5 bonus)`);
       }
     } catch (error) {
-      console.warn('⚠️ Could not get subscription limit, using default 120');
+      console.warn('⚠️ Could not get subscription limit, using default 125 (120+5)');
+      dailyLimit = 125; // Default with buffer
     }
 
     sessionStats = {

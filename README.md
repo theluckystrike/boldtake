@@ -43,8 +43,9 @@
 
 ## 💡 Subscription Tiers
 
-- **Trial**: 5 replies/day to test the platform
-- **Professional ($49/month)**: 120 replies/day with full feature access
+- **Trial**: 5+ replies/day to test the platform (with bonus buffer)
+- **Professional ($49/month)**: 120+ replies/day with full feature access (with bonus buffer)
+- **Customer Satisfaction**: All plans include bonus replies beyond advertised limits
 - **Automatic Usage Reset**: Daily limits reset automatically each day
 
 ## 🔧 Technical Architecture
