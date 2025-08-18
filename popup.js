@@ -134,16 +134,68 @@ function getLanguageCode(language) {
     return languageCodes[language?.toLowerCase()] || 'en';
 }
 
+/**
+ * Wait for all critical dependencies to load
+ * CRITICAL FIX: Prevents race condition errors
+ */
+async function waitForDependencies() {
+    const maxWaitTime = 10000; // 10 seconds max wait
+    const checkInterval = 100; // Check every 100ms
+    const startTime = Date.now();
+    
+    return new Promise((resolve, reject) => {
+        const checkDependencies = () => {
+            const elapsed = Date.now() - startTime;
+            
+            // Check if we've exceeded max wait time
+            if (elapsed > maxWaitTime) {
+                reject(new Error('Timeout waiting for dependencies to load'));
+                return;
+            }
+            
+            // Check for required dependencies
+            const hasSupabase = typeof window.supabase !== 'undefined';
+            const hasBoldTakeAuth = typeof window.BoldTakeAuth !== 'undefined';
+            const hasBoldTakeAuthManager = typeof window.BoldTakeAuthManager !== 'undefined';
+            
+            if (hasSupabase && hasBoldTakeAuth && hasBoldTakeAuthManager) {
+                debugLog('✅ All dependencies loaded successfully');
+                resolve();
+            } else {
+                debugLog(`⏳ Waiting for dependencies... Supabase: ${hasSupabase}, Auth: ${hasBoldTakeAuth}, AuthManager: ${hasBoldTakeAuthManager}`);
+                setTimeout(checkDependencies, checkInterval);
+            }
+        };
+        
+        checkDependencies();
+    });
+}
+
+/**
+ * Show initialization error to user
+ */
+function showInitializationError(errorMessage) {
+    const loginError = document.getElementById('login-error');
+    if (loginError) {
+        loginError.style.display = 'block';
+        loginError.textContent = `Initialization Error: ${errorMessage}. Please refresh and try again.`;
+    }
+}
+
 // Initialize popup when DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
     debugLog('📱 Initializing BoldTake Professional interface...');
     
-    // PHASE 1: Initialize Authentication System
+    // PHASE 1: Initialize Authentication System with proper loading checks
     try {
+        // CRITICAL FIX: Wait for all dependencies to load
+        await waitForDependencies();
+        
         await window.BoldTakeAuthManager.initializeAuth();
         debugLog('✅ Authentication system initialized');
     } catch (error) {
         console.error('❌ Failed to initialize authentication:', error);
+        showInitializationError(error.message);
         // Continue with limited functionality
     }
     

@@ -21,10 +21,14 @@ let supabaseClient = null;
 async function initializeSupabase() {
     try {
         // CONTEXT DETECTION: Check if we're in popup or content script
-        const isPopupContext = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL;
+        const isPopupContext = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.getURL && !window.location.hostname;
         const isContentScript = typeof window !== 'undefined' && window.location && window.location.hostname === 'x.com';
         
-        if (isPopupContext && window.supabase) {
+        if (isPopupContext) {
+            if (!window.supabase) {
+                throw new Error('Supabase library not loaded from CDN');
+            }
+            
             // POPUP CONTEXT: Use CDN-loaded Supabase
             supabaseClient = window.supabase.createClient(
                 SUPABASE_CONFIG.url,
