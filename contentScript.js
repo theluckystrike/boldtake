@@ -80,14 +80,57 @@ let securityState = {
 
 /**
  * Check if action is safe to perform based on rate limits and patterns
+ * ENHANCED: Now includes real-time subscription validation
  * @returns {Promise<{safe: boolean, reason?: string, waitTime?: number}>}
  */
 async function checkActionSafety() {
   const now = Date.now();
   const currentDay = new Date().toDateString();
   
-  // Reset daily counter if needed
+  // CRITICAL: Real-time subscription validation before each action
+  try {
+    if (window.BoldTakeAuthManager) {
+      const authState = window.BoldTakeAuthManager.getAuthState();
+      
+      // Check if user is still authenticated
+      if (!authState.isAuthenticated) {
+        return {
+          safe: false,
+          reason: 'Authentication expired - please login again',
+          waitTime: 0 // Immediate stop
+        };
+      }
+      
+      // Check subscription status (with cache to avoid excessive API calls)
+      const lastCheck = authState.subscriptionStatus?.lastCheck || 0;
+      const timeSinceCheck = now - lastCheck;
+      
+      // Refresh subscription status every 5 minutes during active sessions
+      if (timeSinceCheck > 300000) { // 5 minutes
+        console.log('🔄 Refreshing subscription status during active session...');
+        await window.BoldTakeAuthManager.refreshSubscriptionStatus();
+        const updatedAuthState = window.BoldTakeAuthManager.getAuthState();
+        
+        // Check if subscription became inactive
+        if (!updatedAuthState.subscriptionStatus || updatedAuthState.subscriptionStatus.status === 'inactive') {
+          return {
+            safe: false,
+            reason: 'Subscription expired or canceled - session terminated',
+            waitTime: 0 // Immediate stop
+          };
+        }
+      }
+    }
+  } catch (error) {
+    console.error('❌ Failed to validate subscription during action:', error);
+    return {
+      safe: false,
+      reason: 'Unable to verify subscription status - please check connection',
+      waitTime: 60000 // 1 minute retry
+    };
+  }
   
+  // Reset daily counter if needed
   if (securityState.lastDayReset !== currentDay) {
     securityState.actionsToday = 0;
     securityState.lastDayReset = currentDay;
@@ -880,7 +923,7 @@ async function processNextTweet() {
   if (!replyButton) {
     updateStatus(`❌ Reply button not found on tweet.`);
     sessionStats.failed++;
-    sessionStats.processed++;
+    // CRITICAL FIX: Don't increment processed count for UI failures - these don't use API quota
     await saveSession();
     return false;
   }
@@ -903,9 +946,10 @@ async function processNextTweet() {
   // --- Reply Modal Scope ---
   const success = await handleReplyModal(tweet);
   
-  sessionStats.processed++;
-
+  // CRITICAL FIX: Only increment processed count on successful API calls
+  // This ensures failed calls don't count against user's daily limit
   if (success) {
+    sessionStats.processed++;
     sessionStats.successful++;
     sessionStats.lastSuccessfulTweet = new Date().getTime();
     sessionStats.retryAttempts = 0; // Reset retry counter on success

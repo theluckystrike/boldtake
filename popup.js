@@ -520,7 +520,24 @@ async function checkIfShouldAutoOpenSettings() {
 async function startSession() {
     debugLog('🎬 Starting BoldTake session...');
     
+    // CRITICAL: Prevent rapid clicking and multiple simultaneous sessions
+    if (startBtn.disabled) {
+        debugLog('⚠️ Start session already in progress, ignoring duplicate click');
+        return;
+    }
+    
     try {
+        // IMMEDIATELY disable button to prevent rapid clicking
+        startBtn.disabled = true;
+        startBtn.innerHTML = '<div class="loading"></div>Launching...';
+        
+        // Also disable launch-from-settings button if it exists
+        const launchFromSettingsBtn = document.getElementById('launch-from-settings-btn');
+        if (launchFromSettingsBtn) {
+            launchFromSettingsBtn.disabled = true;
+            launchFromSettingsBtn.innerHTML = '<div class="loading"></div>Launching...';
+        }
+        
         // SMART DEFAULTS: Make it easy for users - just click and go!
         let keyword = keywordInput.value.trim();
         let minFaves = minFavesInput.value;
@@ -547,10 +564,6 @@ async function startSession() {
         // Auto-fill the inputs so user can see what's being used
         keywordInput.value = keyword;
         minFavesInput.value = minFaves;
-        
-        // Update UI to show starting state
-        startBtn.disabled = true;
-        startBtn.innerHTML = '<div class="loading"></div>Launching...';
         
         // Save settings and set the flag to auto-start the session
         await chrome.storage.local.set({
@@ -794,10 +807,18 @@ function updateUIForWrongSite() {
 
 /**
  * Resets the start button to default state
+ * ENHANCED: Also resets launch-from-settings button
  */
 function resetStartButton() {
     startBtn.disabled = false;
     startBtn.innerHTML = 'Launch Session';
+    
+    // Also reset launch-from-settings button if it exists
+    const launchFromSettingsBtn = document.getElementById('launch-from-settings-btn');
+    if (launchFromSettingsBtn) {
+        launchFromSettingsBtn.disabled = false;
+        launchFromSettingsBtn.innerHTML = '🚀 Launch Session with These Settings';
+    }
 }
 
 /**
