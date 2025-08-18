@@ -125,20 +125,28 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
   const maxRetries = 3;
   let lastError = null;
 
-  // Get user session for authentication with token refresh handling
+  // Get user session for authentication - BACKGROUND SCRIPT COMPATIBLE
   let userSession = null;
   try {
-    // First, try to get current session from Supabase (handles token refresh automatically)
-    const currentUser = await window.BoldTakeAuth.getCurrentUser();
-    if (currentUser) {
-      userSession = { user: currentUser, access_token: currentUser.access_token };
-    } else {
-      // Fallback to local storage if Supabase session unavailable
-      const storage = await chrome.storage.local.get(['boldtake_user_session']);
-      userSession = storage.boldtake_user_session;
+    // Background scripts must use chrome.storage directly (no window/DOM access)
+    const storage = await chrome.storage.local.get(['boldtake_user_session', 'sb-ckeuqgiuetlwowjoecku-auth-token']);
+    userSession = storage.boldtake_user_session;
+    
+    // Also check for Supabase auth token in storage
+    const authToken = storage['sb-ckeuqgiuetlwowjoecku-auth-token'];
+    if (authToken) {
+      try {
+        const tokenData = JSON.parse(authToken);
+        if (tokenData.access_token) {
+          userSession = userSession || {};
+          userSession.access_token = tokenData.access_token;
+        }
+      } catch (parseError) {
+        console.warn('Failed to parse auth token:', parseError);
+      }
     }
     
-    if (!userSession || !userSession.user) {
+    if (!userSession || (!userSession.user && !userSession.access_token)) {
       return { error: 'User not authenticated - please login' };
     }
   } catch (error) {

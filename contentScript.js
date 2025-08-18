@@ -29,9 +29,9 @@ const SECURITY_CONFIG = {
   // Rate limiting - Optimized for enterprise use
   MAX_COMMENTS_PER_DAY: 155,  // Enterprise limit with +5 customer satisfaction buffer
   
-  // Timing constraints (milliseconds) - Optimized for user experience
-  MIN_DELAY_BETWEEN_ACTIONS: 30000,  // 30 seconds minimum (user-friendly)
-  MAX_DELAY_BETWEEN_ACTIONS: 300000, // 5 minutes maximum (much better UX)
+  // Timing constraints (milliseconds) - CONSERVATIVE for safety
+  MIN_DELAY_BETWEEN_ACTIONS: 45000,  // 45 seconds minimum (increased for safety)
+  MAX_DELAY_BETWEEN_ACTIONS: 180000, // 3 minutes maximum (more reasonable)
   
   // Advanced behavioral patterns to mimic human behavior
   HUMAN_VARIANCE_FACTOR: 0.5, // 50% random variance (more natural)
@@ -589,14 +589,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   } else if (message.type === 'BOLDTAKE_STOP') {
     console.log('🛑 Force stopping BoldTake session...');
     
-    // Force stop everything immediately
+    // CRITICAL: Force stop everything immediately
     sessionStats.isRunning = false;
     
-    // Clear any running countdown timers
+    // Clear ALL possible timers and intervals
     if (window.boldtakeCountdownInterval) {
       clearInterval(window.boldtakeCountdownInterval);
       window.boldtakeCountdownInterval = null;
     }
+    if (window.boldtakeTimeout) {
+      clearTimeout(window.boldtakeTimeout);
+      window.boldtakeTimeout = null;
+    }
+    
+    // Close any open modals that might be stuck
+    try {
+      const closeButton = document.querySelector('[data-testid="app-bar-close"]');
+      if (closeButton) closeButton.click();
+    } catch (e) {
+      // Ignore modal close errors
+    }
+    
+    // Update status immediately
+    showStatus('🛑 Session force stopped by user');
+    addDetailedActivity('🛑 Session force stopped by user', 'info');
     
     // Clear any timeouts that might be pending
     if (window.boldtakeTimeout) {
