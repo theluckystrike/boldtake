@@ -3,6 +3,16 @@
  * Secure Architecture: All AI generation routed through Supabase Edge Functions
  */
 
+// PRODUCTION CONFIGURATION - Set to false for development
+const PRODUCTION_MODE = true;
+
+// Production-safe logging
+function debugLog(...args) {
+  if (!PRODUCTION_MODE) {
+    console.log(...args);
+  }
+}
+
 // --- Message Handling ---
 
 // Listen for messages from the content script
@@ -156,7 +166,7 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      console.log(`🔄 Supabase Edge Function attempt ${attempt}/${maxRetries}`);
+      debugLog(`🔄 Supabase Edge Function attempt ${attempt}/${maxRetries}`);
       
       // STABILITY: Add timeout to prevent hanging
       const controller = new AbortController();

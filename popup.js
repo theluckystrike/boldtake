@@ -10,6 +10,16 @@ const debugLog = DEBUG_MODE ? console.log : () => {};
 debugLog('🚀 BoldTake Professional popup loaded');
 
 // DOM Elements
+// Production Configuration
+const PRODUCTION_MODE = true; // Set to false for debugging
+
+// Production-safe logging
+function debugLog(...args) {
+  if (!PRODUCTION_MODE) {
+    console.log(...args);
+  }
+}
+
 let startBtn, stopBtn, sessionStatus, successfulCount, successRate;
 let keywordInput, minFavesInput, liveStatus, activityFeed;
 let settingsBtn, analyticsBtn, roadmapBtn, settingsPanel, analyticsPanel, roadmapPanel;

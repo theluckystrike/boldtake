@@ -504,7 +504,17 @@ function recordFailedAction(reason) {
 hideExtensionTraces();
 randomizeFingerprint();
 
-debugLog('🚀 BoldTake Professional loading...');
+// Production Configuration
+const PRODUCTION_MODE = true; // Set to false for debugging
+
+// Production-safe logging
+function debugLog(...args) {
+  if (!PRODUCTION_MODE) {
+    console.log(...args);
+  }
+}
+
+// BoldTake Professional loading...
 
 let sessionStats = {}; // Will be loaded from storage
 let strategyRotation = {
