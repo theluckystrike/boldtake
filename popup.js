@@ -182,6 +182,37 @@ function showInitializationError(errorMessage) {
     }
 }
 
+/**
+ * A+++ FEATURE: Auto-refresh subscription status when popup opens
+ * This provides seamless experience for users who just paid
+ */
+async function autoRefreshSubscriptionOnOpen() {
+    try {
+        // Only refresh if user is authenticated
+        if (!window.BoldTakeAuthManager) {
+            debugLog('🔍 Auth manager not available, skipping auto-refresh');
+            return;
+        }
+        
+        const authState = window.BoldTakeAuthManager.getAuthState();
+        if (!authState.isAuthenticated) {
+            debugLog('🔍 User not authenticated, skipping auto-refresh');
+            return;
+        }
+        
+        debugLog('🔄 AUTO-REFRESH: Checking subscription status on popup open...');
+        console.log('💡 A+++ FEATURE: Auto-refreshing subscription for seamless post-payment experience');
+        
+        // Force fresh subscription check (ignores cache)
+        await window.BoldTakeAuthManager.refreshSubscriptionStatus();
+        debugLog('✅ Auto-refresh completed successfully');
+        
+    } catch (error) {
+        // Silent failure - don't disrupt user experience
+        debugLog('⚠️ Auto-refresh failed (non-critical):', error);
+    }
+}
+
 // Initialize popup when DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
     debugLog('📱 Initializing BoldTake Professional interface...');
@@ -193,6 +224,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         await window.BoldTakeAuthManager.initializeAuth();
         debugLog('✅ Authentication system initialized');
+        
+        // A+++ FEATURE: Auto-refresh subscription status on popup open
+        // This ensures users see updated status immediately after payment
+        await autoRefreshSubscriptionOnOpen();
+        
     } catch (error) {
         console.error('❌ Failed to initialize authentication:', error);
         showInitializationError(error.message);

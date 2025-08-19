@@ -102,10 +102,19 @@ async function handleLogout() {
             authState.user = null;
             authState.subscriptionStatus = null;
             
-            // Clear stored session
-            await chrome.storage.local.remove(['boldtake_user_session']);
+            // CRITICAL: Clear ALL user data from chrome.storage
+            await chrome.storage.local.remove([
+                'boldtake_user_session',
+                'boldtake_subscription',
+                'sb-ckeuqgiuetlwowjoecku-auth-token',
+                'boldtake_usage_stats',
+                'boldtake_analytics_data',
+                'boldtake_session_stats',
+                'boldtake_strategy_rotation',
+                'boldtake_keyword_rotation'
+            ]);
             
-            console.log('✅ Logout successful');
+            console.log('✅ Logout successful - all user data cleared');
             showLoginUI();
             return { success: true };
         } else {
@@ -307,8 +316,24 @@ function updateUIForSubscriptionStatus() {
             break;
             
         case 'active':
-            // Show full interface without restrictions
+            // CRITICAL: Hide trial banner and show full interface
+            if (trialBanner) {
+                // Smooth transition effect for premium feel
+                trialBanner.style.transition = 'opacity 0.3s ease-out';
+                trialBanner.style.opacity = '0';
+                setTimeout(() => {
+                    trialBanner.style.display = 'none';
+                    trialBanner.style.opacity = '1'; // Reset for future use
+                }, 300);
+            }
             if (mainContent) mainContent.style.display = 'block';
+            
+            // A+++ FEATURE: Show celebration message for upgrade
+            console.log('🎉 SUBSCRIPTION ACTIVATED! Welcome to BoldTake Professional!');
+            console.log('✅ UI TRANSITION: Trial → Active subscription completed');
+            
+            // Optional: Show brief success notification
+            showUpgradeSuccessNotification();
             break;
             
         case 'inactive':
@@ -353,6 +378,55 @@ function updateUIForSubscriptionStatus() {
     }
     
     console.log(`🎨 UI updated for ${status} subscription (${limit} replies/day)`);
+}
+
+/**
+ * Show upgrade success notification (A+++ polish)
+ */
+function showUpgradeSuccessNotification() {
+    try {
+        // Create temporary success message
+        const notification = document.createElement('div');
+        notification.innerHTML = '🎉 Subscription Activated! Welcome to BoldTake Professional!';
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+            z-index: 10000;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.5s ease-out;
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // Animate in
+        setTimeout(() => {
+            notification.style.opacity = '1';
+            notification.style.transform = 'translateX(0)';
+        }, 100);
+        
+        // Remove after 4 seconds
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 500);
+        }, 4000);
+        
+    } catch (error) {
+        // Silent failure - don't disrupt user experience
+        console.log('⚠️ Upgrade notification failed (non-critical):', error);
+    }
 }
 
 /**
