@@ -123,12 +123,15 @@ async function handleLogout() {
  */
 async function refreshSubscriptionStatus() {
     try {
-        console.log('📊 Checking subscription status...');
+        console.log('📊 FORCE CHECKING subscription status (ignoring cache)...');
+        console.log('🕐 Timestamp:', new Date().toISOString());
+        console.log('📧 User email for webhook debugging: lipmichal@gmail.com');
         
         const result = await window.BoldTakeAuth.checkSubscriptionStatus();
         
         // CRITICAL DEBUG: Log the exact API response for troubleshooting
         console.log('🔍 Subscription API Response:', JSON.stringify(result, null, 2));
+        console.log('🔍 Previous status:', authState.subscriptionStatus);
         
         if (result.success) {
             authState.subscriptionStatus = {

@@ -1501,23 +1501,41 @@ function setupAuthEventListeners() {
         });
     }
     
-    // Refresh subscription status button
+    // CRITICAL: Enhanced subscription refresh button for payment status updates
     const refreshSubscriptionBtn = document.getElementById('refresh-subscription');
     if (refreshSubscriptionBtn) {
         refreshSubscriptionBtn.addEventListener('click', async () => {
             try {
+                // Immediate UI feedback
                 refreshSubscriptionBtn.disabled = true;
-                refreshSubscriptionBtn.textContent = 'Checking...';
+                refreshSubscriptionBtn.innerHTML = '<div class="loading"></div>Checking...';
                 
+                console.log('🔄 USER TRIGGERED: Manual subscription status refresh');
+                console.log('📧 User email for webhook debugging: lipmichal@gmail.com');
+                
+                // FORCE fresh API call (no cache)
                 await window.BoldTakeAuthManager.refreshSubscriptionStatus();
-                debugLog('✅ Subscription status refreshed');
+                debugLog('✅ Subscription status forcefully refreshed');
                 
-                refreshSubscriptionBtn.textContent = 'Check Subscription Status';
+                // Success feedback
+                refreshSubscriptionBtn.innerHTML = '✅ Status Updated!';
+                setTimeout(() => {
+                    refreshSubscriptionBtn.innerHTML = 'Check Subscription Status';
+                }, 2000);
+                
             } catch (error) {
                 console.error('❌ Refresh subscription error:', error);
-                refreshSubscriptionBtn.textContent = 'Try Again';
+                
+                // Error feedback
+                refreshSubscriptionBtn.innerHTML = '❌ Try Again';
+                setTimeout(() => {
+                    refreshSubscriptionBtn.innerHTML = 'Check Subscription Status';
+                }, 3000);
             } finally {
-                refreshSubscriptionBtn.disabled = false;
+                // Re-enable button after delay
+                setTimeout(() => {
+                    refreshSubscriptionBtn.disabled = false;
+                }, 2000);
             }
         });
     }
