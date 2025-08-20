@@ -759,6 +759,41 @@ async function startContinuousSession(isResuming = false) {
         break;
       }
       
+      // 🔐 LOGIN STATE MONITOR: Check every 5th attempted tweet
+      if (sessionStats.attempted > 0 && sessionStats.attempted % 5 === 0) {
+        const isLoggedIn = await checkLoginState();
+        if (!isLoggedIn) {
+          console.error('🔐 LOGOUT DETECTED: User session expired during automation');
+          addDetailedActivity('🔐 LOGOUT DETECTED: X.com session expired', 'error');
+          showStatus('🔐 EMERGENCY STOP: You have been logged out of X.com');
+          sessionStats.isRunning = false;
+          chrome.runtime.sendMessage({ type: 'BOLDTAKE_STOP' });
+          
+          // Show clear user notification
+          addDetailedActivity('🚨 Please log back into X.com and restart the session', 'error');
+          break;
+        }
+      }
+      
+      // 🚧 OBSTRUCTION DETECTOR: Check for unexpected popups/modals every 3rd tweet
+      if (sessionStats.attempted > 0 && sessionStats.attempted % 3 === 0) {
+        const obstruction = await detectPageObstructions();
+        if (obstruction) {
+          console.warn(`🚧 OBSTRUCTION DETECTED: ${obstruction.type} - ${obstruction.message}`);
+          addDetailedActivity(`🚧 OBSTRUCTION: ${obstruction.message}`, 'warning');
+          showStatus(`🚧 Session paused: ${obstruction.message}`);
+          
+          // Pause session but don't stop completely
+          sessionStats.isRunning = false;
+          chrome.runtime.sendMessage({ type: 'BOLDTAKE_PAUSE' });
+          
+          // Show user-friendly message with resolution steps
+          addDetailedActivity('⚠️ Session paused: Unexpected popup detected on X.com', 'warning');
+          addDetailedActivity('🔧 Please resolve the popup on the page and click "Resume" to continue', 'info');
+          break;
+        }
+      }
+      
       // CORE PROCESSING: Find and process the next suitable tweet
       // This includes: tweet selection, AI generation, posting, and liking
       await processNextTweet();
@@ -929,27 +964,71 @@ async function processNextTweet() {
   // Mark the tweet as processed so we don't select it again
   tweet.setAttribute('data-boldtake-processed', 'true');
 
+  // 🗑️ DELETED TWEET DETECTOR: Check if tweet still exists and has reply button
   const replyButton = tweet.querySelector('[data-testid="reply"]');
   if (!replyButton) {
-    updateStatus(`❌ Reply button not found on tweet.`);
-    sessionStats.failed++;
-    // CRITICAL FIX: Don't increment processed count for UI failures - these don't use API quota
-    await saveSession();
-    return false;
+    // Check if tweet disappeared (deleted) vs just missing button
+    const tweetStillExists = document.body.contains(tweet);
+    const tweetText = tweet.textContent || '';
+    
+    if (!tweetStillExists || tweetText.includes('This Tweet was deleted') || tweetText.includes('Tweet unavailable')) {
+      console.warn('⚠️ DELETED TWEET: Tweet no longer available, may have been deleted. Skipping.');
+      addDetailedActivity('⚠️ Tweet no longer available (possibly deleted) - skipping', 'warning');
+      updateStatus(`⚠️ Tweet deleted/unavailable - skipping to next tweet`);
+      // Don't count as failure since this isn't our fault
+      await saveSession();
+      return 'skip'; // Use skip logic instead of failure
+    } else {
+      console.error('❌ Reply button not found on existing tweet (UI issue)');
+      addDetailedActivity('❌ Reply button missing on existing tweet', 'error');
+      updateStatus(`❌ Reply button not found on tweet.`);
+      sessionStats.failed++;
+      await saveSession();
+      return false;
+    }
   }
   
-  console.log('🖱️ Clicking reply button to open modal...');
-  addDetailedActivity('🖱️ Clicking reply button to open modal', 'info');
-  
-  // STEALTH MODE: Add slight click coordinate variance
-  const clickVariance = securityState.clickVariance || { x: 0, y: 0 };
-  const rect = replyButton.getBoundingClientRect();
-  const clickEvent = new MouseEvent('click', {
-    clientX: rect.left + rect.width/2 + clickVariance.x,
-    clientY: rect.top + rect.height/2 + clickVariance.y,
-    bubbles: true
-  });
-  replyButton.dispatchEvent(clickEvent);
+  // 🗑️ ADDITIONAL VALIDATION: Check if tweet elements are still valid before clicking
+  try {
+    // Verify tweet is still in DOM and accessible
+    if (!document.body.contains(tweet) || !document.body.contains(replyButton)) {
+      console.warn('⚠️ DELETED TWEET: Tweet elements removed from DOM during processing. Skipping.');
+      addDetailedActivity('⚠️ Tweet removed from DOM during processing - skipping', 'warning');
+      updateStatus(`⚠️ Tweet disappeared during processing - skipping`);
+      await saveSession();
+      return 'skip';
+    }
+    
+    // Verify reply button is still clickable
+    const buttonRect = replyButton.getBoundingClientRect();
+    if (buttonRect.width === 0 || buttonRect.height === 0) {
+      console.warn('⚠️ DELETED TWEET: Reply button no longer visible. Tweet may have been deleted. Skipping.');
+      addDetailedActivity('⚠️ Reply button no longer visible - tweet likely deleted', 'warning');
+      updateStatus(`⚠️ Tweet became unavailable - skipping`);
+      await saveSession();
+      return 'skip';
+    }
+    
+    console.log('🖱️ Clicking reply button to open modal...');
+    addDetailedActivity('🖱️ Clicking reply button to open modal', 'info');
+    
+    // STEALTH MODE: Add slight click coordinate variance
+    const clickVariance = securityState.clickVariance || { x: 0, y: 0 };
+    const rect = replyButton.getBoundingClientRect();
+    const clickEvent = new MouseEvent('click', {
+      clientX: rect.left + rect.width/2 + clickVariance.x,
+      clientY: rect.top + rect.height/2 + clickVariance.y,
+      bubbles: true
+    });
+    replyButton.dispatchEvent(clickEvent);
+    
+  } catch (error) {
+    console.warn(`⚠️ DELETED TWEET: Error clicking reply button - tweet likely deleted: ${error.message}`);
+    addDetailedActivity(`⚠️ Tweet interaction failed - likely deleted: ${error.message}`, 'warning');
+    updateStatus(`⚠️ Tweet became unavailable during interaction - skipping`);
+    await saveSession();
+    return 'skip';
+  }
   
   await sleep(randomDelay(2000, 4000)); // Slightly longer delay for realism
 
@@ -1026,8 +1105,11 @@ async function processNextTweet() {
  * Finds the reply text area using multiple, robust selectors with retries.
  * @returns {Promise<HTMLElement|null>} The found text area element or null.
  */
-async function findReplyTextArea() {
-  console.log('🔍 Actively searching for reply text area...');
+async function findReplyTextArea(timeoutMs = 18000) {
+  console.log('🔍 STUCK MODAL DETECTOR: Searching for reply text area...');
+  addDetailedActivity('🔍 Searching for reply text area with timeout protection', 'info');
+  
+  const startTime = Date.now();
   const selectors = [
     '[data-testid="tweetTextarea_0"]', // Primary selector
     'div.public-DraftEditor-content[role="textbox"]', // Stable fallback
@@ -1037,92 +1119,457 @@ async function findReplyTextArea() {
     '.public-DraftEditor-content' // Class-based fallback
   ];
   
-  // Performance optimization: cache successful selector
-  const cachedSelector = sessionStorage.getItem('boldtake_textarea_selector');
-  if (cachedSelector) {
-    const textarea = document.querySelector(cachedSelector);
-    if (textarea && textarea.offsetParent !== null) {
-      console.log(`✅ Found text area with cached selector: ${cachedSelector}`);
-  addDetailedActivity('✅ Found text area with cached selector', 'success');
-      return textarea;
-    } else {
-      // Clear invalid cache
-      sessionStorage.removeItem('boldtake_textarea_selector');
-    }
-  }
-  
-  // More efficient approach: try primary selector first, then fallbacks with longer delays
-  const primarySelector = '[data-testid="tweetTextarea_0"]';
-  
-  // Quick check with primary selector (most common case)
-  for (let i = 0; i < 10; i++) {
-    const textarea = document.querySelector(primarySelector);
-    if (textarea && textarea.offsetParent !== null && 
-        textarea.getBoundingClientRect().width > 0 &&
-        !textarea.disabled) {
-      console.log(`✅ Found text area with primary selector`);
-      addDetailedActivity('✅ Found text area quickly', 'success');
-      sessionStorage.setItem('boldtake_textarea_selector', primarySelector);
-      return textarea;
-    }
+  // 🔧 TIMEOUT PROTECTION: Wrap entire search in timeout
+  return new Promise(async (resolve) => {
+    const timeoutId = setTimeout(async () => {
+      console.warn('🚨 STUCK MODAL DETECTED: Text area not found within timeout');
+      addDetailedActivity('🚨 STUCK MODAL: Text area search timed out - attempting escape', 'error');
+      
+      // 🚨 GRACEFUL ESCAPE SEQUENCE
+      await attemptModalEscape();
+      resolve(null);
+    }, timeoutMs);
     
-    // Try modal focus trigger early
-    if (i === 2) {
-      try {
-        const modal = document.querySelector('[data-testid="tweetTextarea_0"]')?.closest('[role="dialog"]');
-        if (modal) {
-          modal.click();
-          await sleep(300);
+    try {
+      // Performance optimization: cache successful selector
+      const cachedSelector = sessionStorage.getItem('boldtake_textarea_selector');
+      if (cachedSelector) {
+        const textarea = document.querySelector(cachedSelector);
+        if (textarea && isTextAreaValid(textarea)) {
+          console.log(`✅ Found text area with cached selector: ${cachedSelector}`);
+          addDetailedActivity('✅ Found text area with cached selector', 'success');
+          clearTimeout(timeoutId);
+          resolve(textarea);
+          return;
+        } else {
+          sessionStorage.removeItem('boldtake_textarea_selector');
         }
-      } catch (e) {
-        // Ignore click errors
       }
-    }
-    
-    await sleep(300); // Shorter delays for primary selector
-  }
-  
-  // ENHANCED FALLBACK: More aggressive approach with longer timeouts
-  for (let i = 0; i < 8; i++) { // Increased attempts from 5 to 8
-    for (const selector of selectors.slice(1)) { // Skip primary selector
-      const textarea = document.querySelector(selector);
-      if (textarea && textarea.offsetParent !== null && 
-          textarea.getBoundingClientRect().width > 0 &&
-          !textarea.disabled &&
-          getComputedStyle(textarea).display !== 'none') {
-        console.log(`✅ Found text area with fallback selector: ${selector}`);
-        addDetailedActivity('✅ Found text area with fallback', 'success');
-        sessionStorage.setItem('boldtake_textarea_selector', selector);
-        return textarea;
-      }
-    }
-    
-    // AGGRESSIVE RECOVERY: Try to trigger modal focus
-    if (i === 3 || i === 6) {
-      try {
-        // Click somewhere in the modal to ensure it's focused
-        const modal = document.querySelector('[role="dialog"]');
-        if (modal) {
-          modal.click();
-          await sleep(500);
+      
+      // 🔍 PROGRESSIVE SEARCH: Try primary selector first with increasing delays
+      const primarySelector = '[data-testid="tweetTextarea_0"]';
+      
+      // Quick attempts (0-3 seconds)
+      for (let i = 0; i < 10 && (Date.now() - startTime) < 3000; i++) {
+        const textarea = document.querySelector(primarySelector);
+        if (textarea && isTextAreaValid(textarea)) {
+          console.log(`✅ Found text area with primary selector (attempt ${i+1})`);
+          addDetailedActivity('✅ Found text area quickly', 'success');
+          sessionStorage.setItem('boldtake_textarea_selector', primarySelector);
+          clearTimeout(timeoutId);
+          resolve(textarea);
+          return;
         }
         
-        // Try clicking the compose area
-        const composeArea = document.querySelector('[data-testid="toolBar"]');
-        if (composeArea) {
-          composeArea.click();
-          await sleep(500);
+        // Modal focus trigger on 3rd attempt
+        if (i === 2) {
+          await attemptModalFocus();
         }
-      } catch (e) {
-        // Ignore click errors
+        
+        await sleep(300);
+      }
+      
+      // 🔧 FALLBACK SEARCH: Try all selectors with recovery attempts (3-15 seconds)
+      let recoveryAttempts = 0;
+      while ((Date.now() - startTime) < (timeoutMs - 3000)) { // Leave 3s for escape
+        for (const selector of selectors) {
+          if ((Date.now() - startTime) >= (timeoutMs - 3000)) break;
+          
+          const textarea = document.querySelector(selector);
+          if (textarea && isTextAreaValid(textarea)) {
+            console.log(`✅ Found text area with selector: ${selector}`);
+            addDetailedActivity('✅ Found text area with fallback selector', 'success');
+            sessionStorage.setItem('boldtake_textarea_selector', selector);
+            clearTimeout(timeoutId);
+            resolve(textarea);
+            return;
+          }
+        }
+        
+        // Recovery attempts every 3 seconds
+        if (recoveryAttempts < 3 && (Date.now() - startTime) > (recoveryAttempts + 1) * 3000) {
+          recoveryAttempts++;
+          console.log(`🔧 Recovery attempt ${recoveryAttempts}/3: Modal focus & refresh`);
+          addDetailedActivity(`🔧 Modal recovery attempt ${recoveryAttempts}/3`, 'warning');
+          await attemptModalFocus();
+        }
+        
+        await sleep(500);
+      }
+      
+      // If we reach here, timeout will trigger
+      
+    } catch (error) {
+      console.error('🚨 Error during text area search:', error);
+      addDetailedActivity(`🚨 Text area search error: ${error.message}`, 'error');
+      clearTimeout(timeoutId);
+      await attemptModalEscape();
+      resolve(null);
+    }
+  });
+}
+
+/**
+ * 🔧 HELPER: Validate if text area is actually usable
+ */
+function isTextAreaValid(textarea) {
+  return textarea && 
+         textarea.offsetParent !== null && 
+         textarea.getBoundingClientRect().width > 0 &&
+         !textarea.disabled &&
+         getComputedStyle(textarea).display !== 'none';
+}
+
+/**
+ * 🔧 HELPER: Attempt to focus modal and trigger text area
+ */
+async function attemptModalFocus() {
+  try {
+    // Method 1: Focus modal dialog
+    const modal = document.querySelector('[role="dialog"]');
+    if (modal) {
+      modal.click();
+      await sleep(200);
+    }
+    
+    // Method 2: Focus any existing text area
+    const existingTextArea = document.querySelector('[data-testid="tweetTextarea_0"]');
+    if (existingTextArea) {
+      existingTextArea.focus();
+      await sleep(200);
+    }
+    
+    // Method 3: Press Tab to potentially activate text area
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true }));
+    await sleep(200);
+    
+  } catch (error) {
+    console.log('Modal focus attempt failed (non-critical):', error.message);
+  }
+}
+
+/**
+ * 🚨 GRACEFUL ESCAPE: Close stuck modal and skip tweet
+ */
+async function attemptModalEscape() {
+  console.log('🚨 EXECUTING GRACEFUL ESCAPE SEQUENCE...');
+  addDetailedActivity('🚨 Executing modal escape sequence', 'warning');
+  
+  try {
+    // Method 1: Try close button
+    const closeButton = document.querySelector('[data-testid="app-bar-close"], [aria-label="Close"]');
+    if (closeButton) {
+      console.log('🔧 Escape Method 1: Clicking close button');
+      closeButton.click();
+      await sleep(1000);
+      return;
+    }
+    
+    // Method 2: ESC key simulation
+    console.log('🔧 Escape Method 2: Sending ESC key');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    document.dispatchEvent(new KeyboardEvent('keyup', { key: 'Escape', bubbles: true }));
+    await sleep(1000);
+    
+    // Method 3: Click outside modal (backdrop)
+    const backdrop = document.querySelector('[data-testid="mask"]');
+    if (backdrop) {
+      console.log('🔧 Escape Method 3: Clicking backdrop');
+      backdrop.click();
+      await sleep(1000);
+    }
+    
+    // Method 4: Focus body and ESC again
+    document.body.focus();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await sleep(500);
+    
+    addDetailedActivity('✅ Modal escape sequence completed', 'success');
+    
+  } catch (error) {
+    console.error('❌ Modal escape failed:', error);
+    addDetailedActivity(`❌ Modal escape failed: ${error.message}`, 'error');
+  }
+}
+
+/**
+ * 🔐 LOGIN STATE MONITOR: Check if user is still logged into X.com
+ * @returns {boolean} True if logged in, false if logged out
+ */
+async function checkLoginState() {
+  try {
+    console.log('🔐 Checking login state...');
+    
+    // Method 1: Check for main "Post" button (primary indicator)
+    const postButton = document.querySelector('[data-testid="SideNav_NewTweet_Button"], [data-testid="tweetButtonInline"]');
+    if (postButton) {
+      return true; // User is logged in
+    }
+    
+    // Method 2: Check for user avatar/profile picture
+    const userAvatar = document.querySelector('[data-testid="AppTabBar_Profile_Link"], [data-testid="DashButton_ProfileIcon_Link"]');
+    if (userAvatar) {
+      return true; // User is logged in
+    }
+    
+    // Method 3: Check for navigation elements that require login
+    const homeNav = document.querySelector('[data-testid="AppTabBar_Home_Link"]');
+    const notificationsNav = document.querySelector('[data-testid="AppTabBar_Notifications_Link"]');
+    if (homeNav && notificationsNav) {
+      return true; // User is logged in
+    }
+    
+    // Method 4: Check for compose tweet area
+    const composeArea = document.querySelector('[data-testid="toolBar"], [role="textbox"][placeholder*="happening"], [placeholder*="What is happening"]');
+    if (composeArea) {
+      return true; // User is logged in
+    }
+    
+    // Method 5: Check URL patterns that indicate logged-in state
+    const currentUrl = window.location.href;
+    if (currentUrl.includes('/home') || currentUrl.includes('/notifications') || currentUrl.includes('/messages')) {
+      // These pages require login, but double-check with DOM elements
+      const loggedInElements = document.querySelectorAll('[data-testid*="tweet"], [data-testid*="SideNav"]');
+      if (loggedInElements.length > 0) {
+        return true;
       }
     }
     
-    await sleep(750); // Increased delays for better recovery
+    // Method 6: Check for logout indicators
+    const loginButton = document.querySelector('[data-testid="loginButton"], [href="/login"]');
+    const signUpButton = document.querySelector('[data-testid="signupButton"], [href="/signup"]');
+    if (loginButton || signUpButton) {
+      console.warn('🔐 Login/signup buttons detected - user appears to be logged out');
+      return false; // User is logged out
+    }
+    
+    // Method 7: Check for "Sign in" text or login prompts
+    const bodyText = document.body.textContent || '';
+    const logoutIndicators = [
+      'Sign in to X',
+      'Log in to Twitter', 
+      'Create your account',
+      'Join X today',
+      'Sign up now'
+    ];
+    
+    for (const indicator of logoutIndicators) {
+      if (bodyText.includes(indicator)) {
+        console.warn(`🔐 Logout indicator found: "${indicator}"`);
+        return false; // User is logged out
+      }
+    }
+    
+    // If we can't determine state clearly, assume logged in but log warning
+    console.warn('🔐 Login state unclear - assuming logged in (may need manual verification)');
+    return true;
+    
+  } catch (error) {
+    console.error('🔐 Error checking login state:', error);
+    // If error checking, assume logged in to avoid false positives
+    return true;
   }
-  
-  console.error('❌ Could not find a visible tweet text area after 10 seconds.');
-  return null;
+}
+
+/**
+ * 🚧 OBSTRUCTION DETECTOR: Check for unexpected popups, modals, and overlays
+ * @returns {Object|null} Obstruction details or null if none detected
+ */
+async function detectPageObstructions() {
+  try {
+    console.log('🚧 Scanning for page obstructions...');
+    
+    // 1. CAPTCHA DETECTION
+    const captchaIndicators = [
+      'div[data-testid*="captcha"]',
+      'div[class*="captcha"]', 
+      'iframe[src*="captcha"]',
+      'div[class*="challenge"]',
+      '[aria-label*="captcha"]',
+      '[aria-label*="verification"]'
+    ];
+    
+    for (const selector of captchaIndicators) {
+      const element = document.querySelector(selector);
+      if (element && element.offsetParent !== null) {
+        return {
+          type: 'CAPTCHA',
+          message: 'CAPTCHA verification required',
+          element: element
+        };
+      }
+    }
+    
+    // 2. RATE LIMIT WARNINGS
+    const rateLimitSelectors = [
+      'div[data-testid*="error"]',
+      'div[data-testid*="banner"]',
+      'div[role="alert"]'
+    ];
+    
+    for (const selector of rateLimitSelectors) {
+      const elements = document.querySelectorAll(selector);
+      for (const element of elements) {
+        const text = element.textContent || '';
+        const rateLimitKeywords = [
+          'rate limit',
+          'too many requests',
+          'temporarily restricted',
+          'account limited',
+          'suspended',
+          'try again later'
+        ];
+        
+        for (const keyword of rateLimitKeywords) {
+          if (text.toLowerCase().includes(keyword)) {
+            return {
+              type: 'RATE_LIMIT',
+              message: `Rate limit warning detected: ${text.substring(0, 100)}`,
+              element: element
+            };
+          }
+        }
+      }
+    }
+    
+    // 3. UNEXPECTED MODAL DETECTION
+    const modalSelectors = [
+      'div[role="dialog"]',
+      'div[data-testid*="modal"]',
+      'div[class*="modal"]',
+      'div[aria-modal="true"]'
+    ];
+    
+    for (const selector of modalSelectors) {
+      const modals = document.querySelectorAll(selector);
+      for (const modal of modals) {
+        if (modal.offsetParent !== null) {
+          const modalText = modal.textContent || '';
+          
+          // Skip known good modals (reply modal, etc.)
+          const knownGoodModals = [
+            'tweetTextarea',
+            'reply',
+            'post your reply',
+            'what is happening'
+          ];
+          
+          const isKnownGood = knownGoodModals.some(keyword => 
+            modalText.toLowerCase().includes(keyword)
+          );
+          
+          if (!isKnownGood && modalText.length > 20) {
+            // Check for problematic modal types
+            const problematicKeywords = [
+              'verify you',
+              'confirm your',
+              'review our',
+              'terms of service',
+              'privacy policy',
+              'new features',
+              'tour',
+              'welcome to',
+              'getting started',
+              'phone number',
+              'email verification'
+            ];
+            
+            for (const keyword of problematicKeywords) {
+              if (modalText.toLowerCase().includes(keyword)) {
+                return {
+                  type: 'UNEXPECTED_MODAL',
+                  message: `Unexpected modal detected: ${modalText.substring(0, 50)}...`,
+                  element: modal
+                };
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // 4. OVERLAY DETECTION (full screen overlays)
+    const overlaySelectors = [
+      'div[style*="position: fixed"]',
+      'div[style*="z-index"]',
+      'div[data-testid*="overlay"]',
+      'div[class*="overlay"]'
+    ];
+    
+    for (const selector of overlaySelectors) {
+      const overlays = document.querySelectorAll(selector);
+      for (const overlay of overlays) {
+        if (overlay.offsetParent !== null) {
+          const rect = overlay.getBoundingClientRect();
+          const isFullScreen = rect.width > window.innerWidth * 0.8 && rect.height > window.innerHeight * 0.8;
+          
+          if (isFullScreen) {
+            const overlayText = overlay.textContent || '';
+            
+            // Skip known good overlays
+            if (!overlayText.toLowerCase().includes('tweet') && 
+                !overlayText.toLowerCase().includes('reply') &&
+                overlayText.length > 10) {
+              return {
+                type: 'FULLSCREEN_OVERLAY',
+                message: `Full-screen overlay detected: ${overlayText.substring(0, 50)}...`,
+                element: overlay
+              };
+            }
+          }
+        }
+      }
+    }
+    
+    // 5. PAGE ERROR DETECTION (different from X.com errors)
+    const pageText = document.body.textContent || '';
+    const criticalErrors = [
+      'Something went wrong',
+      'Page not found',
+      '404',
+      '500',
+      'Server error',
+      'Maintenance',
+      'Temporarily unavailable'
+    ];
+    
+    for (const error of criticalErrors) {
+      if (pageText.includes(error)) {
+        // But skip if it's the normal X.com error we handle elsewhere
+        if (!pageText.includes("let's give it another shot")) {
+          return {
+            type: 'PAGE_ERROR',
+            message: `Page error detected: ${error}`,
+            element: document.body
+          };
+        }
+      }
+    }
+    
+    // 6. BLOCKED CONTENT WARNINGS
+    const blockedKeywords = [
+      'This content is not available',
+      'Tweet unavailable',
+      'Account suspended',
+      'Profile unavailable'
+    ];
+    
+    for (const keyword of blockedKeywords) {
+      if (pageText.includes(keyword)) {
+        return {
+          type: 'BLOCKED_CONTENT',
+          message: `Content blocked: ${keyword}`,
+          element: document.body
+        };
+      }
+    }
+    
+    return null; // No obstructions detected
+    
+  } catch (error) {
+    console.error('🚧 Error detecting obstructions:', error);
+    return null; // Don't trigger false positives on errors
+  }
 }
 
 /**
