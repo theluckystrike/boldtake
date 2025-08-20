@@ -1999,16 +1999,67 @@ async function generateAnalyticsCSV() {
 }
 
 /**
- * Handle X.com page errors by refreshing
+ * Handle X.com page errors by returning to search page with filters
  */
 async function handleXcomPageError() {
-  // Save current URL for recovery
-  const currentUrl = window.location.href;
-  addDetailedActivity('🔄 X.com page error - refreshing in 3 seconds', 'warning');
+  addDetailedActivity('🔄 X.com page error detected - recovering to search page', 'warning');
   
-  // Wait a bit then refresh
+  // 🔧 CRITICAL FIX: Return to search page, not current error page
+  
+  // Priority 1: Use saved search URL from session if available
+  let recoveryUrl = null;
+  
+  // Check if we have a saved search URL from network monitor
+  if (networkMonitor.lastActiveUrl && 
+      networkMonitor.lastActiveUrl.includes('search?q=') && 
+      !networkMonitor.lastActiveUrl.includes('explore')) {
+    recoveryUrl = networkMonitor.lastActiveUrl;
+    addDetailedActivity('📍 Using saved search URL with filters', 'info');
+  }
+  
+  // Priority 2: Try to extract keyword from current URL or session
+  if (!recoveryUrl) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentQuery = urlParams.get('q');
+    
+    if (currentQuery && !window.location.href.includes('explore')) {
+      recoveryUrl = window.location.href;
+      addDetailedActivity('📍 Using current search URL', 'info');
+    }
+  }
+  
+  // Priority 3: Build new search URL from stored keyword rotation
+  if (!recoveryUrl && keywordRotation.keywords && keywordRotation.keywords.length > 0) {
+    const currentKeyword = keywordRotation.keywords[keywordRotation.currentIndex] || keywordRotation.keywords[0];
+    const baseUrl = 'https://x.com/search?q=';
+    
+    // Get user's min_faves setting from storage or use default
+    let minFaves = '500'; // Default
+    try {
+      const stored = await new Promise(resolve => {
+        chrome.storage.local.get(['boldtake_min_faves'], resolve);
+      });
+      minFaves = stored.boldtake_min_faves || '500';
+    } catch (e) {
+      console.log('Using default min_faves');
+    }
+    
+    recoveryUrl = `${baseUrl}${encodeURIComponent(currentKeyword)}%20min_faves%3A${minFaves}%20lang%3Aen&src=typed_query&f=live`;
+    addDetailedActivity(`📍 Building search URL for keyword: "${currentKeyword}"`, 'info');
+  }
+  
+  // Priority 4: Fallback to X.com home if no search context
+  if (!recoveryUrl) {
+    recoveryUrl = 'https://x.com/home';
+    addDetailedActivity('📍 No search context found - going to home', 'warning');
+  }
+  
+  // Wait before navigation to avoid rapid redirects
+  addDetailedActivity(`🔄 Navigating to recovery URL in 3 seconds...`, 'info');
   await new Promise(resolve => setTimeout(resolve, 3000));
-  window.location.href = currentUrl;
+  
+  console.log(`🔧 ERROR RECOVERY: Navigating from ${window.location.href} to ${recoveryUrl}`);
+  window.location.href = recoveryUrl;
 }
 
 /**
@@ -2055,12 +2106,47 @@ async function attemptSessionRecovery() {
       return;
     }
     
-    // Use the saved URL from when session was active, or current URL as fallback
-    const recoveryUrl = networkMonitor.lastActiveUrl || window.location.href;
-    addDetailedActivity('🔄 Returning to saved search page...', 'info');
+    // 🔧 CRITICAL FIX: Smart URL recovery with keyword preservation
+    let recoveryUrl = null;
+    
+    // Priority 1: Use saved search URL if it's valid
+    if (networkMonitor.lastActiveUrl && 
+        networkMonitor.lastActiveUrl.includes('search?q=') && 
+        !networkMonitor.lastActiveUrl.includes('explore')) {
+      recoveryUrl = networkMonitor.lastActiveUrl;
+      addDetailedActivity('📍 Using saved search URL with filters', 'info');
+    }
+    
+    // Priority 2: Build search URL from keyword rotation if available
+    else if (keywordRotation.keywords && keywordRotation.keywords.length > 0) {
+      const currentKeyword = keywordRotation.keywords[keywordRotation.currentIndex] || keywordRotation.keywords[0];
+      const baseUrl = 'https://x.com/search?q=';
+      
+      // Get user's min_faves setting
+      let minFaves = '500';
+      try {
+        const stored = await new Promise(resolve => {
+          chrome.storage.local.get(['boldtake_min_faves'], resolve);
+        });
+        minFaves = stored.boldtake_min_faves || '500';
+      } catch (e) {
+        console.log('Using default min_faves for recovery');
+      }
+      
+      recoveryUrl = `${baseUrl}${encodeURIComponent(currentKeyword)}%20min_faves%3A${minFaves}%20lang%3Aen&src=typed_query&f=live`;
+      addDetailedActivity(`📍 Building recovery URL for keyword: "${currentKeyword}"`, 'info');
+    }
+    
+    // Priority 3: Fallback to home if no search context
+    else {
+      recoveryUrl = 'https://x.com/home';
+      addDetailedActivity('📍 No search context - returning to home', 'warning');
+    }
+    
+    addDetailedActivity('🔄 Returning to search page...', 'info');
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Navigate back to the exact search page with filters preserved
+    console.log(`🔧 SESSION RECOVERY: Navigating to ${recoveryUrl}`);
     window.location.href = recoveryUrl;
     
   } catch (error) {
