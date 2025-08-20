@@ -25,6 +25,53 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   try {
+    // 🔥 MINIMAL POPUP HANDLERS - A+ RELIABILITY
+    if (message.type === 'START_SESSION') {
+      debugLog('🚀 START_SESSION received from popup');
+      
+      // Save settings
+      if (message.keyword) {
+        chrome.storage.local.set({ 
+          boldtake_keyword: message.keyword,
+          boldtake_min_faves: message.minFaves || '500'
+        });
+      }
+      
+      // Send to content script
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            type: 'BOLDTAKE_START',
+            keyword: message.keyword,
+            minFaves: message.minFaves || '500'
+          });
+        }
+      });
+      
+      sendResponse({ success: true });
+      return true;
+    }
+    
+    if (message.type === 'STOP_SESSION') {
+      debugLog('🛑 STOP_SESSION received from popup');
+      
+      // Send to content script
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs[0]) {
+          chrome.tabs.sendMessage(tabs[0].id, { type: 'BOLDTAKE_STOP' });
+        }
+      });
+      
+      sendResponse({ success: true });
+      return true;
+    }
+    
+    if (message.type === 'GET_SESSION_STATE') {
+      // Return basic state - for now assume not running
+      sendResponse({ isRunning: false });
+      return true;
+    }
+    
     if (message.type === 'GENERATE_REPLY') {
       // STABILITY: Validate required fields
       if (!message.prompt || typeof message.prompt !== 'string') {
