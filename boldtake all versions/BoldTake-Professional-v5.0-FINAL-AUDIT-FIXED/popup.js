@@ -214,28 +214,38 @@ async function autoRefreshSubscriptionOnOpen() {
 }
 
 // Initialize popup when DOM is loaded
-document.addEventListener('DOMContentLoaded', async () => {
-    debugLog('📱 Initializing BoldTake Professional interface...');
+document.addEventListener('DOMContentLoaded', () => {
+    debugLog('📱 BoldTake Professional - INSTANT LOADING...');
     
-    // PHASE 1: Initialize Authentication System with proper loading checks
-    try {
-        // CRITICAL FIX: Wait for all dependencies to load
-        await waitForDependencies();
-        
-        await window.BoldTakeAuthManager.initializeAuth();
-        debugLog('✅ Authentication system initialized');
-        
-        // A+++ FEATURE: Auto-refresh subscription status on popup open
-        // This ensures users see updated status immediately after payment
-        await autoRefreshSubscriptionOnOpen();
-        
-    } catch (error) {
-        console.error('❌ Failed to initialize authentication:', error);
-        showInitializationError(error.message);
-        // Continue with limited functionality
-    }
+    // 🚀 INSTANT LOAD: Show UI immediately, then enhance progressively
+    showInstantLoadingState();
     
-    // Get DOM elements
+    // 🔄 PROGRESSIVE ENHANCEMENT: Initialize heavy features asynchronously
+    initializeHeavyFeaturesAsync();
+    
+    // Complete settings initialization
+    completeSettingsInitialization();
+    
+    // Finalize initialization
+    finalizeInitialization();
+    
+    // Set up periodic updates
+    setInterval(loadSessionState, 2000);
+    setInterval(loadAnalyticsData, 5000);
+    
+    // Setup activity controls
+    setupActivityControls();
+    
+    debugLog('✅ BoldTake Professional popup ready!');
+});
+
+/**
+ * 🚀 INSTANT LOADING: Show functional UI immediately (0ms delay)
+ */
+function showInstantLoadingState() {
+    debugLog('⚡ INSTANT: Getting DOM elements...');
+    
+    // Get DOM elements (fast, synchronous operations)
     startBtn = document.getElementById('start-button');
     stopBtn = document.getElementById('stop-button');
     sessionStatus = document.getElementById('sessionStatus');
@@ -269,17 +279,272 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Settings elements
     dailyTargetInput = document.getElementById('daily-target-input');
     
-    // Prompt Library elements
-    const promptSelects = {
-        'Engagement Indie Voice': document.getElementById('indie-voice-select'),
-        'Engagement Spark Reply': document.getElementById('spark-reply-select'),
-        'Engagement The Counter': document.getElementById('counter-select'),
-        'The Riff': document.getElementById('riff-select'),
-        'The Viral Shot': document.getElementById('viral-shot-select'),
-        'The Shout-Out': document.getElementById('shout-out-select')
-    };
-    const resetPromptsBtn = document.getElementById('reset-prompts-btn');
+    debugLog('⚡ INSTANT: DOM elements cached');
     
+    // 🚀 INSTANT UI: Show basic functionality immediately
+    setupBasicEventListeners();
+    showBasicUI();
+    loadCachedSettings();
+    
+    debugLog('✅ INSTANT LOAD COMPLETE - UI is functional!');
+}
+
+/**
+ * 🔄 PROGRESSIVE ENHANCEMENT: Initialize heavy features asynchronously
+ */
+async function initializeHeavyFeaturesAsync() {
+    debugLog('🔄 ASYNC: Starting heavy initialization...');
+    
+    try {
+        // Show loading indicator for authentication
+        showAuthLoadingState();
+        
+        // PHASE 1: Initialize Authentication System (heavy)
+        await initializeAuthenticationSystem();
+        
+        // PHASE 2: Initialize advanced features (heavy)
+        await initializeAdvancedFeatures();
+        
+        // PHASE 3: Final setup (light)
+        finalizeInitialization();
+        
+        debugLog('✅ ASYNC: All features initialized');
+        
+    } catch (error) {
+        console.error('❌ Heavy initialization failed:', error);
+        showFallbackMode(error.message);
+    }
+}
+
+/**
+ * 🚀 INSTANT: Setup basic event listeners (fast operations only)
+ */
+function setupBasicEventListeners() {
+    debugLog('⚡ Setting up basic event listeners...');
+    
+    // Critical buttons - must work immediately
+    if (startBtn) {
+        startBtn.addEventListener('click', startSession);
+    }
+    
+    if (stopBtn) {
+        stopBtn.addEventListener('click', stopSession);
+    }
+    
+    // Tab navigation
+    const tabs = ['settings-tab', 'analytics-tab', 'roadmap-tab'];
+    tabs.forEach(tabId => {
+        const tab = document.getElementById(tabId);
+        if (tab) {
+            tab.addEventListener('click', () => switchTab(tabId.replace('-tab', '')));
+        }
+    });
+    
+    debugLog('⚡ Basic event listeners ready');
+}
+
+/**
+ * 🔄 Switch between tabs (Settings, Analytics, Roadmap)
+ */
+function switchTab(tabName) {
+    debugLog(`🔄 Switching to ${tabName} tab`);
+    
+    // Hide all panels
+    const panels = ['settings-panel', 'analytics-panel', 'roadmap-panel'];
+    panels.forEach(panelId => {
+        const panel = document.getElementById(panelId);
+        if (panel) {
+            panel.classList.add('hidden');
+        }
+    });
+    
+    // Remove active class from all tabs
+    const tabs = ['settings-tab', 'analytics-tab', 'roadmap-tab'];
+    tabs.forEach(tabId => {
+        const tab = document.getElementById(tabId);
+        if (tab) {
+            tab.classList.remove('active');
+        }
+    });
+    
+    // Show selected panel and activate tab
+    const targetPanel = document.getElementById(`${tabName}-panel`);
+    const targetTab = document.getElementById(`${tabName}-tab`);
+    
+    if (targetPanel) {
+        targetPanel.classList.remove('hidden');
+    }
+    
+    if (targetTab) {
+        targetTab.classList.add('active');
+    }
+    
+    debugLog(`✅ Switched to ${tabName} tab`);
+}
+
+/**
+ * 🚀 INSTANT: Show basic UI elements (no network calls)
+ */
+function showBasicUI() {
+    debugLog('⚡ Setting up basic UI...');
+    
+    // Show default status
+    if (sessionStatus) {
+        sessionStatus.textContent = 'Ready to start';
+        sessionStatus.className = 'status-ready';
+    }
+    
+    // Enable basic input fields
+    if (keywordInput) keywordInput.disabled = false;
+    if (minFavesInput) minFavesInput.disabled = false;
+    
+    // Show authentication loading placeholder
+    showAuthLoadingState();
+    
+    debugLog('⚡ Basic UI ready');
+}
+
+/**
+ * 🚀 INSTANT: Load cached settings (synchronous, no API calls)
+ */
+function loadCachedSettings() {
+    debugLog('⚡ Loading cached settings...');
+    
+    // Get basic settings from local storage (fast)
+    chrome.storage.local.get([
+        'boldtake_keyword', 
+        'boldtake_min_faves', 
+        'boldtake_language', 
+        'boldtake_tone'
+    ], (result) => {
+        // Apply basic settings immediately
+        if (keywordInput && result.boldtake_keyword) {
+            keywordInput.value = result.boldtake_keyword;
+        }
+        
+        if (minFavesInput && result.boldtake_min_faves) {
+            minFavesInput.value = result.boldtake_min_faves;
+        }
+        
+        if (languageSelect && result.boldtake_language) {
+            languageSelect.value = result.boldtake_language;
+        }
+        
+        if (toneSelect && result.boldtake_tone) {
+            toneSelect.value = result.boldtake_tone;
+        }
+        
+        debugLog('⚡ Cached settings loaded');
+    });
+}
+
+/**
+ * 🔄 ASYNC: Initialize authentication system (heavy operation)
+ */
+async function initializeAuthenticationSystem() {
+    debugLog('🔄 ASYNC: Initializing authentication...');
+    
+    try {
+        // Wait for dependencies (can be slow)
+        await waitForDependencies();
+        
+        // Initialize auth manager (API calls)
+        await window.BoldTakeAuthManager.initializeAuth();
+        debugLog('✅ Authentication system initialized');
+        
+        // Auto-refresh subscription (API calls)
+        await autoRefreshSubscriptionOnOpen();
+        debugLog('✅ Subscription status refreshed');
+        
+        // Update UI with auth state
+        updateAuthenticationUI();
+        
+    } catch (error) {
+        console.error('❌ Authentication initialization failed:', error);
+        showAuthError(error.message);
+    }
+}
+
+/**
+ * 🔄 ASYNC: Initialize advanced features (heavy operations)
+ */
+async function initializeAdvancedFeatures() {
+    debugLog('🔄 ASYNC: Initializing advanced features...');
+    
+    // Load all settings asynchronously (more comprehensive)
+    await loadAllSettings();
+    
+    // Setup advanced event listeners
+    setupAdvancedEventListeners();
+    
+    // Initialize analytics
+    await initializeAnalytics();
+    
+    // Setup keyword suggestions
+    setupKeywordSuggestions();
+    
+    debugLog('✅ Advanced features initialized');
+}
+
+/**
+ * 🔄 ASYNC: Load all settings (comprehensive, can be slow)
+ */
+async function loadAllSettings() {
+    return new Promise((resolve) => {
+        chrome.storage.local.get([
+            'boldtake_keyword', 
+            'boldtake_min_faves', 
+            'boldtake_language', 
+            'boldtake_tone',
+            'boldtake_timing_range',
+            'boldtake_prompt_preferences',
+            'boldtake_exclude_links_media',
+            'boldtake_prioritize_questions',
+            'boldtake_min_char_count',
+            'boldtake_spam_keywords',
+            'boldtake_daily_target'
+        ], (result) => {
+            // Apply all settings to UI
+            applyAllSettingsToUI(result);
+            resolve();
+        });
+    });
+}
+
+/**
+ * Apply all settings to UI elements
+ */
+function applyAllSettingsToUI(settings) {
+    debugLog('⚡ Applying all settings to UI elements...');
+    
+    // Apply basic settings that were passed in
+    if (keywordInput && settings.boldtake_keyword) {
+        keywordInput.value = settings.boldtake_keyword;
+    }
+    
+    if (minFavesInput && settings.boldtake_min_faves) {
+        minFavesInput.value = settings.boldtake_min_faves;
+    }
+    
+    if (languageSelect && settings.boldtake_language) {
+        languageSelect.value = settings.boldtake_language;
+    }
+    
+    if (toneSelect && settings.boldtake_tone) {
+        toneSelect.value = settings.boldtake_tone;
+    }
+    
+    if (dailyTargetInput && settings.boldtake_daily_target) {
+        dailyTargetInput.value = settings.boldtake_daily_target;
+    }
+    
+    debugLog('⚡ Basic settings applied to UI');
+}
+
+/**
+ * 🔄 ASYNC: Complete settings initialization (moved from broken function)
+ */
+function completeSettingsInitialization() {
     // Load saved settings including personalization, prompt preferences, and filtering options
     chrome.storage.local.get([
         'boldtake_keyword', 
@@ -467,6 +732,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load prompt preferences
     loadPromptPreferences();
     
+    debugLog('🔧 Advanced settings initialized');
+}
+
+/**
+ * 🔄 ASYNC: Finalize initialization (moved from broken structure)
+ */
+async function finalizeInitialization() {
     // Keyword rotation removed - using simple single keyword now
     
     // Load current session state and analytics
@@ -496,15 +768,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Custom prompt functionality removed
     
-    // Set up periodic updates
-    setInterval(loadSessionState, 2000);
-    setInterval(loadAnalyticsData, 5000); // Update analytics every 5 seconds // Update every 2 seconds
-    
-    // Setup activity controls
-    setupActivityControls();
-    
-    debugLog('✅ BoldTake Professional popup ready!');
-});
+    // Complete the finalization
+    debugLog('✅ Finalization complete');
+}
 
 /**
  * Setup activity control buttons and functionality
