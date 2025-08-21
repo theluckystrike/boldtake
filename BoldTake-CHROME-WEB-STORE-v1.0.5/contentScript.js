@@ -275,32 +275,7 @@ const performanceCache = {
   }
 };
 
-// 🚀 PERFORMANCE: Simple performance monitoring
-const performanceMonitor = {
-  startTime: null,
-  tweetProcessingTimes: [],
-  
-  startTweetProcessing() {
-    this.startTime = Date.now();
-  },
-  
-  endTweetProcessing() {
-    if (this.startTime) {
-      const duration = Date.now() - this.startTime;
-      this.tweetProcessingTimes.push(duration);
-      
-      // Keep only last 10 measurements
-      if (this.tweetProcessingTimes.length > 10) {
-        this.tweetProcessingTimes.shift();
-      }
-      
-      const avgTime = this.tweetProcessingTimes.reduce((a, b) => a + b, 0) / this.tweetProcessingTimes.length;
-      debugLog(`⚡ Tweet processed in ${duration}ms (avg: ${Math.round(avgTime)}ms)`);
-      
-      this.startTime = null;
-    }
-  }
-};
+// Old performance monitoring removed - using new comprehensive version above
 
 // NETWORK MONITORING & AUTO-RECOVERY SYSTEM
 let networkMonitor = {
@@ -1350,7 +1325,7 @@ async function startContinuousSession(isResuming = false) {
  * @returns {Promise<boolean>} True if a tweet was processed, false if it failed or paused.
  */
 async function processNextTweet() {
-  performanceMonitor.startTweetProcessing(); // 🚀 Start performance tracking
+  // Performance tracking handled by comprehensive monitoring system
   
   updateStatus(`🔍 Processing tweet ${sessionStats.attempted + 1} (${sessionStats.processed}/${sessionStats.target} successful)...`);
   addDetailedActivity(`🔍 Processing tweet ${sessionStats.attempted + 1} (${sessionStats.processed}/${sessionStats.target} successful)`, 'info');
@@ -1530,7 +1505,7 @@ async function processNextTweet() {
   }
   
   await saveSession();
-  performanceMonitor.endTweetProcessing(); // 🚀 End performance tracking
+  // Performance tracking handled by comprehensive monitoring system
   
   // 🚀 ARCHITECTURAL FIX: Apply delay AFTER successful OR skipped tweet processing
   // This ensures delay happens after every tweet attempt (success or skip), not just successes
