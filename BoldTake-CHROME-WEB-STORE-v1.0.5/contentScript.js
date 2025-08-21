@@ -10,6 +10,224 @@ const debugLog = DEBUG_MODE ? console.log : () => {};
 // Activity tracking for live feed
 let recentActivities = [];
 
+// 🚀 STUCK SESSION DETECTOR: Monitors session health and auto-recovers
+const sessionHealthMonitor = {
+  lastActivityTime: Date.now(),
+  lastSuccessfulTweet: Date.now(),
+  healthCheckInterval: null,
+  maxInactivityTime: 5 * 60 * 1000, // 5 minutes of no activity
+  maxNoSuccessTime: 10 * 60 * 1000, // 10 minutes without successful tweet
+  recoveryAttempts: 0,
+  maxRecoveryAttempts: 3,
+  
+  // Start monitoring session health
+  startMonitoring() {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+    }
+    
+    this.lastActivityTime = Date.now();
+    this.lastSuccessfulTweet = Date.now();
+    this.recoveryAttempts = 0;
+    
+    this.healthCheckInterval = setInterval(() => {
+      this.checkSessionHealth();
+    }, 30000); // Check every 30 seconds
+    
+    console.log('🏥 Session health monitoring started');
+  },
+  
+  // Stop monitoring
+  stopMonitoring() {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
+    }
+    console.log('🏥 Session health monitoring stopped');
+  },
+  
+  // Update activity timestamp
+  recordActivity() {
+    this.lastActivityTime = Date.now();
+  },
+  
+  // Update successful tweet timestamp
+  recordSuccessfulTweet() {
+    this.lastSuccessfulTweet = Date.now();
+    this.recoveryAttempts = 0; // Reset recovery attempts on success
+  },
+  
+  // Check if session is stuck and attempt recovery
+  async checkSessionHealth() {
+    if (!sessionStats.isRunning) return;
+    
+    const now = Date.now();
+    const timeSinceActivity = now - this.lastActivityTime;
+    const timeSinceSuccess = now - this.lastSuccessfulTweet;
+    
+    // Check for complete inactivity (stuck)
+    if (timeSinceActivity > this.maxInactivityTime) {
+      console.warn('🚨 STUCK SESSION DETECTED: No activity for', Math.round(timeSinceActivity/1000), 'seconds');
+      addDetailedActivity(`🚨 Stuck session detected - no activity for ${Math.round(timeSinceActivity/60000)}m`, 'warning');
+      await this.attemptRecovery('inactivity');
+      return;
+    }
+    
+    // Check for no successful tweets (might be stuck on errors)
+    if (timeSinceSuccess > this.maxNoSuccessTime && this.recoveryAttempts < this.maxRecoveryAttempts) {
+      console.warn('🚨 NO SUCCESS DETECTED: No successful tweets for', Math.round(timeSinceSuccess/1000), 'seconds');
+      addDetailedActivity(`🚨 No successful tweets for ${Math.round(timeSinceSuccess/60000)}m - attempting recovery`, 'warning');
+      await this.attemptRecovery('no_success');
+      return;
+    }
+    
+    // Log health status every 2 minutes
+    if (timeSinceActivity > 120000) { // 2 minutes
+      const activityMinutes = Math.round(timeSinceActivity/60000);
+      const successMinutes = Math.round(timeSinceSuccess/60000);
+      console.log(`🏥 Session health: ${activityMinutes}m since activity, ${successMinutes}m since success`);
+    }
+  },
+  
+  // Attempt to recover stuck session
+  async attemptRecovery(reason) {
+    if (this.recoveryAttempts >= this.maxRecoveryAttempts) {
+      console.error('🚨 MAX RECOVERY ATTEMPTS REACHED - Stopping session');
+      addDetailedActivity('🚨 Max recovery attempts reached - session stopped', 'error');
+      sessionStats.isRunning = false;
+      chrome.runtime.sendMessage({ type: 'BOLDTAKE_STOP' });
+      return;
+    }
+    
+    this.recoveryAttempts++;
+    console.log(`🔄 RECOVERY ATTEMPT ${this.recoveryAttempts}/${this.maxRecoveryAttempts} for ${reason}`);
+    addDetailedActivity(`🔄 Recovery attempt ${this.recoveryAttempts}/${this.maxRecoveryAttempts}`, 'info');
+    
+    try {
+      // Close any stuck modals
+      const closeButtons = document.querySelectorAll('[data-testid="app-bar-close"], [aria-label="Close"]');
+      for (const button of closeButtons) {
+        if (button.offsetParent !== null) {
+          button.click();
+          await sleep(1000);
+        }
+      }
+      
+      // Press Escape key to close anything
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, which: 27 }));
+      await sleep(1000);
+      
+      // Scroll to top to reset view
+      window.scrollTo(0, 0);
+      await sleep(2000);
+      
+      // Clear performance cache
+      performanceCache.invalidate();
+      
+      // Record recovery activity
+      this.recordActivity();
+      
+      console.log('✅ Recovery attempt completed');
+      addDetailedActivity('✅ Recovery attempt completed - resuming session', 'success');
+      
+    } catch (error) {
+      console.error('❌ Recovery attempt failed:', error);
+      addDetailedActivity(`❌ Recovery attempt failed: ${error.message}`, 'error');
+    }
+  }
+};
+
+// 🚀 REAL-TIME PERFORMANCE MONITOR: Tracks session quality and auto-adjusts
+const performanceMonitor = {
+  sessionStartTime: null,
+  lastPerformanceCheck: Date.now(),
+  performanceHistory: [],
+  
+  // Start performance monitoring
+  startMonitoring() {
+    this.sessionStartTime = Date.now();
+    this.lastPerformanceCheck = Date.now();
+    this.performanceHistory = [];
+    console.log('📊 Performance monitoring started');
+  },
+  
+  // Record session metrics every few minutes
+  recordPerformanceMetrics() {
+    if (!this.sessionStartTime || !sessionStats.isRunning) return;
+    
+    const now = Date.now();
+    const sessionDuration = now - this.sessionStartTime;
+    const timeSinceLastCheck = now - this.lastPerformanceCheck;
+    
+    // Record metrics every 2 minutes
+    if (timeSinceLastCheck >= 120000) { // 2 minutes
+      const metrics = {
+        timestamp: now,
+        duration: sessionDuration,
+        attempted: sessionStats.attempted || 0,
+        successful: sessionStats.successful || 0,
+        skipped: sessionStats.skipped || 0,
+        successRate: sessionStats.attempted > 0 ? (sessionStats.successful / sessionStats.attempted * 100) : 0,
+        tweetsPerHour: sessionDuration > 0 ? (sessionStats.successful / (sessionDuration / 3600000)) : 0
+      };
+      
+      this.performanceHistory.push(metrics);
+      this.lastPerformanceCheck = now;
+      
+      // Keep only last 10 records
+      if (this.performanceHistory.length > 10) {
+        this.performanceHistory.shift();
+      }
+      
+      // Log performance summary
+      console.log(`📊 Performance: ${metrics.successRate.toFixed(1)}% success rate, ${metrics.tweetsPerHour.toFixed(1)} tweets/hour`);
+      
+      // Auto-adjust if performance is poor
+      this.autoAdjustIfNeeded(metrics);
+    }
+  },
+  
+  // Auto-adjust session parameters if performance is poor
+  autoAdjustIfNeeded(metrics) {
+    // If success rate is very low (under 50%), increase delays slightly
+    if (metrics.successRate < 50 && metrics.attempted > 5) {
+      console.warn('⚠️ Low success rate detected - auto-adjusting for better reliability');
+      addDetailedActivity(`⚠️ Auto-adjusting: Success rate ${metrics.successRate.toFixed(1)}%`, 'warning');
+      
+      // Increase minimum delay slightly for better reliability
+      if (SECURITY_CONFIG.MIN_DELAY < 45000) {
+        SECURITY_CONFIG.MIN_DELAY += 5000; // Add 5 seconds
+        console.log(`🔧 Increased minimum delay to ${SECURITY_CONFIG.MIN_DELAY/1000}s for better reliability`);
+      }
+    }
+    
+    // If we're getting too many skips, pause briefly
+    if (metrics.attempted > 0 && (metrics.skipped / metrics.attempted) > 0.5) {
+      console.warn('⚠️ High skip rate detected - taking a brief pause');
+      addDetailedActivity('⚠️ High skip rate - taking 30s pause', 'warning');
+      // This will be handled by the delay system
+    }
+  },
+  
+  // Get current session summary
+  getSessionSummary() {
+    if (!this.sessionStartTime) return null;
+    
+    const duration = Date.now() - this.sessionStartTime;
+    const hours = Math.floor(duration / 3600000);
+    const minutes = Math.floor((duration % 3600000) / 60000);
+    
+    return {
+      duration: `${hours}h ${minutes}m`,
+      attempted: sessionStats.attempted || 0,
+      successful: sessionStats.successful || 0,
+      skipped: sessionStats.skipped || 0,
+      successRate: sessionStats.attempted > 0 ? (sessionStats.successful / sessionStats.attempted * 100) : 0,
+      tweetsPerHour: duration > 0 ? (sessionStats.successful / (duration / 3600000)) : 0
+    };
+  }
+};
+
 // 🚀 PERFORMANCE: DOM query cache for frequently accessed elements
 const performanceCache = {
   tweets: null,
@@ -819,6 +1037,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * @returns {Promise<void>} Resolves when session completes or stops
  */
 async function startContinuousSession(isResuming = false) {
+  // 🏥 Start health monitoring for session reliability
+  sessionHealthMonitor.startMonitoring();
+  
+  // 📊 Start performance monitoring
+  performanceMonitor.startMonitoring();
+  
   // 🎯 CRITICAL FIX: Ensure we're on the correct search page before starting
   if (!isResuming) {
     const currentUrl = window.location.href;
@@ -959,27 +1183,59 @@ async function startContinuousSession(isResuming = false) {
         }
       }
       
-      // 🚧 OBSTRUCTION DETECTOR: Check for unexpected popups/modals every 3rd tweet
+      // 🚧 ENHANCED OBSTRUCTION DETECTOR: Check for unexpected popups/modals every 3rd tweet
       if (sessionStats.attempted > 0 && sessionStats.attempted % 3 === 0) {
         const obstruction = await detectPageObstructions();
         if (obstruction) {
           console.warn(`🚧 OBSTRUCTION DETECTED: ${obstruction.type} - ${obstruction.message}`);
           addDetailedActivity(`🚧 OBSTRUCTION: ${obstruction.message}`, 'warning');
-          showStatus(`🚧 Session paused: ${obstruction.message}`);
           
-          // Pause session but don't stop completely
-          sessionStats.isRunning = false;
-          chrome.runtime.sendMessage({ type: 'BOLDTAKE_PAUSE' });
-          
-          // Show user-friendly message with resolution steps
-          addDetailedActivity('⚠️ Session paused: Unexpected popup detected on X.com', 'warning');
-          addDetailedActivity('🔧 Please resolve the popup on the page and click "Resume" to continue', 'info');
-          break;
+          // 🎯 SMART RECOVERY: Try to recover from obstructions instead of stopping
+          if (obstruction.type === 'PAGE_ERROR') {
+            showStatus(`🔄 Page error detected - attempting refresh recovery...`);
+            addDetailedActivity('🔄 Attempting page refresh recovery', 'info');
+            window.location.reload();
+            return;
+          } else if (obstruction.type === 'UNEXPECTED_MODAL' || obstruction.type === 'FULLSCREEN_OVERLAY') {
+            showStatus(`🔧 Modal/overlay detected - attempting to close...`);
+            addDetailedActivity('🔧 Attempting to close modal/overlay', 'info');
+            
+            // Try to close the obstruction
+            try {
+              const closeButton = obstruction.element.querySelector('[aria-label="Close"], [data-testid*="close"], button[aria-label*="close"]');
+              if (closeButton) {
+                closeButton.click();
+                await sleep(2000);
+                addDetailedActivity('✅ Successfully closed obstruction', 'success');
+                // Continue session
+              } else {
+                // Press Escape key
+                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, which: 27 }));
+                await sleep(2000);
+                addDetailedActivity('✅ Used Escape key to close obstruction', 'success');
+              }
+            } catch (error) {
+              console.warn('⚠️ Could not close obstruction, continuing anyway:', error);
+              addDetailedActivity('⚠️ Could not close obstruction, continuing session', 'warning');
+            }
+          } else {
+            // For other obstructions (rate limits, captcha, etc.), pause and show user message
+            showStatus(`🚧 Session paused: ${obstruction.message}`);
+            sessionStats.isRunning = false;
+            chrome.runtime.sendMessage({ type: 'BOLDTAKE_PAUSE' });
+            
+            // Show user-friendly message with resolution steps
+            addDetailedActivity('⚠️ Session paused: Unexpected popup detected on X.com', 'warning');
+            addDetailedActivity('🔧 Please resolve the popup on the page and click "Resume" to continue', 'info');
+            break;
+          }
         }
       }
       
       // CORE PROCESSING: Find and process the next suitable tweet
       // This includes: tweet selection, AI generation, posting, and liking
+      sessionHealthMonitor.recordActivity(); // Record activity before processing
+      performanceMonitor.recordPerformanceMetrics(); // Track performance metrics
       await processNextTweet();
       
       // SAFETY CHECKPOINT 2: Check session status after processing
@@ -1074,6 +1330,9 @@ async function startContinuousSession(isResuming = false) {
   
   // Session complete
   sessionStats.isRunning = false;
+  
+  // 🏥 Stop health monitoring when session ends
+  sessionHealthMonitor.stopMonitoring();
   
   // Clear any running countdown timers
   if (window.boldtakeCountdownInterval) {
@@ -1231,6 +1490,9 @@ async function processNextTweet() {
     sessionStats.processed++;
     sessionStats.successful++;
     sessionStats.lastSuccessfulTweet = new Date().getTime();
+    
+    // 🏥 Record successful tweet for health monitoring
+    sessionHealthMonitor.recordSuccessfulTweet();
     sessionStats.retryAttempts = 0; // Reset retry counter on success
     updateStatus(`✅ Tweet ${sessionStats.processed}/${sessionStats.target} replied!`);
     addDetailedActivity(`✅ Successfully replied to tweet ${sessionStats.processed}/${sessionStats.target}`, 'success');
@@ -1714,29 +1976,34 @@ async function detectPageObstructions() {
       }
     }
     
-    // 5. PAGE ERROR DETECTION (different from X.com errors)
+    // 5. PAGE ERROR DETECTION (only for actual page errors, not API errors)
     const pageText = document.body.textContent || '';
-    const criticalErrors = [
-      'Something went wrong',
-      'Page not found',
-      '404',
-      '500',
-      'Server error',
-      'Maintenance',
-      'Temporarily unavailable'
-    ];
     
-    for (const error of criticalErrors) {
-      if (pageText.includes(error)) {
-        // But skip if it's the normal X.com error we handle elsewhere
-        if (!pageText.includes("let's give it another shot")) {
-          return {
-            type: 'PAGE_ERROR',
-            message: `Page error detected: ${error}`,
-            element: document.body
-          };
-        }
-      }
+    // 🎯 CRITICAL FIX: Only detect ACTUAL page errors, not API/network errors
+    // Check if we're on an actual error page (title, main content, etc.)
+    const pageTitle = document.title || '';
+    const mainContent = document.querySelector('main') || document.querySelector('[role="main"]') || document.body;
+    const mainText = mainContent ? mainContent.textContent || '' : '';
+    
+    // Only trigger if it's a clear page-level error (not just API errors in console)
+    const isActualPageError = (
+      pageTitle.includes('404') || 
+      pageTitle.includes('Page not found') ||
+      pageTitle.includes('Something went wrong') ||
+      mainText.includes('This page doesn\'t exist') ||
+      mainText.includes('Sorry, that page doesn\'t exist') ||
+      (mainText.includes('Something went wrong') && mainText.length < 500) // Short error page
+    );
+    
+    // 🚀 ENHANCED: Also check if we can still find tweets (if yes, page is working)
+    const tweetsStillVisible = document.querySelectorAll('[data-testid="tweet"]').length > 0;
+    
+    if (isActualPageError && !tweetsStillVisible) {
+      return {
+        type: 'PAGE_ERROR',
+        message: `Actual page error detected: ${pageTitle || 'Page error'}`,
+        element: document.body
+      };
     }
     
     // 6. BLOCKED CONTENT WARNINGS
@@ -3120,10 +3387,39 @@ async function generateSmartReply(tweetText, tweetNumber) {
     return retryReply;
   }
 
-  // 🚫 SKIP TWEET: Both attempts failed - skip this tweet entirely
+  // 🔄 ATTEMPT 3: Final attempt with ultra-safe generic engagement prompt
+  console.warn('⚠️ Second attempt failed. Trying final ultra-safe attempt...');
+  addDetailedActivity('⚠️ Second attempt failed. Final try...', 'warning');
+  
+  // Ultra-safe fallback prompt that almost always works
+  const ultraSafePrompt = `You are replying to a tweet. Write a thoughtful, engaging reply that adds value to the conversation. Keep it under 200 characters. Be authentic and conversational. Do not use quotes, hashtags, mentions, or emojis.
+
+Tweet: {TWEET}
+
+Reply with just the response text:`;
+  
+  console.log('🎯 ATTEMPT 3: Trying with ultra-safe fallback strategy...');
+  let finalReply = await attemptGeneration(ultraSafePrompt, tweetText);
+  
+  // Clean up AI artifacts
+  if (finalReply) {
+    finalReply = finalReply.replace(/—/g, '-');
+  }
+
+  // Check if final attempt succeeded
+  const finalSuccess = finalReply && isContentSafe(finalReply) && finalReply.length >= 10; // Lower threshold for final attempt
+  
+  if (finalSuccess) {
+    console.log('✅ ATTEMPT 3 SUCCESS: Final attempt generated reply');
+    addDetailedActivity('✅ Final attempt successful', 'success');
+    sessionStats.consecutiveFailures = 0; // Reset failure counter on success
+    return finalReply;
+  }
+
+  // 🚫 SKIP TWEET: All three attempts failed - skip this tweet entirely
   sessionStats.consecutiveFailures++; // Increment consecutive failure counter
-  console.warn(`❌ Failed to generate reply for this tweet after 2 attempts. Skipping. (${sessionStats.consecutiveFailures}/3 consecutive failures)`);
-  addDetailedActivity(`❌ Skipping tweet after 2 failed attempts (${sessionStats.consecutiveFailures}/3)`, 'error');
+  console.warn(`❌ Failed to generate reply for this tweet after 3 attempts. Skipping. (${sessionStats.consecutiveFailures}/3 consecutive failures)`);
+  addDetailedActivity(`❌ Skipping tweet after 3 failed attempts (${sessionStats.consecutiveFailures}/3)`, 'error');
   
   // ✅ CRITICAL: Do NOT decrement daily limit for skipped tweets
   // ✅ CRITICAL: Do NOT post any reply
