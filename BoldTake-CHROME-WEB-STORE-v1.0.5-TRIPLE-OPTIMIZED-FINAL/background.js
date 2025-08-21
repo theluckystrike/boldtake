@@ -49,17 +49,28 @@ async function signInUser(email, password) {
 
     const data = await response.json();
     
-    // Store session in chrome.storage.local
+    // Store COMPLETE session in chrome.storage.local - Critical for refresh token persistence
+    const completeSession = {
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+      expires_at: data.expires_at,
+      expires_in: data.expires_in,
+      token_type: data.token_type || 'bearer',
+      user: data.user,
+      // Store raw response for debugging
+      _raw: data
+    };
+    
     await chrome.storage.local.set({
-      [STORAGE_KEYS.SESSION]: {
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-        expires_at: data.expires_at,
-        expires_in: data.expires_in,
-        token_type: data.token_type,
-        user: data.user
-      },
+      [STORAGE_KEYS.SESSION]: completeSession,
       [STORAGE_KEYS.USER]: data.user
+    });
+    
+    console.log('💾 Complete session stored:', {
+      hasAccessToken: !!completeSession.access_token,
+      hasRefreshToken: !!completeSession.refresh_token,
+      expiresAt: completeSession.expires_at,
+      expiresIn: completeSession.expires_in
     });
 
     console.log('✅ User signed in successfully');
@@ -162,10 +173,23 @@ async function refreshAccessToken() {
   } catch (error) {
     console.error('❌ Token refresh failed:', error.message);
     
-    // If refresh fails, user needs to log in again
-    await signOutUser();
+    // DO NOT auto-logout - instead mark session as expired and let UI handle re-auth
+    console.warn('🔄 Session expired - user will need to re-authenticate');
     
-    return { success: false, error: error.message };
+    // Mark session as expired but keep it in storage for debugging
+    const session = await getCurrentSession();
+    if (session) {
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.SESSION]: {
+          ...session,
+          _expired: true,
+          _expiredAt: Date.now(),
+          _refreshError: error.message
+        }
+      });
+    }
+    
+    return { success: false, error: error.message, requiresReauth: true };
   }
 }
 
@@ -326,13 +350,16 @@ async function callSupabaseGenerateReply(params) {
       throw new Error('Authentication required: No valid session found. Please log in.');
     }
     
-    // Check if token is expired
+    // Check if token is expired or session is marked as expired
     const now = Math.floor(Date.now() / 1000);
-    if (session.expires_at && session.expires_at <= now) {
-      console.log('🔄 Token expired, refreshing...');
+    if (session._expired || (session.expires_at && session.expires_at <= now)) {
+      console.log('🔄 Token expired, attempting refresh...');
       const refreshResult = await refreshAccessToken();
       
       if (!refreshResult.success) {
+        if (refreshResult.requiresReauth) {
+          throw new Error('REAUTH_REQUIRED: Your session has expired. Please sign in again to continue.');
+        }
         throw new Error('Authentication expired: Please log in again.');
       }
       

@@ -152,6 +152,15 @@ async function checkAuthStatus() {
     const response = await chrome.runtime.sendMessage({ type: 'GET_SESSION' });
     
     if (response && response.success && response.isAuthenticated) {
+      // Check if session is expired
+      if (response.session && response.session._expired) {
+        console.warn('🔄 Session expired, showing re-authentication form');
+        isAuthenticated = false;
+        currentUser = null;
+        showLoginForm('Your session has expired. Please sign in again to continue.');
+        return;
+      }
+      
       isAuthenticated = true;
       currentUser = response.user;
       showMainContent();
