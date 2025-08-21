@@ -10,6 +10,465 @@ const debugLog = DEBUG_MODE ? console.log : () => {};
 // Activity tracking for live feed
 let recentActivities = [];
 
+// 🧹 CRITICAL FIX: Centralized Resource Manager to prevent memory leaks
+const resourceManager = {
+  intervals: new Set(),
+  timeouts: new Set(),
+  eventListeners: new Map(),
+  abortControllers: new Set(),
+  
+  // Register interval for cleanup
+  setInterval(callback, delay) {
+    const id = setInterval(callback, delay);
+    this.intervals.add(id);
+    return id;
+  },
+  
+  // Register timeout for cleanup
+  setTimeout(callback, delay) {
+    const id = setTimeout(() => {
+      this.timeouts.delete(id);
+      callback();
+    }, delay);
+    this.timeouts.add(id);
+    return id;
+  },
+  
+  // Register event listener for cleanup
+  addEventListener(element, event, handler, options = {}) {
+    element.addEventListener(event, handler, options);
+    
+    if (!this.eventListeners.has(element)) {
+      this.eventListeners.set(element, new Map());
+    }
+    
+    const elementListeners = this.eventListeners.get(element);
+    if (!elementListeners.has(event)) {
+      elementListeners.set(event, new Set());
+    }
+    
+    elementListeners.get(event).add({ handler, options });
+  },
+  
+  // Register abort controller for cleanup
+  createAbortController() {
+    const controller = new AbortController();
+    this.abortControllers.add(controller);
+    return controller;
+  },
+  
+  // Clear specific interval
+  clearInterval(id) {
+    if (this.intervals.has(id)) {
+      clearInterval(id);
+      this.intervals.delete(id);
+    }
+  },
+  
+  // Clear specific timeout
+  clearTimeout(id) {
+    if (this.timeouts.has(id)) {
+      clearTimeout(id);
+      this.timeouts.delete(id);
+    }
+  },
+  
+  // Remove specific event listener
+  removeEventListener(element, event, handler) {
+    if (this.eventListeners.has(element)) {
+      const elementListeners = this.eventListeners.get(element);
+      if (elementListeners.has(event)) {
+        const handlers = elementListeners.get(event);
+        for (const item of handlers) {
+          if (item.handler === handler) {
+            element.removeEventListener(event, handler, item.options);
+            handlers.delete(item);
+            break;
+          }
+        }
+      }
+    }
+  },
+  
+  // CRITICAL: Clean up all resources
+  cleanupAll() {
+    console.log('🧹 CLEANUP: Starting comprehensive resource cleanup...');
+    
+    // Clear all intervals
+    for (const id of this.intervals) {
+      clearInterval(id);
+    }
+    this.intervals.clear();
+    console.log('✅ Cleared all intervals');
+    
+    // Clear all timeouts
+    for (const id of this.timeouts) {
+      clearTimeout(id);
+    }
+    this.timeouts.clear();
+    console.log('✅ Cleared all timeouts');
+    
+    // Remove all event listeners
+    for (const [element, eventMap] of this.eventListeners) {
+      for (const [event, handlers] of eventMap) {
+        for (const { handler, options } of handlers) {
+          try {
+            element.removeEventListener(event, handler, options);
+          } catch (e) {
+            // Element might be removed from DOM
+          }
+        }
+      }
+    }
+    this.eventListeners.clear();
+    console.log('✅ Removed all event listeners');
+    
+    // Abort all controllers
+    for (const controller of this.abortControllers) {
+      try {
+        controller.abort();
+      } catch (e) {
+        // Already aborted
+      }
+    }
+    this.abortControllers.clear();
+    console.log('✅ Aborted all controllers');
+    
+    // Clear performance cache
+    performanceCache.invalidate();
+    console.log('✅ Cleared performance cache');
+    
+    // Release all mutex locks
+    mutexManager.releaseAll();
+    console.log('✅ Released all mutex locks');
+    
+    // Clear global references
+    if (window.boldtakeCountdownInterval) {
+      clearInterval(window.boldtakeCountdownInterval);
+      window.boldtakeCountdownInterval = null;
+    }
+    if (window.boldtakeTimeout) {
+      clearTimeout(window.boldtakeTimeout);
+      window.boldtakeTimeout = null;
+    }
+    if (window.boldtakeTimeoutId) {
+      clearTimeout(window.boldtakeTimeoutId);
+      window.boldtakeTimeoutId = null;
+    }
+    
+    console.log('🧹 CLEANUP: Resource cleanup completed successfully');
+  },
+  
+  // Get current resource usage stats
+  getStats() {
+    return {
+      intervals: this.intervals.size,
+      timeouts: this.timeouts.size,
+      eventListeners: Array.from(this.eventListeners.values()).reduce((sum, map) => 
+        sum + Array.from(map.values()).reduce((s, set) => s + set.size, 0), 0),
+      abortControllers: this.abortControllers.size
+    };
+  }
+};
+
+// 🔒 CRITICAL FIX: Mutex System to prevent race conditions
+const mutexManager = {
+  locks: new Map(),
+  
+  // Acquire a lock with timeout
+  async acquire(lockName, timeoutMs = 30000) {
+    const startTime = Date.now();
+    
+    while (this.locks.has(lockName)) {
+      if (Date.now() - startTime > timeoutMs) {
+        throw new Error(`Failed to acquire lock "${lockName}" within ${timeoutMs}ms`);
+      }
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    this.locks.set(lockName, {
+      acquired: Date.now(),
+      timeout: timeoutMs
+    });
+    
+    console.log(`🔒 Lock acquired: ${lockName}`);
+    
+    // Auto-release after timeout to prevent deadlocks
+    resourceManager.setTimeout(() => {
+      if (this.locks.has(lockName)) {
+        console.warn(`⚠️ Auto-releasing expired lock: ${lockName}`);
+        this.release(lockName);
+      }
+    }, timeoutMs);
+  },
+  
+  // Release a lock
+  release(lockName) {
+    if (this.locks.has(lockName)) {
+      this.locks.delete(lockName);
+      console.log(`🔓 Lock released: ${lockName}`);
+    }
+  },
+  
+  // Check if lock is held
+  isLocked(lockName) {
+    return this.locks.has(lockName);
+  },
+  
+  // Force release all locks (emergency cleanup)
+  releaseAll() {
+    console.log('🔓 Releasing all locks (emergency cleanup)');
+    this.locks.clear();
+  }
+};
+
+// 🔒 CRITICAL FIX: Safe Storage Wrapper to prevent race conditions
+const safeStorage = {
+  // Safe get with mutex protection
+  async get(keys) {
+    const lockName = `storage_get_${Array.isArray(keys) ? keys.join('_') : keys}`;
+    
+    try {
+      await mutexManager.acquire(lockName, 5000);
+      
+      return new Promise((resolve) => {
+        chrome.storage.local.get(keys, (result) => {
+          mutexManager.release(lockName);
+          resolve(result);
+        });
+      });
+    } catch (error) {
+      mutexManager.release(lockName);
+      throw error;
+    }
+  },
+  
+  // Safe set with mutex protection
+  async set(items) {
+    const lockName = `storage_set_${Object.keys(items).join('_')}`;
+    
+    try {
+      await mutexManager.acquire(lockName, 5000);
+      
+      return new Promise((resolve) => {
+        chrome.storage.local.set(items, () => {
+          mutexManager.release(lockName);
+          resolve();
+        });
+      });
+    } catch (error) {
+      mutexManager.release(lockName);
+      throw error;
+    }
+  },
+  
+  // Safe update operation (read-modify-write)
+  async update(key, updateFunction) {
+    const lockName = `storage_update_${key}`;
+    
+    try {
+      await mutexManager.acquire(lockName, 10000);
+      
+      // Read current value
+      const current = await new Promise((resolve) => {
+        chrome.storage.local.get(key, resolve);
+      });
+      
+      // Apply update function
+      const updated = updateFunction(current[key]);
+      
+      // Write back
+      await new Promise((resolve) => {
+        chrome.storage.local.set({ [key]: updated }, resolve);
+      });
+      
+      mutexManager.release(lockName);
+      return updated;
+    } catch (error) {
+      mutexManager.release(lockName);
+      throw error;
+    }
+  }
+};
+
+// 🚨 CRITICAL FIX: Comprehensive Error Handling System
+const errorHandler = {
+  errors: [],
+  maxErrors: 100,
+  
+  // Handle and log errors consistently
+  handle(error, context = 'unknown', severity = 'error') {
+    const errorInfo = {
+      timestamp: new Date().toISOString(),
+      message: error.message || String(error),
+      stack: error.stack,
+      context,
+      severity,
+      url: window.location.href,
+      userAgent: navigator.userAgent
+    };
+    
+    // Store error for debugging
+    this.errors.push(errorInfo);
+    if (this.errors.length > this.maxErrors) {
+      this.errors.shift();
+    }
+    
+    // Log based on severity
+    switch (severity) {
+      case 'critical':
+        console.error(`🚨 CRITICAL ERROR [${context}]:`, error);
+        addDetailedActivity(`🚨 Critical: ${error.message}`, 'error');
+        break;
+      case 'error':
+        console.error(`❌ ERROR [${context}]:`, error);
+        addDetailedActivity(`❌ Error: ${error.message}`, 'error');
+        break;
+      case 'warning':
+        console.warn(`⚠️ WARNING [${context}]:`, error);
+        addDetailedActivity(`⚠️ Warning: ${error.message}`, 'warning');
+        break;
+      default:
+        console.log(`ℹ️ INFO [${context}]:`, error);
+    }
+    
+    // Send critical errors to background for potential reporting
+    if (severity === 'critical') {
+      try {
+        chrome.runtime.sendMessage({
+          type: 'CRITICAL_ERROR',
+          error: errorInfo
+        }).catch(() => {
+          // Background script might not be available
+        });
+      } catch (e) {
+        // Ignore if messaging fails
+      }
+    }
+    
+    return errorInfo;
+  },
+  
+  // Wrap async functions with error handling
+  async wrapAsync(asyncFn, context, fallbackValue = null) {
+    try {
+      return await asyncFn();
+    } catch (error) {
+      this.handle(error, context, 'error');
+      return fallbackValue;
+    }
+  },
+  
+  // Wrap promises with error handling
+  wrapPromise(promise, context, fallbackValue = null) {
+    return promise.catch((error) => {
+      this.handle(error, context, 'error');
+      return fallbackValue;
+    });
+  },
+  
+  // Create error boundary for functions
+  boundary(fn, context, fallbackValue = null) {
+    return (...args) => {
+      try {
+        const result = fn.apply(this, args);
+        
+        // Handle async functions
+        if (result && typeof result.then === 'function') {
+          return result.catch((error) => {
+            this.handle(error, context, 'error');
+            return fallbackValue;
+          });
+        }
+        
+        return result;
+      } catch (error) {
+        this.handle(error, context, 'error');
+        return fallbackValue;
+      }
+    };
+  },
+  
+  // Get error statistics
+  getStats() {
+    const last24h = this.errors.filter(e => 
+      Date.now() - new Date(e.timestamp).getTime() < 24 * 60 * 60 * 1000
+    );
+    
+    return {
+      total: this.errors.length,
+      last24h: last24h.length,
+      critical: this.errors.filter(e => e.severity === 'critical').length,
+      contexts: [...new Set(this.errors.map(e => e.context))]
+    };
+  },
+  
+  // Clear old errors
+  cleanup() {
+    const cutoff = Date.now() - 24 * 60 * 60 * 1000; // 24 hours
+    this.errors = this.errors.filter(e => 
+      new Date(e.timestamp).getTime() > cutoff
+    );
+  }
+};
+
+// 🔒 CRITICAL FIX: Safe DOM Operations Wrapper
+const safeDom = {
+  // Safe querySelector with error handling
+  querySelector(selector, context = document) {
+    try {
+      return context.querySelector(selector);
+    } catch (error) {
+      errorHandler.handle(error, `querySelector: ${selector}`, 'warning');
+      return null;
+    }
+  },
+  
+  // Safe querySelectorAll with error handling
+  querySelectorAll(selector, context = document) {
+    try {
+      return context.querySelectorAll(selector);
+    } catch (error) {
+      errorHandler.handle(error, `querySelectorAll: ${selector}`, 'warning');
+      return [];
+    }
+  },
+  
+  // Safe element interaction
+  click(element, description = 'element') {
+    try {
+      if (element && typeof element.click === 'function') {
+        element.click();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      errorHandler.handle(error, `click: ${description}`, 'warning');
+      return false;
+    }
+  },
+  
+  // Safe text content access
+  getText(element, fallback = '') {
+    try {
+      return element ? (element.textContent || element.innerText || fallback) : fallback;
+    } catch (error) {
+      errorHandler.handle(error, 'getText', 'warning');
+      return fallback;
+    }
+  }
+};
+
+// 🚨 Global Error Handlers
+resourceManager.addEventListener(window, 'error', (event) => {
+  errorHandler.handle(event.error, 'global_error', 'critical');
+});
+
+resourceManager.addEventListener(window, 'unhandledrejection', (event) => {
+  errorHandler.handle(event.reason, 'unhandled_promise', 'critical');
+  event.preventDefault(); // Prevent console spam
+});
+
 // 🚀 STUCK SESSION DETECTOR: Monitors session health and auto-recovers
 const sessionHealthMonitor = {
   lastActivityTime: Date.now(),
@@ -23,14 +482,14 @@ const sessionHealthMonitor = {
   // Start monitoring session health
   startMonitoring() {
     if (this.healthCheckInterval) {
-      clearInterval(this.healthCheckInterval);
+      resourceManager.clearInterval(this.healthCheckInterval);
     }
     
     this.lastActivityTime = Date.now();
     this.lastSuccessfulTweet = Date.now();
     this.recoveryAttempts = 0;
     
-    this.healthCheckInterval = setInterval(() => {
+    this.healthCheckInterval = resourceManager.setInterval(() => {
       this.checkSessionHealth();
     }, 30000); // Check every 30 seconds
     
@@ -40,7 +499,7 @@ const sessionHealthMonitor = {
   // Stop monitoring
   stopMonitoring() {
     if (this.healthCheckInterval) {
-      clearInterval(this.healthCheckInterval);
+      resourceManager.clearInterval(this.healthCheckInterval);
       this.healthCheckInterval = null;
     }
     console.log('🏥 Session health monitoring stopped');
@@ -225,6 +684,13 @@ const performanceMonitor = {
       successRate: sessionStats.attempted > 0 ? (sessionStats.successful / sessionStats.attempted * 100) : 0,
       tweetsPerHour: duration > 0 ? (sessionStats.successful / (duration / 3600000)) : 0
     };
+  },
+  
+  // Stop monitoring
+  stopMonitoring() {
+    this.sessionStartTime = null;
+    this.performanceHistory = [];
+    console.log('📊 Performance monitoring stopped');
   }
 };
 
@@ -896,19 +1362,31 @@ let keywordRotation = {
   }
 })();
 
-// --- Cleanup on Page Unload ---
-window.addEventListener('beforeunload', () => {
-  // Clean up network monitoring intervals
-  if (networkMonitor.networkCheckInterval) {
-    clearInterval(networkMonitor.networkCheckInterval);
-  }
-  if (networkMonitor.reconnectInterval) {
-    clearInterval(networkMonitor.reconnectInterval);
+// --- CRITICAL FIX: Enhanced Cleanup on Page Unload ---
+resourceManager.addEventListener(window, 'beforeunload', () => {
+  console.log('🧹 Page unloading - starting comprehensive cleanup...');
+  
+  // Stop all monitoring systems
+  sessionHealthMonitor.stopMonitoring();
+  if (typeof performanceMonitor !== 'undefined' && performanceMonitor.stopMonitoring) {
+    performanceMonitor.stopMonitoring();
   }
   
-  // Remove event listeners
-  window.removeEventListener('online', handleNetworkOnline);
-  window.removeEventListener('offline', handleNetworkOffline);
+  // Clean up all resources
+  resourceManager.cleanupAll();
+  
+  console.log('🧹 Cleanup completed on page unload');
+});
+
+// Also add visibility change cleanup for better resource management
+resourceManager.addEventListener(document, 'visibilitychange', () => {
+  if (document.hidden) {
+    console.log('🔍 Tab hidden - pausing non-essential monitoring');
+    // Could pause some monitoring here to save resources
+  } else {
+    console.log('🔍 Tab visible - resuming monitoring');
+    // Resume monitoring if needed
+  }
 });
 
 // --- Message Handling ---
@@ -1012,11 +1490,31 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * @returns {Promise<void>} Resolves when session completes or stops
  */
 async function startContinuousSession(isResuming = false) {
-  // 🏥 Start health monitoring for session reliability
-  sessionHealthMonitor.startMonitoring();
+  // 🔒 CRITICAL FIX: Prevent concurrent session starts
+  try {
+    await mutexManager.acquire('session_start', 10000);
+  } catch (error) {
+    console.error('❌ Failed to acquire session lock:', error.message);
+    addDetailedActivity('❌ Session start blocked - another session is starting', 'error');
+    return;
+  }
   
-  // 📊 Start performance monitoring
-  performanceMonitor.startMonitoring();
+  try {
+    // Check if session is already running
+    if (sessionStats.isRunning && !isResuming) {
+      console.warn('⚠️ Session already running - preventing duplicate start');
+      addDetailedActivity('⚠️ Session already running - ignoring duplicate start', 'warning');
+      mutexManager.release('session_start');
+      return;
+    }
+    
+    console.log('🚀 Starting session with enhanced error handling...');
+    
+    // 🏥 Start health monitoring for session reliability
+    sessionHealthMonitor.startMonitoring();
+    
+    // 📊 Start performance monitoring
+    performanceMonitor.startMonitoring();
   
   // 🎯 CRITICAL FIX: Ensure we're on the correct search page before starting
   if (!isResuming) {
@@ -1309,14 +1807,40 @@ async function startContinuousSession(isResuming = false) {
   // 🏥 Stop health monitoring when session ends
   sessionHealthMonitor.stopMonitoring();
   
-  // Clear any running countdown timers
+  // 📊 Stop performance monitoring when session ends
+  performanceMonitor.stopMonitoring();
+  
+  // 🧹 CRITICAL: Clean up session resources
   if (window.boldtakeCountdownInterval) {
-    clearInterval(window.boldtakeCountdownInterval);
+    resourceManager.clearInterval(window.boldtakeCountdownInterval);
     window.boldtakeCountdownInterval = null;
   }
+  if (window.boldtakeTimeout) {
+    resourceManager.clearTimeout(window.boldtakeTimeout);
+    window.boldtakeTimeout = null;
+  }
+  
+  // Clear performance cache
+  performanceCache.invalidate();
+  
+  console.log('🧹 Session cleanup completed');
   
   await saveSession();
   showSessionSummary();
+  
+  } catch (sessionError) {
+    console.error('💥 CRITICAL SESSION ERROR:', sessionError);
+    addDetailedActivity(`💥 Session error: ${sessionError.message}`, 'error');
+    
+    // Ensure cleanup happens even on error
+    sessionStats.isRunning = false;
+    sessionHealthMonitor.stopMonitoring();
+    performanceMonitor.stopMonitoring();
+    resourceManager.cleanupAll();
+  } finally {
+    // 🔓 Always release the session lock
+    mutexManager.release('session_start');
+  }
 }
 
 /**
@@ -1516,7 +2040,7 @@ async function processNextTweet() {
     addDetailedActivity(`⏰ ARCHITECTURAL FIX: Waiting ${Math.round(delay/1000)}s before next tweet`, 'info');
     
     // Store timeout reference for force stop capability
-    window.boldtakeTimeout = setTimeout(() => {
+    window.boldtakeTimeout = resourceManager.setTimeout(() => {
       window.boldtakeTimeout = null;
     }, delay);
     
@@ -2492,8 +3016,8 @@ function initializeNetworkMonitoring() {
   addDetailedActivity('🌐 Network monitoring initialized', 'info');
   
   // Listen for online/offline events
-  window.addEventListener('online', handleNetworkOnline);
-  window.addEventListener('offline', handleNetworkOffline);
+  resourceManager.addEventListener(window, 'online', handleNetworkOnline);
+  resourceManager.addEventListener(window, 'offline', handleNetworkOffline);
   
   // Start periodic network health checks
   startNetworkHealthChecks();
@@ -2555,7 +3079,7 @@ function handleNetworkOffline() {
  */
 function startNetworkHealthChecks() {
   // Check network every 30 seconds
-  networkMonitor.networkCheckInterval = setInterval(async () => {
+  networkMonitor.networkCheckInterval = resourceManager.setInterval(async () => {
     await performNetworkHealthCheck();
   }, 30000);
 }
@@ -2959,7 +3483,7 @@ function startReconnectionAttempts() {
   if (networkMonitor.reconnectInterval) return;
   
   networkMonitor.reconnectAttempts = 0;
-  networkMonitor.reconnectInterval = setInterval(async () => {
+  networkMonitor.reconnectInterval = resourceManager.setInterval(async () => {
     networkMonitor.reconnectAttempts++;
     addDetailedActivity(`🔄 Reconnect attempt ${networkMonitor.reconnectAttempts}/${networkMonitor.maxReconnectAttempts}`);
     
@@ -3146,7 +3670,7 @@ function showCornerNotification(message) {
     }
     
     // Add click to minimize functionality
-    notification.addEventListener('click', () => {
+    resourceManager.addEventListener(notification, 'click', () => {
       const isMinimized = notification.style.height === '40px';
       if (isMinimized) {
         notification.style.height = 'auto';
@@ -3229,9 +3753,9 @@ async function startCountdown(delayInMs) {
             clearInterval(window.boldtakeCountdownInterval);
         }
 
-        window.boldtakeCountdownInterval = setInterval(() => {
+        window.boldtakeCountdownInterval = resourceManager.setInterval(() => {
             if (!sessionStats.isRunning) {
-                clearInterval(window.boldtakeCountdownInterval);
+                resourceManager.clearInterval(window.boldtakeCountdownInterval);
                 window.boldtakeCountdownInterval = null;
                 resolve();
                 return;
@@ -3240,7 +3764,7 @@ async function startCountdown(delayInMs) {
             remainingTime -= 1000;
 
             if (remainingTime < 0) {
-                clearInterval(window.boldtakeCountdownInterval);
+                resourceManager.clearInterval(window.boldtakeCountdownInterval);
                 window.boldtakeCountdownInterval = null;
                 resolve();
                 return;
@@ -3283,25 +3807,34 @@ function randomDelay(min, max) {
  * @returns {Promise<string|null>} A high-quality reply or null to skip this tweet.
  */
 async function generateSmartReply(tweetText, tweetNumber) {
-  // Initialize consecutiveFailures counter if not exists
-  if (typeof sessionStats.consecutiveFailures === 'undefined') {
-    sessionStats.consecutiveFailures = 0;
-  }
+  return errorHandler.wrapAsync(async () => {
+    // Initialize consecutiveFailures counter if not exists
+    if (typeof sessionStats.consecutiveFailures === 'undefined') {
+      sessionStats.consecutiveFailures = 0;
+    }
 
-  // --- EMERGENCY STOP: 3 consecutive skips triggers session halt ---
-  if (sessionStats.consecutiveFailures >= 3) {
-    const errorMsg = 'Session paused due to multiple consecutive AI failures. Please check your network or try again in a few minutes.';
-    console.error(`🚨 EMERGENCY STOP: ${errorMsg}`);
-    addDetailedActivity(`🚨 EMERGENCY STOP: ${errorMsg}`, 'error');
-    showStatus(`🚨 EMERGENCY STOP: Multiple AI failures detected`);
-    sessionStats.isRunning = false;
-    chrome.runtime.sendMessage({ type: 'BOLDTAKE_STOP' });
-    return null;
-  }
+    // --- EMERGENCY STOP: 3 consecutive skips triggers session halt ---
+    if (sessionStats.consecutiveFailures >= 3) {
+      const errorMsg = 'Session paused due to multiple consecutive AI failures. Please check your network or try again in a few minutes.';
+      errorHandler.handle(new Error(errorMsg), 'ai_generation_emergency_stop', 'critical');
+      showStatus(`🚨 EMERGENCY STOP: Multiple AI failures detected`);
+      sessionStats.isRunning = false;
+      chrome.runtime.sendMessage({ type: 'BOLDTAKE_STOP' });
+      return null;
+    }
 
-  // Get personalization settings for language and tone
-  const personalization = await getPersonalizationSettings();
-  const selectedPrompt = await selectBestPrompt(tweetText);
+    // Get personalization settings for language and tone
+    const personalization = await errorHandler.wrapAsync(
+      () => getPersonalizationSettings(),
+      'get_personalization_settings',
+      { language: 'english', tone: 'professional' }
+    );
+    
+    const selectedPrompt = await errorHandler.wrapAsync(
+      () => selectBestPrompt(tweetText),
+      'select_best_prompt',
+      { name: 'Engagement Indie Voice', template: 'Default template' }
+    );
   debugLog(`🎯 AI Strategy Selected: ${selectedPrompt.name}`);
   addDetailedActivity(`🔄 Using ${selectedPrompt.name} strategy`, 'info');
   
@@ -3312,9 +3845,13 @@ async function generateSmartReply(tweetText, tweetNumber) {
   // Build enhanced prompt with language and tone
   const enhancedPrompt = buildEnhancedPrompt(selectedPrompt.template, tweetText, personalization);
 
-  // 🔄 ATTEMPT 1: First try with selected strategy
-  console.log('🎯 ATTEMPT 1: Trying with selected strategy...');
-  let reply = await attemptGeneration(enhancedPrompt, tweetText);
+    // 🔄 ATTEMPT 1: First try with selected strategy
+    console.log('🎯 ATTEMPT 1: Trying with selected strategy...');
+    let reply = await errorHandler.wrapAsync(
+      () => attemptGeneration(enhancedPrompt, tweetText),
+      'ai_attempt_1',
+      null
+    );
   
   // 🎯 SPECIAL CASE: Daily limit reached - stop immediately, don't retry
   if (reply === 'DAILY_LIMIT_REACHED') {
@@ -3400,7 +3937,8 @@ Reply with just the response text:`;
   // ✅ CRITICAL: Do NOT post any reply
   // ✅ CRITICAL: Return null to signal "skip this tweet"
   
-  return null; // This signals to skip the tweet entirely
+    return null; // This signals to skip the tweet entirely
+  }, 'generate_smart_reply', null);
 }
 
 /**
