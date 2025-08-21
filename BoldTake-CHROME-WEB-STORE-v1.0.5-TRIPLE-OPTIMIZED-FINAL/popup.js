@@ -3,11 +3,15 @@
  * Enhanced with BoldTake Brand Kit Design
  */
 
-// Production mode - no debug logging
+// Stealth mode - minimal popup logging
 const DEBUG_MODE = false;
 const debugLog = DEBUG_MODE ? console.log : () => {};
 
 debugLog('🚀 BoldTake Professional popup loaded');
+
+// Authentication state
+let isAuthenticated = false;
+let currentUser = null;
 
 // DOM Elements
 let startBtn, stopBtn, sessionStatus, successfulCount, successRate;
@@ -15,6 +19,10 @@ let keywordInput, minFavesInput, liveStatus, activityFeed;
 let settingsBtn, analyticsBtn, roadmapBtn, settingsPanel, analyticsPanel, roadmapPanel;
 let languageSelect, toneSelect;
 let nicheSelect, suggestedKeywords;
+
+// Authentication elements
+let loginForm, emailInput, passwordInput, loginBtn, loginError;
+let mainContent, logoutBtn;
 
 // Settings Elements
 let dailyTargetInput;
@@ -72,60 +80,6 @@ const NICHE_KEYWORDS = {
         title: 'Gaming & Entertainment',
         description: 'Engage with gamers and entertainment enthusiasts',
         keywords: ['gaming', 'esports', 'streamer', 'entertainment', 'video games', 'twitch', 'content creator', 'streaming', 'gamer', 'game dev']
-    },
-    
-    // 🔥 HIGH-ENGAGEMENT IDEOLOGICAL FAULT LINES (Viral Potential)
-    capitalism: {
-        title: 'Capitalism & Economics 🔥',
-        description: 'High-engagement debates on economic systems (Recommended: "The Counter" strategy)',
-        keywords: ['capitalism', 'socialism', 'free market', 'taxes', 'wealth gap', 'inequality', 'economic policy', 'redistribution', 'prosperity', 'class warfare']
-    },
-    freespeech: {
-        title: 'Free Speech & Censorship 🔥',
-        description: 'Core culture war debates on expression vs. responsibility (Recommended: "Indie Voice" or "Spark Reply")',
-        keywords: ['free speech', 'censorship', 'mainstream media', 'cancel culture', 'deplatforming', 'first amendment', 'platform responsibility', 'content moderation', 'bias', 'narrative']
-    },
-    immigration: {
-        title: 'Immigration & Identity 🔥',
-        description: 'Emotional debates on borders, identity, and economics (HIGH RISK/REWARD - Use "The Counter" with data)',
-        keywords: ['immigration', 'open borders', 'national security', 'cultural identity', 'border control', 'asylum', 'deportation', 'legal immigration', 'sanctuary cities', 'assimilation']
-    },
-    climate: {
-        title: 'Climate & Energy Policy 🔥',
-        description: 'Environmental policy vs. economic impact debates (Recommended: "The Counter" with tech solutions)',
-        keywords: ['climate change', 'nuclear energy', 'green new deal', 'carbon tax', 'oil and gas', 'renewable energy', 'environmental policy', 'global warming', 'sustainability', 'energy transition']
-    },
-    foreignpolicy: {
-        title: 'Foreign Policy & Global Affairs 🔥',
-        description: 'Strategic debates on international relations (Recommended: "Spark Reply" for critical questions)',
-        keywords: ['foreign policy', 'foreign aid', 'NATO', 'China', 'Russia', 'Ukraine', 'geopolitics', 'international relations', 'national defense', 'global strategy']
-    },
-    
-    // 🔥 ADVANCED IDEOLOGICAL FAULT LINES - MAXIMUM VIRAL POTENTIAL
-    geopolitics: {
-        title: 'Geopolitics & Global Dominance 🔥🔥',
-        description: 'The struggle for global dominance and fracturing world order (EXPERT LEVEL - Use "The Counter" with data)',
-        keywords: ['BRICS', 'hegemony', 'globalism', 'Davos', 'sovereignty', 'multipolar world', 'world order', 'global elite', 'power structure', 'empire']
-    },
-    economiccollapse: {
-        title: 'Economic Collapse & Financial Crisis 🔥🔥',
-        description: 'Systemic financial breakdown fears and ideologies (HIGH ENGAGEMENT - Use "The Counter" or "Viral Shot")',
-        keywords: ['degrowth', 'austerity', 'hyperinflation', 'neoliberalism', 'oligarchs', 'financial collapse', 'monetary policy', 'debt crisis', 'wealth concentration', 'economic reset']
-    },
-    ethnonationalism: {
-        title: 'Ethnonationalism & Identity Politics 🔥🔥',
-        description: 'Identity-based political movements and borders (MAXIMUM RISK/REWARD - Expert users only)',
-        keywords: ['ethnostate', 'balkanization', 'separatism', 'irredentism', 'supremacy', 'demographic change', 'cultural preservation', 'ethnic conflict', 'national identity', 'tribal politics']
-    },
-    transhumanism: {
-        title: 'Transhumanism & Human Future 🔥🔥',
-        description: 'Technology vs ethics battleground for human species (CUTTING EDGE - Use "Spark Reply" for questions)',
-        keywords: ['eugenics', 'singularity', 'cybernetics', 'geoengineering', 'cloning', 'genetic enhancement', 'artificial intelligence', 'human augmentation', 'bioethics', 'posthuman']
-    },
-    asymmetricwarfare: {
-        title: 'Asymmetric Warfare & Modern Conflict 🔥🔥',
-        description: 'Modern conflict outside traditional rules (EXPERT LEVEL - Use "The Counter" with strategic analysis)',
-        keywords: ['insurgency', 'psyop', 'mercenaries', 'false-flag', 'drones', 'hybrid warfare', 'information warfare', 'proxy conflict', 'cyber warfare', 'unconventional tactics']
     }
 };
 
@@ -188,106 +142,225 @@ function getLanguageCode(language) {
     return languageCodes[language?.toLowerCase()] || 'en';
 }
 
+// --- Standalone Authentication Functions ---
+
 /**
- * Wait for all critical dependencies to load
- * CRITICAL FIX: Prevents race condition errors
+ * Check authentication status on popup load
  */
-async function waitForDependencies() {
-    const maxWaitTime = 10000; // 10 seconds max wait
-    const checkInterval = 100; // Check every 100ms
-    const startTime = Date.now();
+async function checkAuthStatus() {
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'GET_SESSION' });
     
-    return new Promise((resolve, reject) => {
-        const checkDependencies = () => {
-            const elapsed = Date.now() - startTime;
-            
-            // Check if we've exceeded max wait time
-            if (elapsed > maxWaitTime) {
-                reject(new Error('Timeout waiting for dependencies to load'));
-                return;
-            }
-            
-            // Check for required dependencies
-            const hasSupabase = typeof window.supabase !== 'undefined';
-            const hasBoldTakeAuth = typeof window.BoldTakeAuth !== 'undefined';
-            const hasBoldTakeAuthManager = typeof window.BoldTakeAuthManager !== 'undefined';
-            
-            if (hasSupabase && hasBoldTakeAuth && hasBoldTakeAuthManager) {
-                debugLog('✅ All dependencies loaded successfully');
-                resolve();
-            } else {
-                debugLog(`⏳ Waiting for dependencies... Supabase: ${hasSupabase}, Auth: ${hasBoldTakeAuth}, AuthManager: ${hasBoldTakeAuthManager}`);
-                setTimeout(checkDependencies, checkInterval);
-            }
-        };
+    if (response && response.success && response.isAuthenticated) {
+      isAuthenticated = true;
+      currentUser = response.user;
+      showMainContent();
+    } else {
+      isAuthenticated = false;
+      currentUser = null;
+      showLoginForm();
+    }
+  } catch (error) {
+    console.error('❌ Error checking auth status:', error);
+    showLoginForm();
+  }
+}
+
+/**
+ * Show login form
+ */
+function showLoginForm() {
+  // Hide main content
+  const mainContent = document.querySelector('.content');
+  if (mainContent) {
+    mainContent.style.display = 'none';
+  }
+  
+  // Create or show login form
+  let loginContainer = document.getElementById('login-container');
+  if (!loginContainer) {
+    loginContainer = createLoginForm();
+    document.body.appendChild(loginContainer);
+  } else {
+    loginContainer.style.display = 'flex';
+  }
+}
+
+/**
+ * Show main content
+ */
+function showMainContent() {
+  // Hide login form
+  const loginContainer = document.getElementById('login-container');
+  if (loginContainer) {
+    loginContainer.style.display = 'none';
+  }
+  
+  // Show main content
+  const mainContent = document.querySelector('.content');
+  if (mainContent) {
+    mainContent.style.display = 'block';
+  }
+  
+  // Update user info if available
+  if (currentUser) {
+    updateUserInfo();
+  }
+}
+
+/**
+ * Create login form
+ */
+function createLoginForm() {
+  const loginContainer = document.createElement('div');
+  loginContainer.id = 'login-container';
+  loginContainer.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, #111827, #1F2937);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    z-index: 1000;
+  `;
+  
+  loginContainer.innerHTML = `
+    <div style="text-align: center; color: white; max-width: 350px; width: 100%;">
+      <div style="margin-bottom: 2rem;">
+        <h1 style="font-size: 1.8rem; margin-bottom: 0.5rem; background: linear-gradient(135deg, #34D399, #10B981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700;">
+          BoldTake
+        </h1>
+        <p style="color: #9CA3AF; font-size: 0.9rem;">Sign in to your account</p>
+      </div>
+      
+      <div style="background: #1F2937; padding: 1.5rem; border-radius: 1rem; border: 1px solid #374151;">
+        <input type="email" id="login-email" placeholder="Email address" 
+          style="width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid #374151; border-radius: 0.5rem; background: #111827; color: white; font-size: 0.9rem; outline: none;">
         
-        checkDependencies();
+        <input type="password" id="login-password" placeholder="Password"
+          style="width: 100%; padding: 0.75rem; margin-bottom: 1.5rem; border: 1px solid #374151; border-radius: 0.5rem; background: #111827; color: white; font-size: 0.9rem; outline: none;">
+        
+        <button id="login-submit" 
+          style="width: 100%; padding: 0.75rem; background: linear-gradient(135deg, #34D399, #10B981); border: none; border-radius: 0.5rem; color: white; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.3s ease;">
+          Sign In
+        </button>
+        
+        <div id="login-error" style="color: #EF4444; margin-top: 1rem; text-align: center; display: none; font-size: 0.8rem;"></div>
+      </div>
+    </div>
+  `;
+  
+  // Add event listeners
+  const submitBtn = loginContainer.querySelector('#login-submit');
+  const emailInput = loginContainer.querySelector('#login-email');
+  const passwordInput = loginContainer.querySelector('#login-password');
+  
+  submitBtn.addEventListener('click', handleLogin);
+  emailInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleLogin();
+  });
+  passwordInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') handleLogin();
+  });
+  
+  return loginContainer;
+}
+
+/**
+ * Handle login form submission
+ */
+async function handleLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errorDiv = document.getElementById('login-error');
+  const submitBtn = document.getElementById('login-submit');
+  
+  // Validation
+  if (!email || !password) {
+    showLoginError('Please enter both email and password');
+    return;
+  }
+  
+  // Show loading
+  submitBtn.textContent = 'Signing in...';
+  submitBtn.disabled = true;
+  errorDiv.style.display = 'none';
+  
+  try {
+    const response = await chrome.runtime.sendMessage({
+      type: 'SIGN_IN',
+      email: email,
+      password: password
     });
+    
+    if (response && response.success) {
+      console.log('✅ Login successful');
+      isAuthenticated = true;
+      currentUser = response.user;
+      showMainContent();
+    } else {
+      showLoginError(response?.error || 'Login failed');
+    }
+  } catch (error) {
+    console.error('❌ Login error:', error);
+    showLoginError('Login failed: ' + error.message);
+  } finally {
+    submitBtn.textContent = 'Sign In';
+    submitBtn.disabled = false;
+  }
 }
 
 /**
- * Show initialization error to user
+ * Show login error
  */
-function showInitializationError(errorMessage) {
-    const loginError = document.getElementById('login-error');
-    if (loginError) {
-        loginError.style.display = 'block';
-        loginError.textContent = `Initialization Error: ${errorMessage}. Please refresh and try again.`;
-    }
+function showLoginError(message) {
+  const errorDiv = document.getElementById('login-error');
+  if (errorDiv) {
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+  }
 }
 
 /**
- * A+++ FEATURE: Auto-refresh subscription status when popup opens
- * This provides seamless experience for users who just paid
+ * Handle logout
  */
-async function autoRefreshSubscriptionOnOpen() {
-    try {
-        // Only refresh if user is authenticated
-        if (!window.BoldTakeAuthManager) {
-            debugLog('🔍 Auth manager not available, skipping auto-refresh');
-            return;
-        }
-        
-        const authState = window.BoldTakeAuthManager.getAuthState();
-        if (!authState.isAuthenticated) {
-            debugLog('🔍 User not authenticated, skipping auto-refresh');
-            return;
-        }
-        
-        debugLog('🔄 AUTO-REFRESH: Checking subscription status on popup open...');
-        console.log('💡 A+++ FEATURE: Auto-refreshing subscription for seamless post-payment experience');
-        
-        // Force fresh subscription check (ignores cache)
-        await window.BoldTakeAuthManager.refreshSubscriptionStatus();
-        debugLog('✅ Auto-refresh completed successfully');
-        
-    } catch (error) {
-        // Silent failure - don't disrupt user experience
-        debugLog('⚠️ Auto-refresh failed (non-critical):', error);
+async function handleLogout() {
+  try {
+    const response = await chrome.runtime.sendMessage({ type: 'SIGN_OUT' });
+    
+    if (response && response.success) {
+      isAuthenticated = false;
+      currentUser = null;
+      showLoginForm();
     }
+  } catch (error) {
+    console.error('❌ Logout error:', error);
+  }
+}
+
+/**
+ * Update user info in main content
+ */
+function updateUserInfo() {
+  // This can be expanded to show user email, subscription status, etc.
+  if (currentUser && currentUser.email) {
+    console.log('👤 Logged in as:', currentUser.email);
+  }
 }
 
 // Initialize popup when DOM is loaded
 document.addEventListener('DOMContentLoaded', async () => {
-    debugLog('📱 Initializing BoldTake Professional interface...');
+    // Check authentication first
+    await checkAuthStatus();
     
-    // PHASE 1: Initialize Authentication System with proper loading checks
-    try {
-        // CRITICAL FIX: Wait for all dependencies to load
-        await waitForDependencies();
-        
-        await window.BoldTakeAuthManager.initializeAuth();
-        debugLog('✅ Authentication system initialized');
-        
-        // A+++ FEATURE: Auto-refresh subscription status on popup open
-        // This ensures users see updated status immediately after payment
-        await autoRefreshSubscriptionOnOpen();
-        
-    } catch (error) {
-        console.error('❌ Failed to initialize authentication:', error);
-        showInitializationError(error.message);
-        // Continue with limited functionality
-    }
+    // Then initialize popup if authenticated
+    if (isAuthenticated) {
+        debugLog('📱 Initializing BoldTake Professional interface...');
     
     // Get DOM elements
     startBtn = document.getElementById('start-button');
@@ -299,6 +372,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     minFavesInput = document.getElementById('min-faves-input');
     liveStatus = document.getElementById('liveStatus');
     activityFeed = document.getElementById('activityFeed');
+    settingsBtn = document.getElementById('settings-button');
+    analyticsBtn = document.getElementById('analytics-button');
+    roadmapBtn = document.getElementById('roadmap-button');
     settingsPanel = document.getElementById('settings-panel');
     analyticsPanel = document.getElementById('analytics-panel');
     roadmapPanel = document.getElementById('roadmap-panel');
@@ -357,7 +433,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Load language preference (restrict to English only for current tier)
         if (result.boldtake_language) {
             if (result.boldtake_language === 'english') {
-            languageSelect.value = result.boldtake_language;
+                languageSelect.value = result.boldtake_language;
             } else {
                 languageSelect.value = 'english'; // Force English for current tier
                 debugLog('🚫 Language restricted to English for current tier');
@@ -403,28 +479,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // CRITICAL SAFETY: Stop button ALWAYS enabled for panic stops
     stopBtn.disabled = false;
     stopBtn.classList.remove('btn-disabled');
-    
-    // Authentication event listeners
-    setupAuthEventListeners();
-    // Old button event listeners removed - using tab navigation system now
+    settingsBtn.addEventListener('click', toggleSettings);
+    analyticsBtn.addEventListener('click', toggleAnalytics);
+    roadmapBtn.addEventListener('click', toggleRoadmap);
     clearHistoryBtn.addEventListener('click', clearCommentHistory);
-    
-    // Launch session from settings button
-    const launchFromSettingsBtn = document.getElementById('launch-from-settings-btn');
-    if (launchFromSettingsBtn) {
-        launchFromSettingsBtn.addEventListener('click', async () => {
-            // Save settings first
-            savePersonalizationSettings();
-            saveFilteringSettings();
-            // Switch to dashboard tab
-            const dashboardTab = document.querySelector('[data-tab="dashboard"]');
-            if (dashboardTab) {
-                dashboardTab.click();
-            }
-            // Start session
-            await startSession();
-        });
-    }
     
     // Set up keyword chip listeners
     document.querySelectorAll('.keyword-chip').forEach(chip => {
@@ -491,11 +549,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (quickSettingsBtn) {
         quickSettingsBtn.addEventListener('click', () => {
-            // Open settings panel using new tab system
-            const settingsTab = document.querySelector('[data-tab="settings"]');
-            if (settingsTab) {
-                settingsTab.click();
-            }
+            // Open settings panel
+            toggleSettings();
             // Hide the quick start guide
             quickStartGuide.classList.add('hidden');
             // Save preference
@@ -540,11 +595,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // AUTO-OPEN SETTINGS for better UX - help users get started immediately
     const shouldAutoOpenSettings = await checkIfShouldAutoOpenSettings();
     if (shouldAutoOpenSettings) {
-        // Open settings panel using new tab system
-        const settingsTab = document.querySelector('[data-tab="settings"]');
-        if (settingsTab) {
-            settingsTab.click();
-        }
+        toggleSettings(); // Open settings panel
         debugLog('🎯 Auto-opened settings for new user experience');
     }
     
@@ -557,7 +608,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Setup activity controls
     setupActivityControls();
     
-    debugLog('✅ BoldTake Professional popup ready!');
+        debugLog('✅ BoldTake Professional popup ready!');
+    }
 });
 
 /**
@@ -662,24 +714,7 @@ async function checkIfShouldAutoOpenSettings() {
 async function startSession() {
     debugLog('🎬 Starting BoldTake session...');
     
-    // CRITICAL: Prevent rapid clicking and multiple simultaneous sessions
-    if (startBtn.disabled) {
-        debugLog('⚠️ Start session already in progress, ignoring duplicate click');
-        return;
-    }
-    
     try {
-        // IMMEDIATELY disable button to prevent rapid clicking
-        startBtn.disabled = true;
-        startBtn.innerHTML = '<div class="loading"></div>Launching...';
-        
-        // Also disable launch-from-settings button if it exists
-        const launchFromSettingsBtn = document.getElementById('launch-from-settings-btn');
-        if (launchFromSettingsBtn) {
-            launchFromSettingsBtn.disabled = true;
-            launchFromSettingsBtn.innerHTML = '<div class="loading"></div>Launching...';
-        }
-        
         // SMART DEFAULTS: Make it easy for users - just click and go!
         let keyword = keywordInput.value.trim();
         let minFaves = minFavesInput.value;
@@ -706,6 +741,10 @@ async function startSession() {
         // Auto-fill the inputs so user can see what's being used
         keywordInput.value = keyword;
         minFavesInput.value = minFaves;
+        
+        // Update UI to show starting state
+        startBtn.disabled = true;
+        startBtn.innerHTML = '<div class="loading"></div>Launching...';
         
         // Save settings and set the flag to auto-start the session
         await chrome.storage.local.set({
@@ -890,7 +929,7 @@ function updateUIForRunningSession() {
     const stopBtn = document.getElementById('stop-button');
     
     if (startBtn) {
-    startBtn.disabled = true;
+        startBtn.disabled = true;
         startBtn.innerHTML = 'Session Active';
         startBtn.classList.add('btn-disabled');
     }
@@ -902,8 +941,8 @@ function updateUIForRunningSession() {
     
     // CRITICAL: Stop button ALWAYS active for panic stops
     if (stopBtn) {
-    stopBtn.disabled = false;
-    stopBtn.innerHTML = 'Stop Session';
+        stopBtn.disabled = false;
+        stopBtn.innerHTML = 'Stop Session';
         stopBtn.classList.add('btn-stop');
         stopBtn.classList.remove('btn-disabled');
     }
@@ -918,7 +957,7 @@ function updateUIForStoppedSession() {
     const stopBtn = document.getElementById('stop-button');
     
     if (startBtn) {
-    startBtn.disabled = false;
+        startBtn.disabled = false;
         startBtn.innerHTML = 'Start Session';
         startBtn.classList.remove('btn-disabled');
     }
@@ -929,8 +968,8 @@ function updateUIForStoppedSession() {
     }
     
     if (stopBtn) {
-    stopBtn.disabled = true;
-    stopBtn.innerHTML = 'Stop Session';
+        stopBtn.disabled = true;
+        stopBtn.innerHTML = 'Stop Session';
         stopBtn.classList.remove('btn-stop');
         stopBtn.classList.add('btn-disabled');
     }
@@ -949,18 +988,10 @@ function updateUIForWrongSite() {
 
 /**
  * Resets the start button to default state
- * ENHANCED: Also resets launch-from-settings button
  */
 function resetStartButton() {
     startBtn.disabled = false;
     startBtn.innerHTML = 'Launch Session';
-    
-    // Also reset launch-from-settings button if it exists
-    const launchFromSettingsBtn = document.getElementById('launch-from-settings-btn');
-    if (launchFromSettingsBtn) {
-        launchFromSettingsBtn.disabled = false;
-        launchFromSettingsBtn.innerHTML = '🚀 Launch Session with These Settings';
-    }
 }
 
 /**
@@ -1082,7 +1113,68 @@ function updateActivityFeed() {
     activityFeed.scrollTop = activityFeed.scrollHeight;
 }
 
-// Old toggle functions removed - using new tab navigation system
+/**
+ * Toggle settings panel visibility
+ */
+function toggleSettings() {
+    const isHidden = settingsPanel.classList.contains('hidden');
+    
+    // Hide other panels
+    analyticsPanel.classList.add('hidden');
+    analyticsBtn.classList.remove('active');
+    roadmapPanel.classList.add('hidden');
+    roadmapBtn.classList.remove('active');
+    
+    if (isHidden) {
+        settingsPanel.classList.remove('hidden');
+        settingsBtn.classList.add('active');
+    } else {
+        settingsPanel.classList.add('hidden');
+        settingsBtn.classList.remove('active');
+    }
+}
+
+/**
+ * Toggle analytics panel visibility
+ */
+function toggleAnalytics() {
+    const isHidden = analyticsPanel.classList.contains('hidden');
+    
+    // Hide other panels
+    settingsPanel.classList.add('hidden');
+    settingsBtn.classList.remove('active');
+    roadmapPanel.classList.add('hidden');
+    roadmapBtn.classList.remove('active');
+    
+    if (isHidden) {
+        analyticsPanel.classList.remove('hidden');
+        analyticsBtn.classList.add('active');
+        // Refresh analytics when opened
+        loadAnalyticsData();
+    } else {
+        analyticsPanel.classList.add('hidden');
+        analyticsBtn.classList.remove('active');
+    }
+}
+
+/**
+ * Toggle roadmap panel visibility
+ */
+function toggleRoadmap() {
+    const isHidden = roadmapPanel.classList.contains('hidden');
+    
+    // Hide settings if open
+    settingsPanel.classList.add('hidden');
+    settingsBtn.classList.remove('active');
+    
+    if (isHidden) {
+        roadmapPanel.classList.remove('hidden');
+        roadmapBtn.classList.add('active');
+    } else {
+        roadmapPanel.classList.add('hidden');
+        roadmapBtn.classList.remove('active');
+    }
+}
 
 /**
  * Save personalization settings (language and tone)
@@ -1141,7 +1233,7 @@ function setupTabNavigation() {
                 if (dashboardContent) dashboardContent.style.display = 'none';
                 const settingsPanel = document.getElementById('settings-panel');
                 if (settingsPanel) {
-        settingsPanel.classList.remove('hidden');
+                    settingsPanel.classList.remove('hidden');
                     settingsPanel.style.display = 'block';
                 }
             } else if (targetTab === 'analytics') {
@@ -1252,7 +1344,7 @@ async function handleCSVUpload(event) {
             }, (response) => {
                 if (response?.success) {
                     displayAnalysisResults(response.insights);
-    } else {
+                } else {
                     debugLog('❌ Analysis failed:', response?.error);
                 }
             });
@@ -1445,7 +1537,7 @@ async function applyAIImprovements() {
                 if (response?.success) {
                     showNotification('AI improvements applied successfully!', 'success');
                     debugLog('🚀 AI improvements applied:', response.enhancements);
-    } else {
+                } else {
                     showNotification('Failed to apply improvements', 'error');
                 }
             });
@@ -1485,153 +1577,6 @@ function showNotification(message, type = 'info') {
 }
 
 /**
- * Set up authentication-related event listeners
- */
-function setupAuthEventListeners() {
-    // Login form submission
-    const loginBtn = document.getElementById('login-btn');
-    const loginForm = document.getElementById('login-form');
-    const loginEmail = document.getElementById('login-email');
-    const loginPassword = document.getElementById('login-password');
-    const loginError = document.getElementById('login-error');
-    const loginBtnText = document.querySelector('.login-btn-text');
-    const loginLoading = document.querySelector('.login-loading');
-    
-    if (loginBtn && loginEmail && loginPassword) {
-        // Handle login button click
-        loginBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            await handleLoginSubmission();
-        });
-        
-        // Handle Enter key in form fields
-        loginEmail.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                handleLoginSubmission();
-            }
-        });
-        
-        loginPassword.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                handleLoginSubmission();
-            }
-        });
-        
-        async function handleLoginSubmission() {
-            const email = loginEmail.value.trim();
-            const password = loginPassword.value;
-            
-            // Validate inputs
-            if (!email || !password) {
-                showLoginError('Please enter both email and password');
-                return;
-            }
-            
-            if (!isValidEmail(email)) {
-                showLoginError('Please enter a valid email address');
-                return;
-            }
-            
-            // Show loading state
-            loginBtn.disabled = true;
-            loginBtnText.style.display = 'none';
-            loginLoading.style.display = 'flex';
-            hideLoginError();
-            
-            try {
-                // Attempt login
-                const result = await window.BoldTakeAuthManager.handleLogin(email, password);
-                
-                if (result.success) {
-                    // Success - UI will be updated by auth manager
-                    debugLog('✅ Login successful');
-                } else {
-                    showLoginError(result.error || 'Login failed. Please check your credentials.');
-                }
-            } catch (error) {
-                console.error('❌ Login error:', error);
-                showLoginError('An unexpected error occurred. Please try again.');
-            } finally {
-                // Reset button state
-                loginBtn.disabled = false;
-                loginBtnText.style.display = 'block';
-                loginLoading.style.display = 'none';
-            }
-        }
-        
-        function showLoginError(message) {
-            if (loginError) {
-                loginError.textContent = message;
-                loginError.style.display = 'block';
-            }
-        }
-        
-        function hideLoginError() {
-            if (loginError) {
-                loginError.style.display = 'none';
-            }
-        }
-        
-        function isValidEmail(email) {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            return emailRegex.test(email);
-        }
-    }
-    
-    // Logout functionality (add logout button if needed)
-    const logoutBtn = document.getElementById('logout-btn');
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', async () => {
-            try {
-                await window.BoldTakeAuthManager.handleLogout();
-                debugLog('✅ Logout successful');
-            } catch (error) {
-                console.error('❌ Logout error:', error);
-            }
-        });
-    }
-    
-    // CRITICAL: Enhanced subscription refresh button for payment status updates
-    const refreshSubscriptionBtn = document.getElementById('refresh-subscription');
-    if (refreshSubscriptionBtn) {
-        refreshSubscriptionBtn.addEventListener('click', async () => {
-            try {
-                // Immediate UI feedback
-                refreshSubscriptionBtn.disabled = true;
-                refreshSubscriptionBtn.innerHTML = '<div class="loading"></div>Checking...';
-                
-                console.log('🔄 USER TRIGGERED: Manual subscription status refresh');
-                console.log('📧 User email for webhook debugging: lipmichal@gmail.com');
-                
-                // FORCE fresh API call (no cache)
-                await window.BoldTakeAuthManager.refreshSubscriptionStatus();
-                debugLog('✅ Subscription status forcefully refreshed');
-                
-                // Success feedback
-                refreshSubscriptionBtn.innerHTML = '✅ Status Updated!';
-                setTimeout(() => {
-                    refreshSubscriptionBtn.innerHTML = 'Check Subscription Status';
-                }, 2000);
-                
-            } catch (error) {
-                console.error('❌ Refresh subscription error:', error);
-                
-                // Error feedback
-                refreshSubscriptionBtn.innerHTML = '❌ Try Again';
-                setTimeout(() => {
-                    refreshSubscriptionBtn.innerHTML = 'Check Subscription Status';
-                }, 3000);
-            } finally {
-                // Re-enable button after delay
-                setTimeout(() => {
-                    refreshSubscriptionBtn.disabled = false;
-                }, 2000);
-            }
-        });
-    }
-}
-
-/**
  * Show guide content (Expert Growth Strategies + Browser Tips)
  */
 function showGuideContent() {
@@ -1643,54 +1588,30 @@ function showGuideContent() {
         guidePanel.className = 'guide-panel';
         guidePanel.innerHTML = `
             <div class="guide-section">
-                <h3>🎯 Expert Growth Strategies</h3>
+                <h3>📈 Expert Growth Strategies</h3>
                 <div class="guide-accordion">
                     <div class="guide-item">
                         <div class="guide-header">
-                            <strong>1. Quality Over Quantity</strong>
+                            <strong>Principle: Niche Authority</strong>
                         </div>
                         <div class="guide-content">
-                            Target tweets with 300+ engagement for maximum visibility and authentic conversations. High-engagement tweets = higher reach for your replies.
+                            Reply to tweets in your expertise area. BoldTake's AI adapts to your niche, building you as a thought leader in that space.
                         </div>
                     </div>
                     <div class="guide-item">
                         <div class="guide-header">
-                            <strong>2. Double Strategy</strong>
+                            <strong>The "60+60" Strategy</strong>
                         </div>
                         <div class="guide-content">
-                            Run 2 sessions daily with different keywords (60+60 only) for maximum niche coverage within 120/day limit. Example: "AI startup" morning, "SaaS growth" afternoon.
+                            Run 2 separate sessions with different keywords. Example: 60 replies on "AI" in morning, 60 on "startup" in evening. Maximum daily limit: 120 replies total.
                         </div>
                     </div>
                     <div class="guide-item">
                         <div class="guide-header">
-                            <strong>3. Niche Authority</strong>
+                            <strong>Timing is Everything</strong>
                         </div>
                         <div class="guide-content">
-                            Focus on 2-3 specific topics (AI, SaaS, Marketing) to build consistent thought leadership. Scattered engagement dilutes your expertise signal.
-                        </div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-header">
-                            <strong>4. Optimal Sessions</strong>
-                        </div>
-                        <div class="guide-content">
-                            Run sessions during peak hours (9-11 AM, 1-3 PM EST) with 2-3 hour breaks between. Higher user activity = more engagement opportunities.
-                        </div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-header">
-                            <strong>5. Stealth Operations</strong>
-                        </div>
-                        <div class="guide-content">
-                            Use varied timing and natural breaks - our system mimics human behavior patterns automatically. No manual stealth configuration needed.
-                        </div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-header">
-                            <strong>6. Strategic Languages</strong>
-                        </div>
-                        <div class="guide-content">
-                            English for global reach, Spanish for LATAM markets, or target specific regions. Match language to your audience geography for better engagement.
+                            Use "Safe" timing (1-5min delays) during peak hours (9am-5pm EST). Switch to "Stealth" (2-10min) for overnight sessions.
                         </div>
                     </div>
                 </div>
@@ -1699,62 +1620,26 @@ function showGuideContent() {
                 <div class="guide-accordion">
                     <div class="guide-item">
                         <div class="guide-header">
-                            <strong>1. Keep X.com Tab Active</strong>
+                            <strong>Pro Tip: Isolate in Brave</strong>
                         </div>
                         <div class="guide-content">
-                            Always keep X.com as the active/focused tab for maximum performance and reliability. Chrome throttles background tabs, reducing success rates.
+                            Use Brave browser for BoldTake sessions. Its built-in privacy features provide additional protection from tracking.
                         </div>
                     </div>
                     <div class="guide-item">
                         <div class="guide-header">
-                            <strong>2. Use Brave Browser</strong>
+                            <strong>Rule #1: Keep Tab in Focus</strong>
                         </div>
                         <div class="guide-content">
-                            Run BoldTake in Brave (Chromium-based) while doing other work in different browser. Isolates automation from your regular browsing.
+                            Keep the X.com tab active and visible. Minimize other windows but keep X.com tab as the active tab for optimal performance.
                         </div>
                     </div>
                     <div class="guide-item">
                         <div class="guide-header">
-                            <strong>3. Minimize Window</strong>
+                            <strong>Warning: Avoid Tab Switching</strong>
                         </div>
                         <div class="guide-content">
-                            Minimize entire browser window (not tab) to prevent accidental tab switching. Window minimization doesn't affect performance.
-                        </div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-header">
-                            <strong>4. Avoid Tab Switching</strong>
-                        </div>
-                        <div class="guide-content">
-                            Never switch tabs in same window - Chrome throttles background tabs reducing success rate. Use separate browser instances if needed.
-                        </div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-header">
-                            <strong>5. Stable Connection</strong>
-                        </div>
-                        <div class="guide-content">
-                            Use wired internet when possible - BoldTake auto-recovers from disconnections but stable connection ensures optimal performance.
-                        </div>
-                    </div>
-                </div>
-                
-                <h3>🔐 Multi-Account Strategy (Advanced)</h3>
-                <div class="guide-accordion">
-                    <div class="guide-item">
-                        <div class="guide-header">
-                            <strong>Brave + Proxy Setup</strong>
-                        </div>
-                        <div class="guide-content">
-                            For multiple accounts: Use Brave browser with different proxy configurations per account. Each account should have its own browser profile and proxy to maintain separation.
-                        </div>
-                    </div>
-                    <div class="guide-item">
-                        <div class="guide-header">
-                            <strong>Account Isolation</strong>
-                        </div>
-                        <div class="guide-content">
-                            Never run multiple accounts from the same IP or browser session. Use separate devices, VPNs, or proxy services to maintain account safety and avoid linking.
+                            Don't switch between multiple X.com tabs during a session. This can confuse the automation and reduce success rates.
                         </div>
                     </div>
                 </div>
@@ -2028,246 +1913,6 @@ function handleNicheSelection() {
         });
     });
 }
-
-// ========================================
-// DAILY LIMIT REACHED UI
-// ========================================
-
-/**
- * Show the "Daily Limit Reached" UI with countdown timer
- */
-function showDailyLimitReachedUI(dailyLimit = 125) {
-    debugLog(`📊 Showing daily limit reached UI (limit: ${dailyLimit})`);
-    
-    // Hide all existing UI sections
-    const allSections = document.querySelectorAll('.main-content, .settings-panel, .analytics-panel, .roadmap-panel, .guide-panel');
-    allSections.forEach(section => section.style.display = 'none');
-    
-    // Create daily limit reached UI
-    const limitReachedHTML = `
-        <div class="daily-limit-container">
-            <div class="daily-limit-header">
-                <div class="limit-icon">📊</div>
-                <h2>Daily Limit Reached</h2>
-                <p class="limit-message">
-                    You've used all <strong>${dailyLimit}</strong> of your high-impact replies for today. Great work!
-                </p>
-                <p class="reset-info">
-                    Your limit will automatically reset at midnight UTC.
-                </p>
-            </div>
-            
-            <div class="countdown-section">
-                <h3>Resets in:</h3>
-                <div class="countdown-display" id="countdown-timer">
-                    <span class="countdown-hours">--</span>h 
-                    <span class="countdown-minutes">--</span>m
-                </div>
-            </div>
-            
-            <div class="limit-actions">
-                <button class="btn btn-secondary" id="close-limit-screen">
-                    Close
-                </button>
-                <button class="btn btn-primary" id="upgrade-for-more">
-                    Upgrade for More Replies
-                </button>
-            </div>
-        </div>
-    `;
-    
-    // Add CSS for daily limit UI
-    const limitStyles = `
-        <style id="daily-limit-styles">
-            .daily-limit-container {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-                padding: 2rem 1.5rem;
-                min-height: 400px;
-                justify-content: center;
-                gap: 1.5rem;
-            }
-            
-            .daily-limit-header {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 1rem;
-            }
-            
-            .limit-icon {
-                font-size: 3rem;
-                margin-bottom: 0.5rem;
-            }
-            
-            .daily-limit-header h2 {
-                color: hsl(var(--text-primary));
-                font-size: 1.5rem;
-                font-weight: 600;
-                margin: 0;
-            }
-            
-            .limit-message {
-                color: hsl(var(--text-secondary));
-                font-size: 1rem;
-                margin: 0;
-                line-height: 1.5;
-            }
-            
-            .reset-info {
-                color: hsl(var(--text-tertiary));
-                font-size: 0.9rem;
-                margin: 0;
-            }
-            
-            .countdown-section {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 1rem;
-                padding: 1.5rem;
-                background: hsl(var(--bg-secondary));
-                border-radius: 12px;
-                border: 1px solid hsl(var(--border-primary));
-                min-width: 200px;
-            }
-            
-            .countdown-section h3 {
-                color: hsl(var(--text-primary));
-                font-size: 1.1rem;
-                margin: 0;
-                font-weight: 500;
-            }
-            
-            .countdown-display {
-                font-size: 2rem;
-                font-weight: 700;
-                color: hsl(var(--brand-primary));
-                font-family: 'SF Mono', Monaco, monospace;
-                letter-spacing: 0.1em;
-            }
-            
-            .limit-actions {
-                display: flex;
-                gap: 1rem;
-                margin-top: 1rem;
-            }
-            
-            .limit-actions .btn {
-                padding: 0.75rem 1.5rem;
-                border-radius: 8px;
-                font-weight: 500;
-                cursor: pointer;
-                transition: all 0.2s ease;
-            }
-            
-            .limit-actions .btn-secondary {
-                background: hsl(var(--bg-secondary));
-                border: 1px solid hsl(var(--border-primary));
-                color: hsl(var(--text-secondary));
-            }
-            
-            .limit-actions .btn-secondary:hover {
-                background: hsl(var(--bg-tertiary));
-            }
-            
-            .limit-actions .btn-primary {
-                background: hsl(var(--brand-primary));
-                border: 1px solid hsl(var(--brand-primary));
-                color: white;
-            }
-            
-            .limit-actions .btn-primary:hover {
-                background: hsl(var(--brand-primary-hover));
-            }
-        </style>
-    `;
-    
-    // Insert styles and content
-    document.head.insertAdjacentHTML('beforeend', limitStyles);
-    document.body.insertAdjacentHTML('beforeend', `<div id="daily-limit-ui">${limitReachedHTML}</div>`);
-    
-    // Start countdown timer
-    startCountdownTimer();
-    
-    // Add event listeners
-    document.getElementById('close-limit-screen').addEventListener('click', hideDailyLimitUI);
-    document.getElementById('upgrade-for-more').addEventListener('click', () => {
-        chrome.tabs.create({ url: 'https://boldtake.io/pricing' });
-    });
-}
-
-/**
- * Hide the daily limit UI and restore normal popup
- */
-function hideDailyLimitUI() {
-    const limitUI = document.getElementById('daily-limit-ui');
-    const limitStyles = document.getElementById('daily-limit-styles');
-    
-    if (limitUI) limitUI.remove();
-    if (limitStyles) limitStyles.remove();
-    
-    // Clear countdown interval
-    if (window.dailyLimitCountdown) {
-        clearInterval(window.dailyLimitCountdown);
-        window.dailyLimitCountdown = null;
-    }
-    
-    // Restore main UI
-    const mainContent = document.querySelector('.main-content');
-    if (mainContent) mainContent.style.display = 'flex';
-    
-    debugLog('📊 Daily limit UI hidden');
-}
-
-/**
- * Start the countdown timer to midnight UTC
- */
-function startCountdownTimer() {
-    function updateCountdown() {
-        const now = new Date();
-        const utcNow = new Date(now.getTime() + (now.getTimezoneOffset() * 60000));
-        
-        // Calculate time until next midnight UTC
-        const tomorrow = new Date(utcNow);
-        tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-        tomorrow.setUTCHours(0, 0, 0, 0);
-        
-        const timeUntilReset = tomorrow.getTime() - utcNow.getTime();
-        
-        if (timeUntilReset <= 0) {
-            // Limit has reset - hide UI and refresh
-            hideDailyLimitUI();
-            location.reload();
-            return;
-        }
-        
-        const hours = Math.floor(timeUntilReset / (1000 * 60 * 60));
-        const minutes = Math.floor((timeUntilReset % (1000 * 60 * 60)) / (1000 * 60));
-        
-        const hoursElement = document.querySelector('.countdown-hours');
-        const minutesElement = document.querySelector('.countdown-minutes');
-        
-        if (hoursElement) hoursElement.textContent = hours.toString().padStart(2, '0');
-        if (minutesElement) minutesElement.textContent = minutes.toString().padStart(2, '0');
-    }
-    
-    // Update immediately and then every minute
-    updateCountdown();
-    window.dailyLimitCountdown = setInterval(updateCountdown, 60000);
-}
-
-// Listen for daily limit messages from background script
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'SHOW_DAILY_LIMIT_UI') {
-        debugLog('📊 Received daily limit reached message');
-        showDailyLimitReachedUI(message.limit);
-        sendResponse({ success: true });
-        return false;
-    }
-});
 
 // ========================================
 

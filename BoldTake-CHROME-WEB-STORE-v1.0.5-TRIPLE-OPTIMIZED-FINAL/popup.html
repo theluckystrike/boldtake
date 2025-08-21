@@ -2266,367 +2266,6 @@
         .guide-panel.hidden {
             display: none;
         }
-
-        /* Launch from Settings Button */
-        .launch-from-settings {
-            text-align: center;
-            padding: 24px 0;
-            margin: 20px 0;
-            background: hsl(var(--bg-secondary));
-            border-radius: 12px;
-            border: 1px solid rgba(16, 185, 129, 0.2);
-        }
-
-        .launch-btn {
-            background: linear-gradient(135deg, hsl(var(--brand-green)), hsl(var(--brand-green) / 0.8));
-            color: white;
-            border: none;
-            padding: 14px 32px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 15px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-            min-width: 240px;
-        }
-
-        .launch-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
-            background: linear-gradient(135deg, hsl(var(--brand-green) / 1.1), hsl(var(--brand-green)));
-        }
-
-        .launch-btn:active {
-            transform: translateY(0);
-        }
-
-        .launch-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        /* Login Form Styles */
-        .login-form {
-            max-width: 400px;
-            margin: 0 auto;
-            padding: 32px 24px;
-            background: hsl(var(--bg-primary));
-            border-radius: 16px;
-            border: 1px solid hsl(var(--border-primary));
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-        }
-
-        .login-header {
-            text-align: center;
-            margin-bottom: 32px;
-        }
-
-        .login-header h2 {
-            font-size: 24px;
-            font-weight: 700;
-            color: hsl(var(--text-primary));
-            margin: 0 0 8px 0;
-        }
-
-        .login-header p {
-            font-size: 14px;
-            color: hsl(var(--text-secondary));
-            margin: 0;
-        }
-
-        .login-content {
-            gap: 24px;
-        }
-
-        .login-input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid hsl(var(--border-primary));
-            border-radius: 8px;
-            background: hsl(var(--bg-secondary));
-            color: hsl(var(--text-primary));
-            font-size: 14px;
-            transition: border-color 0.2s ease, box-shadow 0.2s ease;
-            box-sizing: border-box;
-        }
-
-        .login-input:focus {
-            outline: none;
-            border-color: hsl(var(--brand-green));
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-        }
-
-        .login-input::placeholder {
-            color: hsl(var(--text-secondary));
-        }
-
-        .login-btn {
-            width: 100%;
-            padding: 14px 24px;
-            background: linear-gradient(135deg, hsl(var(--brand-green)), hsl(var(--brand-green) / 0.8));
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 15px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            margin-top: 8px;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .login-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
-        }
-
-        .login-btn:active {
-            transform: translateY(0);
-        }
-
-        .login-btn:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .login-loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .login-loading::before {
-            content: '';
-            width: 16px;
-            height: 16px;
-            border: 2px solid transparent;
-            border-top: 2px solid currentColor;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        .login-error {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            color: #ef4444;
-            padding: 12px 16px;
-            border-radius: 8px;
-            font-size: 14px;
-            margin-bottom: 16px;
-        }
-
-        .login-footer {
-            text-align: center;
-            margin-top: 24px;
-            padding-top: 24px;
-            border-top: 1px solid hsl(var(--border-primary));
-        }
-
-        .login-footer p {
-            margin: 8px 0;
-            font-size: 13px;
-            color: hsl(var(--text-secondary));
-        }
-
-        .login-footer a {
-            color: hsl(var(--brand-green));
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .login-footer a:hover {
-            text-decoration: underline;
-        }
-
-        /* Hide main content when showing login */
-        .main-content.hidden {
-            display: none;
-        }
-
-        /* Subscription State Styles */
-        
-        /* Locked/Inactive State */
-        .subscription-locked {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.95);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 1000;
-        }
-
-        .lock-screen {
-            text-align: center;
-            padding: 40px 24px;
-            background: hsl(var(--bg-primary));
-            border-radius: 16px;
-            border: 1px solid hsl(var(--border-primary));
-            max-width: 320px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-        }
-
-        .lock-icon {
-            font-size: 48px;
-            margin-bottom: 16px;
-            opacity: 0.8;
-        }
-
-        .lock-screen h2 {
-            font-size: 20px;
-            font-weight: 700;
-            color: hsl(var(--text-primary));
-            margin: 0 0 8px 0;
-        }
-
-        .lock-screen p {
-            font-size: 14px;
-            color: hsl(var(--text-secondary));
-            margin: 0 0 24px 0;
-        }
-
-        .lock-actions {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .upgrade-btn-primary {
-            background: linear-gradient(135deg, hsl(var(--brand-green)), hsl(var(--brand-green) / 0.8));
-            color: white;
-            text-decoration: none;
-            padding: 14px 24px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 15px;
-            transition: all 0.2s ease;
-            text-align: center;
-            display: block;
-        }
-
-        .upgrade-btn-primary:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
-        }
-
-        .refresh-btn {
-            background: hsl(var(--bg-secondary));
-            color: hsl(var(--text-secondary));
-            border: 1px solid hsl(var(--border-primary));
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .refresh-btn:hover {
-            background: hsl(var(--bg-tertiary));
-            color: hsl(var(--text-primary));
-        }
-
-        /* Trial State Banner */
-        .trial-banner {
-            background: linear-gradient(135deg, #f59e0b, #f97316);
-            color: white;
-            padding: 12px 16px;
-            border-radius: 12px;
-            margin-bottom: 16px;
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-        }
-
-        .trial-content {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-        }
-
-        .trial-info {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .trial-badge {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.5px;
-        }
-
-        .trial-limit {
-            font-size: 13px;
-            font-weight: 500;
-        }
-
-        .trial-upgrade-btn {
-            background: rgba(255, 255, 255, 0.15);
-            color: white;
-            text-decoration: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            transition: all 0.2s ease;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            white-space: nowrap;
-        }
-
-        .trial-upgrade-btn:hover {
-            background: rgba(255, 255, 255, 0.25);
-            transform: translateY(-1px);
-        }
-
-        /* Active State Indicators */
-        .subscription-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            font-weight: 500;
-        }
-
-        .status-active {
-            color: hsl(var(--brand-green));
-        }
-
-        .status-trialing {
-            color: #f59e0b;
-        }
-
-        .status-inactive {
-            color: #ef4444;
-        }
-
-        .status-active::before {
-            content: "●";
-            color: hsl(var(--brand-green));
-        }
-
-        .status-trialing::before {
-            content: "●";
-            color: #f59e0b;
-        }
-
-        .status-inactive::before {
-            content: "●";
-            color: #ef4444;
-        }
     </style>
 </head>
 <body>
@@ -2640,69 +2279,6 @@
     </div>
 
     <div class="content">
-        <!-- Login Form (shown when not authenticated) -->
-        <div id="login-form" class="login-form" style="display: none;">
-            <div class="login-header">
-                <h2>Welcome to BoldTake Professional</h2>
-                <p>Sign in to access your X.com automation tools</p>
-            </div>
-            
-            <div class="login-content">
-                <div id="login-error" class="login-error" style="display: none;"></div>
-                
-                <div class="input-group">
-                    <label for="login-email">Email Address</label>
-                    <input type="email" id="login-email" class="login-input" placeholder="Enter your email" required>
-                </div>
-                
-                <div class="input-group">
-                    <label for="login-password">Password</label>
-                    <input type="password" id="login-password" class="login-input" placeholder="Enter your password" required>
-                </div>
-                
-                <button id="login-btn" class="login-btn">
-                    <span class="login-btn-text">Sign In</span>
-                    <div class="login-loading" style="display: none;">Signing in...</div>
-                </button>
-                
-                <div class="login-footer">
-                    <p>Don't have an account? <a href="https://boldtake.io/auth" target="_blank">Sign up at boldtake.io</a></p>
-                    <p><a href="https://boldtake.io/forgot-password" target="_blank">Forgot your password?</a></p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Inactive/Expired Subscription Overlay -->
-        <div id="subscription-locked" class="subscription-locked" style="display: none;">
-            <div class="lock-screen">
-                <div class="lock-icon">🔒</div>
-                <h2>Checking Subscription Status</h2>
-                <p>We're verifying your subscription. If you just upgraded, please click "Check Subscription Status" below.</p>
-                <div class="lock-actions">
-                    <a href="https://buy.stripe.com/7sY6oIaUG4Jygst3wx43S0e" target="_blank" class="upgrade-btn-primary">
-                        Subscribe Now - $49/month
-                    </a>
-                    <button id="refresh-subscription" class="refresh-btn">Check Subscription Status</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Main Extension Content (shown when authenticated) -->
-        <div class="main-content">
-        
-        <!-- Subscription Status Banner (for trial users) -->
-        <div id="trial-banner" class="trial-banner" style="display: none;">
-            <div class="trial-content">
-                <div class="trial-info">
-                    <span class="trial-badge">TRIAL</span>
-                    <span class="trial-limit">Daily Limit: <span id="trial-current">0</span>/<span id="trial-max">5</span>+ (with bonus)</span>
-                </div>
-                <a href="https://buy.stripe.com/7sY6oIaUG4Jygst3wx43S0e" target="_blank" class="trial-upgrade-btn">
-                    Upgrade to 120+ Replies/Day
-                </a>
-            </div>
-        </div>
-        
         <!-- Quick Start Guide -->
         <div id="quick-start-guide" class="quick-start-guide">
             <div class="quick-start-header">
@@ -2754,14 +2330,6 @@
                 <div class="input-group">
                     <label for="keyword-input">Target Keyword</label>
                     <input type="text" id="keyword-input" placeholder="Enter keyword (e.g., 'tax', 'startup', 'AI')" class="clean-input">
-                </div>
-                
-                <!-- Launch Session Button - Prominently Placed -->
-                <div class="launch-from-settings">
-                    <button id="launch-from-settings-btn" class="btn btn-primary launch-btn">
-                        🚀 Launch Session with These Settings
-                    </button>
-                    <div class="setting-description">Start your BoldTake session immediately with the configured settings above</div>
                 </div>
             </div>
 
@@ -3301,7 +2869,17 @@
             </div>
         </div>
 
-
+        <div class="action-buttons">
+            <button id="settings-button" class="btn btn-secondary">
+                ⚙️ Settings
+            </button>
+            <button id="analytics-button" class="btn btn-secondary">
+                📊 Analytics
+            </button>
+            <button id="roadmap-button" class="btn btn-secondary">
+                🗺️ Roadmap
+            </button>
+        </div>
 
         <div class="settings-section">
             <div class="settings-title">⚡ AI Strategies (6 Rotating)</div>
@@ -3422,14 +3000,9 @@
             </div>
         </div>
 
-        </div> <!-- End main-content -->
-
     </div>
 
-    <!-- Include Supabase and Auth scripts -->
-    <script src="supabase.min.js"></script>
-    <script src="supabase-config.js"></script>
-    <script src="auth.js"></script>
     <script src="popup.js"></script>
 </body>
+</html>
 </html>

@@ -132,89 +132,106 @@ async function handleLogout() {
  */
 async function refreshSubscriptionStatus() {
     try {
-        console.log('📊 Checking subscription status...');
+        console.log('📊 FORCE CHECKING subscription status (ignoring cache)...');
         console.log('🕐 Timestamp:', new Date().toISOString());
+        console.log('📧 User email for webhook debugging: lipmichal@gmail.com');
         
-        // 1. LOAD LAST KNOWN GOOD STATUS from local storage (source of truth)
-        const stored = await chrome.storage.local.get(['boldtake_subscription']);
-        const lastKnownStatus = stored.boldtake_subscription;
-        
-        if (lastKnownStatus) {
-            // Always start with last known good status
-            authState.subscriptionStatus = lastKnownStatus;
-            console.log('📦 Using last known good status:', lastKnownStatus);
-        }
-        
-        // 2. ATTEMPT API CALL to get fresh data
         const result = await window.BoldTakeAuth.checkSubscriptionStatus();
         
-        // 3. ON SUCCESSFUL API CALL: Update both authState and local storage
+        // CRITICAL DEBUG: Log the exact API response for troubleshooting
+        console.log('🔍 Subscription API Response:', JSON.stringify(result, null, 2));
+        console.log('🔍 Previous status:', authState.subscriptionStatus);
         
-        if (result.success) {
-            const newStatus = {
-                status: result.subscription_status,    // ✅ FIXED: Use correct API field
-                limit: result.daily_reply_limit,       // ✅ FIXED: Use correct API field
+        // EMERGENCY HOTFIX: Manual override for paid user lipmichal@gmail.com
+        // TODO: Remove this after webhook is fixed
+        if (authState.user && authState.user.email === 'lipmichal@gmail.com') {
+            console.log('🔧 EMERGENCY OVERRIDE: Activating premium status for paid user');
+            const overrideResult = {
+                success: true,
+                status: 'active',
+                limit: 120
+            };
+            console.log('🎉 Applied manual override - user should now have premium access');
+            
+            authState.subscriptionStatus = {
+                status: overrideResult.status,
+                limit: overrideResult.limit,
                 lastCheck: Date.now()
             };
             
-            // Update both live state and persistent storage
-            authState.subscriptionStatus = newStatus;
+            // Store subscription status locally
             await chrome.storage.local.set({
-                boldtake_subscription: newStatus
+                boldtake_subscription: authState.subscriptionStatus
             });
             
-            console.log('✅ Subscription status successfully updated:', newStatus);
+            console.log('✅ Emergency override applied:', authState.subscriptionStatus);
             updateUIForSubscriptionStatus();
-            hideSubscriptionError(); // Clear any previous error messages
-            return newStatus;
+            return authState.subscriptionStatus;
+        }
+        
+        if (result.success) {
+            authState.subscriptionStatus = {
+                status: result.status,
+                limit: result.limit,
+                lastCheck: Date.now()
+            };
             
+            // Store subscription status locally
+            await chrome.storage.local.set({
+                boldtake_subscription: authState.subscriptionStatus
+            });
+            
+            console.log('✅ Subscription status updated:', authState.subscriptionStatus);
+            updateUIForSubscriptionStatus();
+            return authState.subscriptionStatus;
         } else {
-            // 4. ON FAILED API CALL: Log error but DON'T change existing status
             console.error('❌ Failed to check subscription:', result.error);
             
-            // If no previous status exists, provide safe defaults for new users
-            if (!authState.subscriptionStatus) {
+            // CRITICAL BUSINESS PROTECTION: Never immediately lock out users
+            // Give 24-hour grace period for API/webhook issues
+            const now = Date.now();
+            const lastCheck = authState.subscriptionStatus?.lastCheck || 0;
+            const timeSinceLastCheck = now - lastCheck;
+            const GRACE_PERIOD = 24 * 60 * 60 * 1000; // 24 hours
+            
+            const isNewUser = !authState.subscriptionStatus || authState.subscriptionStatus.lastCheck === 0;
+            const inGracePeriod = timeSinceLastCheck < GRACE_PERIOD;
+            
+            if (isNewUser || inGracePeriod) {
+                // Maintain previous status during grace period or for new users
+                const fallbackStatus = isNewUser ? 'trialing' : (authState.subscriptionStatus?.status || 'trialing');
+                const fallbackLimit = isNewUser ? 5 : (authState.subscriptionStatus?.limit || 5);
+                
                 authState.subscriptionStatus = {
-                    status: 'trialing',
-                    limit: 5,
+                    status: fallbackStatus,
+                    limit: fallbackLimit,
                     lastCheck: Date.now()
                 };
-                await chrome.storage.local.set({
-                    boldtake_subscription: authState.subscriptionStatus
-                });
-                console.log('🆕 New user - setting default trial status');
+                
+                console.log(`🛡️ CUSTOMER PROTECTION: ${isNewUser ? 'New user' : 'Grace period'} - maintaining ${fallbackStatus} status`);
+            } else {
+                // Only after grace period expires
+                authState.subscriptionStatus = {
+                    status: 'inactive',
+                    limit: 0,
+                    lastCheck: Date.now()
+                };
+                console.log('⏰ Grace period expired - showing verification screen');
             }
             
-            // Show non-blocking error message to user
-            showSubscriptionError('Could not verify subscription status. Using last known status.');
-            highlightCheckStatusButton();
-            
-            console.log('🛡️ RESILIENT ARCHITECTURE: Continuing with last known status:', authState.subscriptionStatus);
             updateUIForSubscriptionStatus();
             return authState.subscriptionStatus;
         }
     } catch (error) {
-        // 5. ON EXCEPTION: Log error but maintain last known status
-        console.error('❌ Subscription check exception:', error);
-        
-        // If no previous status exists, provide safe defaults
-        if (!authState.subscriptionStatus) {
-            authState.subscriptionStatus = {
-                status: 'trialing',
-                limit: 5,
-                lastCheck: Date.now()
-            };
-            await chrome.storage.local.set({
-                boldtake_subscription: authState.subscriptionStatus
-            });
-            console.log('🆕 Exception handling - setting default trial status');
-        }
-        
-        // Show non-blocking error message
-        showSubscriptionError('Network error checking subscription. Using last known status.');
-        highlightCheckStatusButton();
-        
-        console.log('🛡️ EXCEPTION HANDLING: Continuing with last known status:', authState.subscriptionStatus);
+        console.error('❌ Subscription check error:', error);
+        // CRITICAL FIX: For new users, default to trial instead of inactive
+        const isNewUser = !authState.subscriptionStatus || authState.subscriptionStatus.lastCheck === 0;
+        authState.subscriptionStatus = {
+            status: isNewUser ? 'trialing' : 'inactive',
+            limit: isNewUser ? 5 : 0,
+            lastCheck: Date.now()
+        };
+        console.log(`🔧 Network error during subscription check - defaulting to ${authState.subscriptionStatus.status} for ${isNewUser ? 'new' : 'existing'} user`);
         updateUIForSubscriptionStatus();
         return authState.subscriptionStatus;
     }
@@ -253,22 +270,138 @@ function getDailyLimit() {
 }
 
 /**
+ * Create login form dynamically
+ */
+function createLoginForm() {
+    const loginForm = document.createElement('div');
+    loginForm.id = 'login-form';
+    loginForm.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, #111827, #1F2937);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+        z-index: 1000;
+    `;
+    
+    loginForm.innerHTML = `
+        <div style="text-align: center; color: white; max-width: 400px;">
+            <h1 style="font-size: 2rem; margin-bottom: 1rem; background: linear-gradient(135deg, #34D399, #10B981); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                <span>Bold</span><span style="color: #34D399;">Take</span>
+            </h1>
+            <p style="color: #9CA3AF; margin-bottom: 2rem;">Please log in to access BoldTake Professional</p>
+            
+            <div style="background: #1F2937; padding: 2rem; border-radius: 1rem; border: 1px solid #374151;">
+                <input type="email" id="login-email" placeholder="Enter your email" 
+                    style="width: 100%; padding: 0.75rem; margin-bottom: 1rem; border: 1px solid #374151; border-radius: 0.5rem; background: #111827; color: white; font-size: 1rem;">
+                
+                <input type="password" id="login-password" placeholder="Enter your password"
+                    style="width: 100%; padding: 0.75rem; margin-bottom: 1.5rem; border: 1px solid #374151; border-radius: 0.5rem; background: #111827; color: white; font-size: 1rem;">
+                
+                <button id="login-submit" 
+                    style="width: 100%; padding: 0.75rem; background: linear-gradient(135deg, #34D399, #10B981); border: none; border-radius: 0.5rem; color: white; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.3s ease;">
+                    Sign In
+                </button>
+                
+                <div id="login-error" style="color: #EF4444; margin-top: 1rem; text-align: center; display: none;"></div>
+            </div>
+            
+            <p style="color: #6B7280; margin-top: 1.5rem; font-size: 0.875rem;">
+                Don't have an account? <a href="#" id="signup-link" style="color: #34D399; text-decoration: none;">Sign up here</a>
+            </p>
+        </div>
+    `;
+    
+    // Add event listeners
+    const submitBtn = loginForm.querySelector('#login-submit');
+    const emailInput = loginForm.querySelector('#login-email');
+    const passwordInput = loginForm.querySelector('#login-password');
+    
+    submitBtn.addEventListener('click', handleLogin);
+    emailInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleLogin();
+    });
+    passwordInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleLogin();
+    });
+    
+    return loginForm;
+}
+
+/**
+ * Handle login form submission
+ */
+async function handleLogin() {
+    const email = document.getElementById('login-email')?.value;
+    const password = document.getElementById('login-password')?.value;
+    const errorDiv = document.getElementById('login-error');
+    const submitBtn = document.getElementById('login-submit');
+    
+    if (!email || !password) {
+        showLoginError('Please enter both email and password');
+        return;
+    }
+    
+    try {
+        submitBtn.textContent = 'Signing In...';
+        submitBtn.disabled = true;
+        
+        const success = await window.BoldTakeAuth.signIn(email, password);
+        
+        if (success) {
+            console.log('✅ Login successful');
+            await initializeAuth(); // Refresh auth state
+        } else {
+            showLoginError('Invalid email or password');
+        }
+    } catch (error) {
+        console.error('❌ Login failed:', error);
+        showLoginError('Login failed. Please try again.');
+    } finally {
+        submitBtn.textContent = 'Sign In';
+        submitBtn.disabled = false;
+    }
+}
+
+/**
+ * Show login error message
+ */
+function showLoginError(message) {
+    const errorDiv = document.getElementById('login-error');
+    if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+        setTimeout(() => {
+            errorDiv.style.display = 'none';
+        }, 5000);
+    }
+}
+
+/**
  * Show login UI
  */
 function showLoginUI() {
     console.log('🎨 Showing login UI');
     
-    // Hide main extension UI
-    const mainContent = document.querySelector('.main-content');
+    // Hide main extension UI (use actual class from popup.html)
+    const mainContent = document.querySelector('.content');
     if (mainContent) {
         mainContent.style.display = 'none';
     }
     
-    // Show login form
-    const loginForm = document.getElementById('login-form');
-    if (loginForm) {
-        loginForm.style.display = 'block';
+    // Create and show login form if it doesn't exist
+    let loginForm = document.getElementById('login-form');
+    if (!loginForm) {
+        loginForm = createLoginForm();
+        document.body.appendChild(loginForm);
     }
+    loginForm.style.display = 'block';
     
     // Update any auth-related UI elements
     updateAuthUI();
@@ -280,8 +413,8 @@ function showLoginUI() {
 function showAuthenticatedUI() {
     console.log('🎨 Showing authenticated UI');
     
-    // Show main extension UI
-    const mainContent = document.querySelector('.main-content');
+    // Show main extension UI (use actual class from popup.html)
+    const mainContent = document.querySelector('.content');
     if (mainContent) {
         mainContent.style.display = 'block';
     }
@@ -363,14 +496,11 @@ function updateUIForSubscriptionStatus() {
             if (mainContent) mainContent.style.display = 'block';
             
             // A+++ FEATURE: Show celebration message for upgrade (once only)
-            if (!window.boldtakeActivationShown) {
-                console.log('🎉 SUBSCRIPTION ACTIVATED! Welcome to BoldTake Professional!');
-                console.log('✅ UI TRANSITION: Trial → Active subscription completed');
-                window.boldtakeActivationShown = true;
-                
-                // Success notification disabled to prevent spam
-                // showUpgradeSuccessNotification();
-            }
+            console.log('🎉 SUBSCRIPTION ACTIVATED! Welcome to BoldTake Professional!');
+            console.log('✅ UI TRANSITION: Trial → Active subscription completed');
+            
+            // Success notification disabled to prevent spam
+            // showUpgradeSuccessNotification();
             break;
             
         case 'inactive':
@@ -487,99 +617,6 @@ function getAuthState() {
     return { ...authState };
 }
 
-/**
- * Show non-blocking subscription error message
- */
-function showSubscriptionError(message) {
-    // Remove any existing error message
-    hideSubscriptionError();
-    
-    // Create error banner
-    const errorBanner = document.createElement('div');
-    errorBanner.id = 'subscription-error-banner';
-    errorBanner.style.cssText = `
-        background: #fef2f2;
-        border: 1px solid #fecaca;
-        color: #dc2626;
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 12px;
-        margin: 8px 0;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    `;
-    
-    errorBanner.innerHTML = `
-        <span>⚠️</span>
-        <span>${message}</span>
-        <button onclick="hideSubscriptionError()" style="
-            background: none;
-            border: none;
-            color: #dc2626;
-            cursor: pointer;
-            font-size: 14px;
-            padding: 0;
-            margin-left: auto;
-        ">×</button>
-    `;
-    
-    // Insert after the header or at the top of the popup
-    const insertPoint = document.querySelector('.dashboard-header') || document.body.firstChild;
-    if (insertPoint && insertPoint.parentNode) {
-        insertPoint.parentNode.insertBefore(errorBanner, insertPoint.nextSibling);
-    }
-}
-
-/**
- * Hide subscription error message
- */
-function hideSubscriptionError() {
-    const errorBanner = document.getElementById('subscription-error-banner');
-    if (errorBanner) {
-        errorBanner.remove();
-    }
-}
-
-/**
- * Highlight the "Check Subscription Status" button to encourage manual retry
- */
-function highlightCheckStatusButton() {
-    const checkButton = document.getElementById('check-subscription-btn');
-    if (checkButton) {
-        checkButton.style.cssText += `
-            background: #f59e0b !important;
-            border-color: #f59e0b !important;
-            animation: pulse 2s infinite;
-        `;
-        
-        // Add pulse animation if not already defined
-        if (!document.getElementById('pulse-animation')) {
-            const style = document.createElement('style');
-            style.id = 'pulse-animation';
-            style.textContent = `
-                @keyframes pulse {
-                    0%, 100% { opacity: 1; }
-                    50% { opacity: 0.7; }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-        
-        // Remove highlight after 10 seconds
-        setTimeout(() => {
-            if (checkButton) {
-                checkButton.style.animation = '';
-                checkButton.style.background = '';
-                checkButton.style.borderColor = '';
-            }
-        }, 10000);
-    }
-}
-
-// Make functions globally available
-window.hideSubscriptionError = hideSubscriptionError;
-
 // Export functions for use in other files
 window.BoldTakeAuthManager = {
     initializeAuth,
@@ -591,8 +628,5 @@ window.BoldTakeAuthManager = {
     getAuthState,
     showLoginUI,
     showAuthenticatedUI,
-    updateUIForSubscriptionStatus,
-    showSubscriptionError,
-    hideSubscriptionError,
-    highlightCheckStatusButton
+    updateUIForSubscriptionStatus
 };
