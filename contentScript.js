@@ -83,16 +83,16 @@ const SECURITY_CONFIG = {
   // Rate limiting - Optimized for enterprise use
   MAX_COMMENTS_PER_DAY: 155,  // Enterprise limit with +5 customer satisfaction buffer
   
-  // Timing constraints (milliseconds) - CONSERVATIVE for safety
-  MIN_DELAY_BETWEEN_ACTIONS: 45000,  // 45 seconds minimum (increased for safety)
-  MAX_DELAY_BETWEEN_ACTIONS: 180000, // 3 minutes maximum (more reasonable)
+  // Timing constraints (milliseconds) - ULTRA CONSERVATIVE for natural behavior
+  MIN_DELAY_BETWEEN_ACTIONS: 60000,  // 1 minute minimum (more human-like)
+  MAX_DELAY_BETWEEN_ACTIONS: 300000, // 5 minutes maximum (realistic human range)
   
   // Advanced behavioral patterns to mimic human behavior
-  HUMAN_VARIANCE_FACTOR: 0.5, // 50% random variance (more natural)
-  BREAK_PROBABILITY: 0.15,     // 15% chance of longer breaks (reduced)
+  HUMAN_VARIANCE_FACTOR: 0.6, // 60% random variance (more natural)
+  BREAK_PROBABILITY: 0.20,     // 20% chance of longer breaks (more realistic)
   LONG_BREAK_DURATION: 600000, // 10 minute break (reasonable break)
-  MICRO_BREAK_PROBABILITY: 0.2, // 20% chance of micro-breaks (reduced)
-  MICRO_BREAK_DURATION: 120000,  // 2 minute micro-breaks
+  MICRO_BREAK_PROBABILITY: 0.25, // 25% chance of micro-breaks (more frequent)
+  MICRO_BREAK_DURATION: 180000,  // 3 minute micro-breaks (more realistic)
   
   // Content safety filters
   MAX_SIMILAR_RESPONSES: 2, // Stricter similarity check
@@ -239,16 +239,19 @@ function calculateSmartDelay() {
   // Multiple layers of randomization for maximum stealth
   const variance = 1 + (Math.random() - 0.5) * SECURITY_CONFIG.HUMAN_VARIANCE_FACTOR;
   let delay = baseDelay * variance;
+  let delayReason = 'normal';
   
   // Micro-breaks (checking phone, sip coffee, etc.)
   if (Math.random() < SECURITY_CONFIG.MICRO_BREAK_PROBABILITY) {
     delay = Math.max(delay, SECURITY_CONFIG.MICRO_BREAK_DURATION);
+    delayReason = 'micro-break';
     addDetailedActivity('☕ Taking a micro-break (checking phone)', 'info');
   }
   
   // Longer breaks (lunch, meeting, bathroom, etc.)
   if (Math.random() < SECURITY_CONFIG.BREAK_PROBABILITY) {
     delay = Math.max(delay, SECURITY_CONFIG.LONG_BREAK_DURATION);
+    delayReason = 'long-break';
     addDetailedActivity('🍽️ Taking a longer break (human routine)', 'info');
   }
   
@@ -256,13 +259,26 @@ function calculateSmartDelay() {
   const hour = new Date().getHours();
   if (hour >= 23 || hour <= 6) {
     delay *= 1.5; // 50% longer delays during night hours
+    delayReason += '-night';
   }
   
   // Weekend adjustments (different patterns on weekends)
   const isWeekend = [0, 6].includes(new Date().getDay());
   if (isWeekend) {
     delay *= 1.2; // 20% longer delays on weekends
+    delayReason += '-weekend';
   }
+  
+  // ENHANCED DELAY LOGGING: Track delay calculations for debugging
+  const delayMinutes = Math.round(delay / 60000 * 10) / 10;
+  console.log('⏱️ DELAY CALCULATION', {
+    baseDelayMin: Math.round(baseDelay / 60000),
+    finalDelayMin: delayMinutes,
+    reason: delayReason,
+    variance: Math.round(variance * 100) / 100,
+    hour: hour,
+    isWeekend: isWeekend
+  });
   
   // Ensure within bounds
   delay = Math.max(SECURITY_CONFIG.MIN_DELAY_BETWEEN_ACTIONS, 
@@ -867,8 +883,13 @@ async function startContinuousSession(isResuming = false) {
         const minutes = Math.floor(delay / 60000);
         const seconds = Math.floor((delay % 60000) / 1000);
         
-        console.log(`⏰ Waiting ${minutes}m ${seconds}s before next tweet...`);
+        console.log(`⏰ HUMAN DELAY ACTIVE: ${minutes}m ${seconds}s before next tweet (natural behavior)`);
         sessionStats.lastAction = `⏰ Waiting ${minutes}m ${seconds}s before next tweet`;
+        
+        // DELAY DEBUG: Log exact timing for verification
+        const nextActionTime = new Date(Date.now() + delay);
+        console.log(`🔍 DELAY DEBUG: Next tweet at ${nextActionTime.toLocaleTimeString()}`);
+        addDetailedActivity(`⏰ Natural delay ${minutes}m ${seconds}s (human behavior simulation)`, 'info');
         
         // Update corner widget with countdown
         updateCornerWidget(`⏰ Waiting ${minutes}m ${seconds}s before next tweet`);
@@ -1055,6 +1076,14 @@ async function processNextTweet() {
   }
   
   await saveSession();
+  
+  // MANDATORY DELAY: Ensure minimum delay after any tweet processing
+  // This is a safety net to prevent rapid-fire processing
+  const mandatoryDelay = Math.max(30000, SECURITY_CONFIG.MIN_DELAY_BETWEEN_ACTIONS * 0.5); // 30s minimum
+  console.log(`⏱️ MANDATORY DELAY: ${Math.round(mandatoryDelay/1000)}s safety buffer after tweet processing`);
+  addDetailedActivity(`⏱️ Safety delay ${Math.round(mandatoryDelay/1000)}s (preventing rapid processing)`, 'info');
+  await sleep(mandatoryDelay);
+  
   return true; // Indicate a tweet was processed
 }
 
@@ -3836,26 +3865,22 @@ async function updateAnalyticsData() {
  */
 async function getPersonalizationSettings() {
   return new Promise((resolve) => {
-    chrome.storage.local.get(['boldtake_language', 'boldtake_tone', 'boldtake_debug_language'], (result) => {
+    chrome.storage.local.get(['boldtake_language', 'boldtake_tone'], (result) => {
       const rawLanguage = result.boldtake_language || 'english';
-      const debugLanguage = result.boldtake_debug_language; // For testing without affecting main flow
       
       // SAFETY: Validate language is supported
-      const validatedLanguage = validateLanguageSupport(debugLanguage || rawLanguage);
+      const validatedLanguage = validateLanguageSupport(rawLanguage);
       
       if (DEBUG_MODE) {
         console.log('🌍 Language Settings:', {
           raw: rawLanguage,
-          debug: debugLanguage,
-          validated: validatedLanguage,
-          isDebugMode: !!debugLanguage
+          validated: validatedLanguage
         });
       }
       
       resolve({
         language: validatedLanguage,
-        tone: result.boldtake_tone || 'adaptive',
-        isDebugLanguage: !!debugLanguage
+        tone: result.boldtake_tone || 'adaptive'
       });
     });
   });
