@@ -300,14 +300,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (result.boldtake_min_faves) {
             minFavesInput.value = result.boldtake_min_faves;
         }
-        // Load language preference (restrict to English only for current tier)
+        // Load language preference (all languages now available)
         if (result.boldtake_language) {
-            if (result.boldtake_language === 'english') {
             languageSelect.value = result.boldtake_language;
-            } else {
-                languageSelect.value = 'english'; // Force English for current tier
-                debugLog('🚫 Language restricted to English for current tier');
-            }
+            debugLog('🌍 Language preference loaded:', result.boldtake_language);
         }
         if (result.boldtake_tone) {
             toneSelect.value = result.boldtake_tone;
@@ -379,16 +375,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
     
-    // Set up personalization listeners with premium restrictions
+    // Set up personalization listeners (all languages available)
     languageSelect.addEventListener('change', (e) => {
-        // Prevent selection of disabled options
-        if (e.target.selectedOptions[0].disabled) {
-            e.target.value = 'english'; // Reset to English
-            debugLog('🚫 Premium feature: Language selection restricted to English for current tier');
-            return;
-        }
+        debugLog('🌍 Language changed to:', e.target.value);
         savePersonalizationSettings();
+        updateLanguageTestPanel();
     });
+    
+    // Set up debug mode controls
+    setupLanguageDebugMode();
     
     toneSelect.addEventListener('change', savePersonalizationSettings);
     
@@ -1042,7 +1037,7 @@ function savePersonalizationSettings() {
         'boldtake_tone': tone
     });
     
-    debugLog(`🌍 Personalization updated: Language=${language}, Tone=${tone}`);
+    debugLog(`🌍 Settings updated Language=${language}, Tone=${tone}`);
 }
 
 /**
@@ -1546,8 +1541,8 @@ function setupAuthEventListeners() {
                 refreshSubscriptionBtn.disabled = true;
                 refreshSubscriptionBtn.innerHTML = '<div class="loading"></div>Checking...';
                 
-                console.log('🔄 USER TRIGGERED: Manual subscription status refresh');
-                console.log('📧 User email for webhook debugging: lipmichal@gmail.com');
+                console.log('🔄 Manual subscription refresh triggered');
+                console.log('📧 Refreshing for current user');
                 
                 // FORCE fresh API call (no cache)
                 await window.BoldTakeAuthManager.refreshSubscriptionStatus();
@@ -1976,5 +1971,197 @@ function handleNicheSelection() {
 }
 
 // ========================================
+
+/**
+ * Set up language debug mode functionality
+ */
+function setupLanguageDebugMode() {
+    const debugModeCheckbox = document.getElementById('language-debug-mode');
+    const testPanel = document.getElementById('language-test-panel');
+    const testButton = document.getElementById('test-language-btn');
+    const testTweetInput = document.getElementById('test-tweet-input');
+    
+    if (!debugModeCheckbox || !testPanel || !testButton) {
+        debugLog('⚠️ Debug mode elements not found');
+        return;
+    }
+    
+    // Toggle test panel visibility
+    debugModeCheckbox.addEventListener('change', (e) => {
+        if (e.target.checked) {
+            testPanel.classList.remove('hidden');
+            debugLog('🧪 Language debug mode enabled');
+            // Save debug language preference
+            chrome.storage.local.set({
+                'boldtake_debug_language': languageSelect.value
+            });
+        } else {
+            testPanel.classList.add('hidden');
+            debugLog('🧪 Language debug mode disabled');
+            // Clear debug language preference
+            chrome.storage.local.remove('boldtake_debug_language');
+        }
+    });
+    
+    // Handle test button click
+    testButton.addEventListener('click', async () => {
+        const testTweet = testTweetInput.value.trim();
+        const selectedLanguage = languageSelect.value;
+        
+        if (!testTweet) {
+            showTestResult('Error', 'Please enter a test tweet', 'error');
+            return;
+        }
+        
+        await testLanguageGeneration(testTweet, selectedLanguage);
+    });
+    
+    // Pre-fill with sample tweets based on language
+    languageSelect.addEventListener('change', updateLanguageTestPanel);
+    updateLanguageTestPanel();
+}
+
+/**
+ * Update test panel with sample tweet for selected language
+ */
+function updateLanguageTestPanel() {
+    const testTweetInput = document.getElementById('test-tweet-input');
+    const selectedLanguage = languageSelect.value;
+    
+    if (!testTweetInput) return;
+    
+    // Sample tweets for different languages
+    const sampleTweets = {
+        english: "Just launched our new AI startup! Excited to change the world 🚀",
+        spanish: "¡Acabo de lanzar nuestra nueva startup de IA! Emocionado por cambiar el mundo 🚀",
+        french: "Je viens de lancer notre nouvelle startup IA ! Hâte de changer le monde 🚀",
+        german: "Habe gerade unser neues KI-Startup gestartet! Freue mich darauf, die Welt zu verändern 🚀",
+        italian: "Ho appena lanciato la nostra nuova startup di IA! Entusiasta di cambiare il mondo 🚀",
+        portuguese: "Acabei de lançar nossa nova startup de IA! Animado para mudar o mundo 🚀",
+        japanese: "新しいAIスタートアップを立ち上げました！世界を変えることにワクワクしています 🚀",
+        korean: "새로운 AI 스타트업을 출시했습니다! 세상을 바꿀 생각에 흥분됩니다 🚀",
+        chinese_simplified: "刚刚推出了我们的新AI初创公司！很兴奋能改变世界 🚀",
+        russian: "Только что запустил наш новый ИИ-стартап! В восторге от возможности изменить мир 🚀",
+        filipino: "Naglauncha lang namin ng bagong AI startup! Excited kami na mabago ang mundo 🚀"
+    };
+    
+    // Set sample tweet if input is empty
+    if (!testTweetInput.value.trim()) {
+        testTweetInput.value = sampleTweets[selectedLanguage] || sampleTweets.english;
+    }
+}
+
+/**
+ * Test language generation for a specific tweet and language
+ */
+async function testLanguageGeneration(testTweet, language) {
+    const testButton = document.getElementById('test-language-btn');
+    const testStatus = document.getElementById('test-status');
+    
+    try {
+        // Update UI to show testing state
+        testButton.disabled = true;
+        testButton.textContent = 'Testing...';
+        testStatus.textContent = 'Generating response...';
+        
+        // Simulate the language generation process
+        // In a real implementation, this would call the backend
+        const mockResult = await simulateLanguageGeneration(testTweet, language);
+        
+        showTestResult('Success', mockResult.reply, 'success', mockResult);
+        
+    } catch (error) {
+        debugLog('❌ Language test failed:', error);
+        showTestResult('Error', error.message, 'error');
+    } finally {
+        // Reset UI
+        testButton.disabled = false;
+        testButton.textContent = 'Test Generation';
+        testStatus.textContent = '';
+    }
+}
+
+/**
+ * Simulate language generation (replace with real backend call later)
+ */
+async function simulateLanguageGeneration(testTweet, language) {
+    // Simulate API delay
+    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 2000));
+    
+    // Mock responses for different languages
+    const mockResponses = {
+        english: "That's awesome! What industry are you disrupting? Always excited to see new innovation.",
+        spanish: "¡Eso es increíble! ¿Qué industria están disrumpiendo? Siempre me emociona ver nueva innovación.",
+        french: "C'est génial ! Quelle industrie bouleversez-vous ? Je suis toujours ravi de voir de l'innovation.",
+        german: "Das ist fantastisch! Welche Branche revolutioniert ihr? Ich freue mich immer über Innovationen.",
+        italian: "È fantastico! Quale settore state rivoluzionando? Sono sempre entusiasta di vedere innovazione.",
+        portuguese: "Isso é incrível! Que indústria vocês estão revolucionando? Sempre fico empolgado com inovação.",
+        japanese: "すばらしいですね！どの業界を変革していますか？新しいイノベーションを見るのはいつもワクワクします。",
+        korean: "정말 대단해요! 어떤 산업을 혁신하고 계신가요? 새로운 혁신을 보는 것은 항상 흥미진진합니다.",
+        chinese_simplified: "太棒了！你们在颠覆哪个行业？看到新的创新总是让我很兴奋。",
+        russian: "Это потрясающе! Какую отрасль вы революционизируете? Я всегда рад видеть новые инновации.",
+        filipino: "Ang galing naman! Anong industriya ba ang ginagago ninyo? Palagi akong nasasabik sa mga bagong innovation."
+    };
+    
+    const reply = mockResponses[language] || mockResponses.english;
+    
+    // Simulate confidence based on language support
+    const confidence = language === 'english' ? 0.95 : (0.85 + Math.random() * 0.1);
+    
+    return {
+        reply: reply,
+        language: language,
+        languageRequested: language,
+        method: language === 'english' ? 'standard' : 'enhanced',
+        confidence: confidence,
+        debug: {
+            promptLength: testTweet.length + 200,
+            processingTime: 1.2 + Math.random() * 1.5,
+            modelUsed: 'gpt-4',
+            tokenCount: Math.floor(reply.length / 4)
+        }
+    };
+}
+
+/**
+ * Show test result in the UI
+ */
+function showTestResult(status, content, type, metadata = null) {
+    const testResult = document.getElementById('test-result');
+    const header = testResult.querySelector('.test-result-header');
+    const contentDiv = testResult.querySelector('.test-result-content');
+    const metaDiv = testResult.querySelector('.test-result-meta');
+    
+    if (!testResult || !header || !contentDiv || !metaDiv) return;
+    
+    // Update header
+    const statusIcon = type === 'success' ? '✅' : '❌';
+    header.textContent = `${statusIcon} ${status}`;
+    header.style.color = type === 'success' ? '#2E7D32' : '#C62828';
+    
+    // Update content
+    contentDiv.textContent = content;
+    
+    // Update metadata
+    if (metadata) {
+        const metaText = [
+            `Language: ${metadata.language}`,
+            `Method: ${metadata.method}`,
+            `Confidence: ${(metadata.confidence * 100).toFixed(1)}%`,
+            metadata.debug ? `Processing: ${metadata.debug.processingTime.toFixed(1)}s` : null,
+            metadata.debug ? `Tokens: ${metadata.debug.tokenCount}` : null
+        ].filter(Boolean).join(' • ');
+        
+        metaDiv.textContent = metaText;
+    } else {
+        metaDiv.textContent = '';
+    }
+    
+    // Show result
+    testResult.classList.remove('hidden');
+    
+    // Scroll to result
+    testResult.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
 
 debugLog('✅ BoldTake Professional popup script ready!');

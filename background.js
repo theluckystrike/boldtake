@@ -181,8 +181,12 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
           },
           body: JSON.stringify({
             originalTweet: tweetContext.originalText || prompt,
-            persona: mapStrategyToPersona(tweetContext.strategy || 'witty'),
-            context: tweetContext.url ? `URL: ${tweetContext.url}` : undefined
+            persona: mapStrategyToPersona(tweetContext.strategy || 'Engagement Indie Voice'),
+            context: tweetContext.url ? `URL: ${tweetContext.url}` : undefined,
+            // NEW: Language support fields
+            language: tweetContext.language || 'english',
+            languageInstructions: tweetContext.languageInstructions || undefined,
+            debugMode: tweetContext.debugMode || false
           }),
           signal: controller.signal
         });
@@ -264,7 +268,7 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
         // Log usage statistics from your API response format
         if (data.usage) {
           const { used, limit, remaining } = data.usage;
-          console.log(`📊 Daily usage: ${used}/${limit} replies (${remaining} remaining)`);
+          console.log(`📊 Daily usage ${used}/${limit} replies (${remaining} remaining)`);
           
           // Store usage stats for potential UI updates
           try {
@@ -321,23 +325,23 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
  * @returns {string} The corresponding persona for the Edge Function (one of 9 supported)
  */
 function mapStrategyToPersona(strategy) {
-  // ✅ FIXED: Updated to match backend available personas exactly
+  // ✅ RESTORED: Backend now supports ALL original personas (9 total)
   const strategyToPersonaMap = {
     "Engagement Indie Voice": "indie-voice",     // ✅ Matches backend
     "Engagement Spark Reply": "spark-reply",     // ✅ Matches backend  
-    "Engagement The Counter": "the-counter",     // ✅ Matches backend
+    "Engagement The Counter": "counter",         // ✅ Matches backend (note: 'counter' not 'the-counter')
     "The Viral Shot": "viral-shot",              // ✅ Matches backend
-    "The Riff": "the-riff",                      // ✅ Matches backend
-    "The Shout-Out": "signal-boost",             // ✅ Matches backend
+    "The Riff": "riff",                          // ✅ Matches backend
+    "The Shout-Out": "shout-out",                // ✅ Matches backend
     "Unknown": "indie-voice",                    // ✅ Safe default
-    "Fallback": "professional"                   // ✅ Matches backend
+    "Fallback": "indie-voice"                    // ✅ Safe default
   };
 
-  // ✅ FIXED: Updated to exact backend available personas from error log
+  // ✅ ALL 9 PERSONAS: Backend team added all original personas
   const supportedPersonas = [
-    "indie-voice", "spark-reply", "the-counter", "the-riff", 
-    "viral-shot", "signal-boost", "expert", "casual", 
-    "professional", "supportive"
+    "indie-voice", "spark-reply", "counter", "riff", 
+    "viral-shot", "shout-out", "tech-enthusiast", "business-minded", 
+    "supportive-community"
   ];
   
   const mappedPersona = strategyToPersonaMap[strategy] || "indie-voice";
@@ -348,6 +352,6 @@ function mapStrategyToPersona(strategy) {
     return "indie-voice";
   }
   
-  console.log(`🎯 FIXED MAPPING: ${strategy} → ${mappedPersona}`);
+  console.log(`🎯 Persona mapping ${strategy} → ${mappedPersona}`);
   return mappedPersona;
 }
