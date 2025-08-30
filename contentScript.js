@@ -229,6 +229,40 @@ async function checkActionSafety() {
 }
 
 /**
+ * Calculate human-like delay for natural tweet processing (2-5 minutes)
+ * @returns {number} Delay in milliseconds
+ */
+function calculateHumanProcessingDelay() {
+  const delayConfig = {
+    minDelay: 120000,    // 2 minutes minimum
+    maxDelay: 300000,    // 5 minutes maximum
+    baseDelay: 210000,   // 3.5 minutes average
+    variationFactor: 0.4 // ±40% variation
+  };
+  
+  // Calculate random variation
+  const variation = delayConfig.baseDelay * delayConfig.variationFactor;
+  const randomVariation = (Math.random() - 0.5) * 2 * variation;
+  
+  // Apply variation and enforce limits
+  const finalDelay = Math.max(
+    delayConfig.minDelay,
+    Math.min(delayConfig.maxDelay, delayConfig.baseDelay + randomVariation)
+  );
+  
+  // HUMAN DELAY LOGGING: Track natural timing for debugging
+  const delayMinutes = Math.round(finalDelay / 60000 * 10) / 10;
+  console.log('⏱️ HUMAN PROCESSING DELAY', {
+    delayMinutes: delayMinutes,
+    range: '2-5 minutes',
+    behavior: 'natural human timing',
+    variation: Math.round((randomVariation / delayConfig.baseDelay) * 100) + '%'
+  });
+  
+  return finalDelay;
+}
+
+/**
  * Calculate advanced stealth delay with realistic human patterns
  * @returns {number} Delay in milliseconds
  */
@@ -740,7 +774,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * 
  * SECURITY ARCHITECTURE:
  * - Maximum 12 comments per hour, 80 per day
- * - Random delays between 30 seconds - 5 minutes (user-friendly)
+ * - Human-like delays between 2-5 minutes (natural behavior simulation)
  * - Content safety filters and spam detection
  * - Similarity checking to prevent repetitive responses
  * - Circuit breaker pattern for API failures
@@ -1077,12 +1111,22 @@ async function processNextTweet() {
   
   await saveSession();
   
-  // MANDATORY DELAY: Ensure minimum delay after any tweet processing
-  // This is a safety net to prevent rapid-fire processing
-  const mandatoryDelay = Math.max(30000, SECURITY_CONFIG.MIN_DELAY_BETWEEN_ACTIONS * 0.5); // 30s minimum
-  console.log(`⏱️ MANDATORY DELAY: ${Math.round(mandatoryDelay/1000)}s safety buffer after tweet processing`);
-  addDetailedActivity(`⏱️ Safety delay ${Math.round(mandatoryDelay/1000)}s (preventing rapid processing)`, 'info');
-  await sleep(mandatoryDelay);
+  // HUMAN PROCESSING DELAY: Natural 2-5 minute delay between tweets
+  // This simulates human thinking, reading, and natural break time
+  const humanDelay = calculateHumanProcessingDelay();
+  const delayMinutes = Math.round(humanDelay / 60000 * 10) / 10;
+  
+  console.log(`⏱️ HUMAN DELAY: ${delayMinutes}m (natural tweet processing time)`);
+  addDetailedActivity(`⏱️ Natural delay ${delayMinutes}m (human behavior simulation)`, 'info');
+  
+  // Update status to show human-like timing
+  showStatus(`⏰ Next tweet in ${delayMinutes}m (natural human behavior)`);
+  
+  // DELAY SUMMARY: Show next action time for user visibility
+  const nextActionTime = new Date(Date.now() + humanDelay);
+  console.log(`🔍 TIMING DEBUG: Next tweet processing at ${nextActionTime.toLocaleTimeString()}`);
+  
+  await sleep(humanDelay);
   
   return true; // Indicate a tweet was processed
 }
@@ -3767,7 +3811,7 @@ async function loadSession() {
 
 // Initialize
 console.log('✅ BoldTake Professional ready! Go to X.com and click Start.');
-console.log('🎯 Session mode: 120 tweets with 30s-5m random delays (optimized for user experience)');
+console.log('🎯 Session mode: 120 tweets with 2-5m human-like delays (natural behavior simulation)');
 console.log('�� Spam filtering enabled - only quality tweets targeted');
 console.log('☕ Optimized for extended automation sessions!');
 
