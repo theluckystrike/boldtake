@@ -3,11 +3,10 @@
  * Intelligent AI-powered engagement system
  */
 
-// Use centralized logging from config.js
-const { debugLog, errorLog } = window.BoldTakeConfig || { 
-  debugLog: () => {}, 
-  errorLog: console.error 
-};
+// Logging functions for content script
+const DEBUG_MODE = false; // Set to true for debugging
+const debugLog = DEBUG_MODE ? console.log : () => {};
+const errorLog = console.error;
 
 // Activity tracking for live feed
 let recentActivities = [];
@@ -423,8 +422,7 @@ function hideExtensionTraces() {
   });
   
   // Obfuscate console logs in production
-  const isProduction = window.BoldTakeConfig?.config?.extension?.productionMode !== false;
-  if (isProduction) {
+  if (!DEBUG_MODE) {
     // Override console methods to prevent detection
     const originalLog = console.log;
     const originalWarn = console.warn;
@@ -2635,7 +2633,12 @@ function isReplyGeneric(replyText) {
  */
 async function attemptGeneration(promptTemplate, tweetText, languageContext = {}) {
   try {
-    const response = await chrome.runtime.sendMessage({
+    // Add timeout to prevent hanging
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('API request timeout after 30 seconds')), 30000);
+    });
+    
+    const messagePromise = chrome.runtime.sendMessage({
       type: 'GENERATE_REPLY',
       prompt: promptTemplate.replace('{TWEET}', tweetText.slice(0, 1500)), // Increased context length
       tweetContext: {
@@ -2649,6 +2652,9 @@ async function attemptGeneration(promptTemplate, tweetText, languageContext = {}
         debugMode: languageContext.isDebugMode || false
       }
     });
+    
+    // Race between the message and timeout
+    const response = await Promise.race([messagePromise, timeoutPromise]);
 
     if (response.error) {
       console.error(`Error from background script: ${response.error}`);
@@ -2716,8 +2722,14 @@ async function attemptGeneration(promptTemplate, tweetText, languageContext = {}
     }
     return null;
   } catch (error) {
-    console.error('💥 AI generation attempt failed:', error.message);
-    sessionStats.lastApiError = `Content Script Error: ${error.message}`;
+    if (error.message && error.message.includes('timeout')) {
+      console.error('⏱️ API request timed out after 30 seconds - likely backend issue');
+      addDetailedActivity('⏱️ API timeout - backend may be down', 'warning');
+      sessionStats.lastApiError = 'Request timeout - backend may be down';
+    } else {
+      console.error('💥 AI generation attempt failed:', error.message);
+      sessionStats.lastApiError = `Content Script Error: ${error.message}`;
+    }
     
     // Check if it's a network error
     const shouldContinue = await handleNetworkError(error, 'AI generation');
