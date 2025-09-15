@@ -41,7 +41,7 @@ const errorLog = (...args) => console.error('[BoldTake Error]', ...args);
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // STABILITY: Add comprehensive message validation
   if (!message || typeof message.type !== 'string') {
-    console.error('CRITICAL: Invalid message received:', message);
+    errorLog('CRITICAL: Invalid message received:', message);
     sendResponse({ error: 'Invalid message format' });
     return false;
   }
@@ -63,7 +63,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             sendResponse({ reply: result });
           }
         } catch (e) {
-          console.error("CRITICAL: Unhandled exception in GENERATE_REPLY listener:", e);
+          errorLog("CRITICAL: Unhandled exception in GENERATE_REPLY listener:", e);
           sendResponse({ error: `FATAL: Background script crashed: ${e.message}` });
         }
       })();
@@ -97,7 +97,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             });
           }
         } catch (e) {
-          console.error("CRITICAL: Error testing custom prompt:", e);
+          errorLog("CRITICAL: Error testing custom prompt:", e);
           sendResponse({ success: false, error: `Test failed: ${e.message}` });
         }
       })();
@@ -118,19 +118,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
         });
       } catch (e) {
-        console.error('Error getting session stats:', e);
+        errorLog('Error getting session stats:', e);
         sendResponse({ error: 'Failed to get session stats' });
       }
       return false;
     }
 
     // STABILITY: Handle unknown message types
-    console.warn('Unknown message type:', message.type);
+    debugLog('Unknown message type:', message.type);
     sendResponse({ error: `Unknown message type: ${message.type}` });
     return false;
 
   } catch (e) {
-    console.error('CRITICAL: Message handler crashed:', e);
+    errorLog('CRITICAL: Message handler crashed:', e);
     sendResponse({ error: `Message handler error: ${e.message}` });
     return false;
   }
@@ -182,8 +182,8 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
     }
     
     if (!userSession || (!userSession.user && !userSession.access_token)) {
-      console.error('❌ No user session found in storage');
-      console.log('Storage contents:', storage);
+      errorLog('❌ No user session found in storage');
+      debugLog('Storage contents:', storage);
       return { error: 'User not authenticated - please login' };
     }
     

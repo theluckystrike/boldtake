@@ -167,7 +167,7 @@ async function checkActionSafety() {
       
       // Refresh subscription status every 5 minutes during active sessions
       if (timeSinceCheck > 300000) { // 5 minutes
-        debugLog('🔄 Refreshing subscription status during active session...');
+        console.log('🔄 Refreshing subscription status during active session...');
         await window.BoldTakeAuthManager.refreshSubscriptionStatus();
         const updatedAuthState = window.BoldTakeAuthManager.getAuthState();
         
@@ -258,7 +258,7 @@ function calculateHumanProcessingDelay() {
   
   // HUMAN DELAY LOGGING: Track natural timing for debugging
   const delayMinutes = Math.round(finalDelay / 60000 * 10) / 10;
-  debugLog('⏱️ HUMAN PROCESSING DELAY', {
+  console.log('⏱️ HUMAN PROCESSING DELAY', {
     delayMinutes: delayMinutes,
     range: '2-5 minutes',
     behavior: 'natural human timing',
@@ -311,7 +311,7 @@ function calculateSmartDelay() {
   
   // ENHANCED DELAY LOGGING: Track delay calculations for debugging
   const delayMinutes = Math.round(delay / 60000 * 10) / 10;
-  debugLog('⏱️ DELAY CALCULATION', {
+  console.log('⏱️ DELAY CALCULATION', {
     baseDelayMin: Math.round(baseDelay / 60000),
     finalDelayMin: delayMinutes,
     reason: delayReason,
@@ -663,11 +663,11 @@ const SAFE_FALLBACK_REPLIES = [
   if (isNewSession) {
     // It's a new session, so clear the flag and auto-start.
     await chrome.storage.local.remove('isNewSession');
-    debugLog('🚀 Auto-starting new session from popup...');
+    console.log('🚀 Auto-starting new session from popup...');
     startContinuousSession(); // Start a fresh session
   } else if (sessionStats.isRunning) {
     // It's not a new session, but one was running, so resume it.
-    debugLog('🔄 Resuming active session...');
+    console.log('🔄 Resuming active session...');
     showStatus(`🔄 Resuming active session: ${sessionStats.successful}/${sessionStats.target} tweets`);
     startContinuousSession(true); // Start without resetting stats
   }
@@ -695,11 +695,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   debugLog('📨 Received message:', message.type);
   
   if (message.type === 'BOLDTAKE_START') {
-    debugLog('🎯 Starting BoldTake continuous session...');
+    console.log('🎯 Starting BoldTake continuous session...');
     startContinuousSession();
     sendResponse({success: true, message: 'BoldTake session started'});
   } else if (message.type === 'BOLDTAKE_STOP') {
-    debugLog('🛑 Force stopping BoldTake session...');
+    console.log('🛑 Force stopping BoldTake session...');
     
     // CRITICAL: Force stop everything immediately
     sessionStats.isRunning = false;
@@ -797,7 +797,7 @@ async function startContinuousSession(isResuming = false) {
   
   // INITIALIZATION: Set up fresh session or resume existing
   if (!isResuming) {
-    debugLog('🎬 === BoldTake Session Started ===');
+    console.log('🎬 === BoldTake Session Started ===');
     
     // Initialize comprehensive session statistics
     // SUBSCRIPTION-AWARE: Get daily limit from authentication system
@@ -808,10 +808,10 @@ async function startContinuousSession(isResuming = false) {
         // CUSTOMER SATISFACTION: Add +5 buffer to advertised limits
         // This ensures users get slightly more than promised (125 for Pro, 10 for Trial)
         dailyLimit = baseLimit + 5;
-        debugLog(`🎁 Daily limit with satisfaction buffer: ${dailyLimit} (base: ${baseLimit} + 5 bonus)`);
+        console.log(`🎁 Daily limit with satisfaction buffer: ${dailyLimit} (base: ${baseLimit} + 5 bonus)`);
       }
     } catch (error) {
-      debugLog('⚠️ Could not get subscription limit, using default 125 (120+5)');
+      console.warn('⚠️ Could not get subscription limit, using default 125 (120+5)');
       dailyLimit = 125; // Default with buffer
     }
 
@@ -844,14 +844,14 @@ async function startContinuousSession(isResuming = false) {
         },
         lastUsedStrategy: null
       };
-      debugLog('🔄 Initialized fresh strategy rotation tracking');
+      console.log('🔄 Initialized fresh strategy rotation tracking');
     } else {
       // Preserve counts, just reset session-specific fields
       strategyRotation.currentIndex = 0;
       strategyRotation.lastUsedStrategy = null;
-      debugLog('🔄 Preserved strategy counts across sessions', strategyRotation.usageCount);
+      console.log('🔄 Preserved strategy counts across sessions', strategyRotation.usageCount);
     }
-    debugLog('🔄 Strategy rotation reset for new session');
+    console.log('🔄 Strategy rotation reset for new session');
   } else {
     sessionStats.isRunning = true;
   }
@@ -866,7 +866,7 @@ async function startContinuousSession(isResuming = false) {
       
       // SAFETY CHECKPOINT 1: Verify session is still active
       if (!sessionStats.isRunning) {
-        debugLog('🛑 Session stopped during main loop');
+        console.log('🛑 Session stopped during main loop');
         break;
       }
       
@@ -876,14 +876,14 @@ async function startContinuousSession(isResuming = false) {
       
       // SAFETY CHECKPOINT 2: Check session status after processing
       if (!sessionStats.isRunning) {
-        debugLog('🛑 Session stopped after tweet processing');
+        console.log('🛑 Session stopped after tweet processing');
         break;
       }
       
       // KEYWORD ROTATION: Check if we need to rotate keywords
       const rotated = await checkKeywordRotation();
       if (rotated) {
-        debugLog('🔄 Keyword rotation triggered - page will refresh');
+        console.log('🔄 Keyword rotation triggered - page will refresh');
         return; // Exit function as page will refresh
       }
       
@@ -923,12 +923,12 @@ async function startContinuousSession(isResuming = false) {
         const minutes = Math.floor(delay / 60000);
         const seconds = Math.floor((delay % 60000) / 1000);
         
-        debugLog(`⏰ HUMAN DELAY ACTIVE: ${minutes}m ${seconds}s before next tweet (natural behavior)`);
+        console.log(`⏰ HUMAN DELAY ACTIVE: ${minutes}m ${seconds}s before next tweet (natural behavior)`);
         sessionStats.lastAction = `⏰ Waiting ${minutes}m ${seconds}s before next tweet`;
         
         // DELAY DEBUG: Log exact timing for verification
         const nextActionTime = new Date(Date.now() + delay);
-        debugLog(`🔍 DELAY DEBUG: Next tweet at ${nextActionTime.toLocaleTimeString()}`);
+        console.log(`🔍 DELAY DEBUG: Next tweet at ${nextActionTime.toLocaleTimeString()}`);
         addDetailedActivity(`⏰ Natural delay ${minutes}m ${seconds}s (human behavior simulation)`, 'info');
         
         // Update corner widget with countdown
@@ -966,7 +966,7 @@ async function startContinuousSession(isResuming = false) {
         await gracefullyCloseModal();
         window.scrollTo(0, 0); // Reset scroll position
         await sleep(2000);
-        debugLog('🔄 Attempting to continue session after recovery...');
+        console.log('🔄 Attempting to continue session after recovery...');
         // Continue the loop
       } catch (recoveryError) {
         errorLog('❌ Recovery failed:', recoveryError);
@@ -1136,11 +1136,11 @@ async function processNextTweet() {
     }
     
     attempt++;
-    debugLog(`🚫 Attempt ${attempt}/${maxAttempts}: No suitable tweets found. Scrolling...`);
+    console.log(`🚫 Attempt ${attempt}/${maxAttempts}: No suitable tweets found. Scrolling...`);
     addDetailedActivity(`🚫 No tweets found (${attempt}/${maxAttempts}). Scrolling for more...`, 'warning');
     window.scrollTo(0, document.body.scrollHeight);
     
-    debugLog('⏳ Waiting 3 seconds for new tweets to load...');
+    console.log('⏳ Waiting 3 seconds for new tweets to load...');
     addDetailedActivity(`⏳ Loading new tweets...`, 'info');
     await sleep(3000); // Wait for content to load
   }
@@ -1154,7 +1154,7 @@ async function processNextTweet() {
     }
     
     showStatus(`🏁 No new tweets found after ${maxAttempts} attempts. Pausing session.`);
-    debugLog(`🏁 No new tweets found after ${maxAttempts} attempts. Session paused.`);
+    console.log(`🏁 No new tweets found after ${maxAttempts} attempts. Session paused.`);
     sessionStats.isRunning = false;
     chrome.runtime.sendMessage({ type: 'BOLDTAKE_STOP' });
     return false; // Indicate session pause
@@ -1185,7 +1185,7 @@ async function processNextTweet() {
     return false;
   }
   
-  debugLog('🖱️ Clicking reply button to open modal...');
+  console.log('🖱️ Clicking reply button to open modal...');
   addDetailedActivity('🖱️ Clicking reply button to open modal', 'info');
   
   // STEALTH MODE: Add slight click coordinate variance
@@ -1247,7 +1247,7 @@ async function processNextTweet() {
     
     // If we've failed too many times in a row, add extra delay
     if (sessionStats.retryAttempts >= 3) {
-      debugLog('⚠️ Multiple consecutive failures detected. Adding extra delay...');
+      console.log('⚠️ Multiple consecutive failures detected. Adding extra delay...');
       addDetailedActivity(`⚠️ Multiple failures detected. Adding safety delay...`, 'warning');
       await sleep(5000); // Extra 5 second delay after 3 failures
     }
@@ -1260,7 +1260,7 @@ async function processNextTweet() {
   const humanDelay = calculateHumanProcessingDelay();
   const delayMinutes = Math.round(humanDelay / 60000 * 10) / 10;
   
-  debugLog(`⏱️ HUMAN DELAY: ${delayMinutes}m (natural tweet processing time)`);
+  console.log(`⏱️ HUMAN DELAY: ${delayMinutes}m (natural tweet processing time)`);
   addDetailedActivity(`⏱️ Natural delay ${delayMinutes}m (human behavior simulation)`, 'info');
   
   // Update status to show human-like timing
@@ -1268,7 +1268,7 @@ async function processNextTweet() {
   
   // DELAY SUMMARY: Show next action time for user visibility
   const nextActionTime = new Date(Date.now() + humanDelay);
-  debugLog(`🔍 TIMING DEBUG: Next tweet processing at ${nextActionTime.toLocaleTimeString()}`);
+  console.log(`🔍 TIMING DEBUG: Next tweet processing at ${nextActionTime.toLocaleTimeString()}`);
   
   await sleep(humanDelay);
   
@@ -1280,7 +1280,7 @@ async function processNextTweet() {
  * @returns {Promise<HTMLElement|null>} The found text area element or null.
  */
 async function findReplyTextArea() {
-  debugLog('🔍 Actively searching for reply text area...');
+  console.log('🔍 Actively searching for reply text area...');
   const selectors = [
     '[data-testid="tweetTextarea_0"]', // Primary selector
     'div.public-DraftEditor-content[role="textbox"]', // Stable fallback
@@ -1295,7 +1295,7 @@ async function findReplyTextArea() {
   if (cachedSelector) {
     const textarea = document.querySelector(cachedSelector);
     if (textarea && textarea.offsetParent !== null) {
-      debugLog(`✅ Found text area with cached selector: ${cachedSelector}`);
+      console.log(`✅ Found text area with cached selector: ${cachedSelector}`);
   addDetailedActivity('✅ Found text area with cached selector', 'success');
       return textarea;
     } else {
@@ -1313,7 +1313,7 @@ async function findReplyTextArea() {
     if (textarea && textarea.offsetParent !== null && 
         textarea.getBoundingClientRect().width > 0 &&
         !textarea.disabled) {
-      debugLog(`✅ Found text area with primary selector`);
+      console.log(`✅ Found text area with primary selector`);
       addDetailedActivity('✅ Found text area quickly', 'success');
       sessionStorage.setItem('boldtake_textarea_selector', primarySelector);
       return textarea;
@@ -1343,7 +1343,7 @@ async function findReplyTextArea() {
           textarea.getBoundingClientRect().width > 0 &&
           !textarea.disabled &&
           getComputedStyle(textarea).display !== 'none') {
-        debugLog(`✅ Found text area with fallback selector: ${selector}`);
+        console.log(`✅ Found text area with fallback selector: ${selector}`);
         addDetailedActivity('✅ Found text area with fallback', 'success');
         sessionStorage.setItem('boldtake_textarea_selector', selector);
         return textarea;
@@ -1382,7 +1382,7 @@ async function findReplyTextArea() {
  * Safely closes the reply modal using multiple methods.
  */
 async function gracefullyCloseModal() {
-  debugLog('Attempting to gracefully close reply modal...');
+  console.log('Attempting to gracefully close reply modal...');
   const closeButton = document.querySelector('[data-testid="app-bar-close"]');
   if (closeButton) {
     closeButton.click();
@@ -1402,7 +1402,7 @@ async function gracefullyCloseModal() {
 }
 
 async function handleReplyModal(originalTweet) {
-  debugLog('🎯 Handling Reply Modal...');
+  console.log('🎯 Handling Reply Modal...');
   addDetailedActivity('🎯 Handling Reply Modal', 'info');
   
   // Check if we're in a new window/tab situation
@@ -1410,7 +1410,7 @@ async function handleReplyModal(originalTweet) {
                       window.location.href.includes('/intent/post');
   
   if (isNewWindow) {
-    debugLog('🪟 Reply opened in new window - switching context');
+    console.log('🪟 Reply opened in new window - switching context');
     addDetailedActivity('🪟 New window detected - adapting', 'info');
     // Give the new window time to load
     await sleep(2000);
@@ -1426,7 +1426,7 @@ async function handleReplyModal(originalTweet) {
     try {
       // Method 1: Check if we're in a new window that needs closing
       if (window.location.href.includes('/compose/post')) {
-        debugLog('🪟 Closing new window tab');
+        console.log('🪟 Closing new window tab');
         window.close();
         await sleep(1000);
         return false;
@@ -1451,12 +1451,12 @@ async function handleReplyModal(originalTweet) {
       const now = Date.now();
       const lastRefresh = window.boldtakeLastRefresh || 0;
       if (now - lastRefresh > 60000) { // 1 minute cooldown
-        debugLog('🔄 All recovery methods failed - refreshing page...');
+        console.log('🔄 All recovery methods failed - refreshing page...');
         addDetailedActivity('🔄 Refreshing page to recover from stuck modal', 'error');
         window.boldtakeLastRefresh = now;
         location.reload();
       } else {
-        debugLog('🛡️ Refresh cooldown active - skipping refresh');
+        console.log('🛡️ Refresh cooldown active - skipping refresh');
         addDetailedActivity('🛡️ Modal recovery failed - cooldown active', 'warning');
       }
     } catch (error) {
@@ -1479,7 +1479,7 @@ async function handleReplyModal(originalTweet) {
   const replyText = await generateSmartReply(tweetText, sessionStats.processed);
   
   if (!replyText) {
-    errorLog('❌ Skipping tweet due to critical AI failure.');
+    console.error('❌ Skipping tweet due to critical AI failure.');
     addDetailedActivity(`❌ AI generation failed - skipping tweet`, 'error');
     await gracefullyCloseModal();
     return false;
@@ -1487,13 +1487,13 @@ async function handleReplyModal(originalTweet) {
   
   addDetailedActivity(`✅ High-quality reply generated successfully`, 'success');
 
-  debugLog('⌨️ Typing reply', replyText);
+  console.log('⌨️ Typing reply', replyText);
   addDetailedActivity(`⌨️ Typing reply "${replyText.substring(0, 50)}..."`, 'info');
 
   // Step 3: Type using the "bulletproof" method
   const typed = await safeTypeText(editable, replyText);
   if (!typed) {
-    errorLog('❌ Typing failed inside reply modal.');
+    console.error('❌ Typing failed inside reply modal.');
     await gracefullyCloseModal();
     return false;
   }
@@ -1509,17 +1509,17 @@ async function handleReplyModal(originalTweet) {
     addDetailedActivity(`⏳ Waiting for reply to post...`, 'info');
     const closed = await waitForModalToClose();
     if (closed) {
-      debugLog('✅ Reply modal closed successfully.');
+      console.log('✅ Reply modal closed successfully.');
       sessionStats.lastAction = '✅ Reply modal closed successfully';
       addDetailedActivity(`🎉 Reply posted successfully! Building engagement...`, 'success');
       return true;
     } else {
-      errorLog('❌ Reply modal did not close after sending.');
+      console.error('❌ Reply modal did not close after sending.');
       addDetailedActivity(`❌ Reply modal failed to close`, 'error');
       return false;
     }
   } else {
-    errorLog('❌ Sending reply failed.');
+    console.error('❌ Sending reply failed.');
     addDetailedActivity(`❌ Failed to send reply`, 'error');
     await gracefullyCloseModal();
     return false;
@@ -1527,11 +1527,11 @@ async function handleReplyModal(originalTweet) {
 }
 
 async function sendReplyWithKeyboard() {
-  debugLog('🚀 Sending reply with Ctrl/Cmd+Enter...');
+  console.log('🚀 Sending reply with Ctrl/Cmd+Enter...');
   // 🚀 A++ OPTIMIZATION: Use cached text area lookup
   const editable = performanceCache.get('textArea', '[data-testid="tweetTextarea_0"]', 8000);
   if (!editable) {
-    errorLog('❌ Cannot find text area to send from.');
+    console.error('❌ Cannot find text area to send from.');
     return false;
   }
 
@@ -1549,13 +1549,13 @@ async function sendReplyWithKeyboard() {
     }));
     return true;
   } catch (error) {
-    errorLog('❌ Keyboard shortcut failed:', error);
+    console.error('❌ Keyboard shortcut failed:', error);
     return false;
   }
 }
 
 async function waitForModalToClose() {
-  debugLog('⏳ Waiting for reply modal to disappear...');
+  console.log('⏳ Waiting for reply modal to disappear...');
   for (let i = 0; i < 50; i++) { // Max wait 5 seconds
     if (!document.querySelector('[data-testid="tweetTextarea_0"]')) {
       return true; // It's gone!
@@ -1579,14 +1579,14 @@ async function findTweet() {
     const found = performanceCache.getAll('tweets', selector, 2000); // 2s cache
     if (found.length > 0) {
       tweets = Array.from(found);
-      debugLog(`📊 Found ${tweets.length} unprocessed tweets using selector: ${selector}`);
+      console.log(`📊 Found ${tweets.length} unprocessed tweets using selector: ${selector}`);
       addDetailedActivity(`📊 Found ${tweets.length} unprocessed tweets`, 'info');
       break;
     }
   }
   
   if (tweets.length === 0) {
-    debugLog('📊 No tweets found with any selector');
+    console.log('📊 No tweets found with any selector');
     
     // Check if we're on an X.com error page
     if (detectXcomErrorPage()) {
@@ -1624,7 +1624,7 @@ async function findTweet() {
     const replyButton = tweet.querySelector('[data-testid="reply"]');
     if (replyButton && replyButton.getAttribute('aria-label') && 
         replyButton.getAttribute('aria-label').includes('can reply')) {
-      debugLog('🚫 Skipping tweet with reply restrictions (mentioned users only)');
+      console.log('🚫 Skipping tweet with reply restrictions (mentioned users only)');
       addDetailedActivity('🚫 Skipped tweet with reply restrictions', 'warning');
       tweet.setAttribute('data-boldtake-processed', 'true');
       continue;
@@ -1635,7 +1635,7 @@ async function findTweet() {
     const words = cleanText.split(/\s+/).filter(word => word.length > 0);
     
     if (words.length <= 1 || cleanText.length < 15) {
-      debugLog('🚫 Skipping tweet - insufficient content (single word or too short)');
+      console.log('🚫 Skipping tweet - insufficient content (single word or too short)');
       tweet.setAttribute('data-boldtake-processed', 'true');
       continue;
     }
@@ -1676,30 +1676,30 @@ async function findTweet() {
     const isSpam = spamPatterns.some(pattern => tweetText.includes(pattern)) || isAdvancedSpam;
     
     if (!isSpam) {
-      debugLog('✅ Found clean, unliked tweet to process');
+      console.log('✅ Found clean, unliked tweet to process');
       addDetailedActivity('✅ Found clean, unliked tweet to process', 'success');
       return tweet;
     } else {
-      debugLog('🚫 Skipping spam/inappropriate tweet');
+      console.log('🚫 Skipping spam/inappropriate tweet');
       // Mark as processed so we don't check it again
       tweet.setAttribute('data-boldtake-processed', 'true');
     }
   }
   
-  debugLog('❌ No clean, unliked tweets found');
+  console.log('❌ No clean, unliked tweets found');
   return null;
 }
 
 async function likeTweet(tweet) {
   const likeButton = tweet.querySelector('[data-testid="like"]');
   if (likeButton) {
-    debugLog('🎯 Liking the tweet...');
+    console.log('🎯 Liking the tweet...');
     sessionStats.lastAction = '🎯 Liking the tweet';
     likeButton.click();
     await sleep(500);
     return true;
   }
-  debugLog('🎯 Like button not found.');
+  console.warn('🎯 Like button not found.');
   return false;
 }
 
@@ -1761,7 +1761,7 @@ async function likeTweetSafely(tweet) {
 }
 
 async function safeTypeText(el, str) {
-  debugLog('🛡️ Starting BULLETPROOF typing process...');
+  console.log('🛡️ Starting BULLETPROOF typing process...');
   addDetailedActivity('🛡️ Starting BULLETPROOF typing process', 'info');
   
   try {
@@ -1783,17 +1783,17 @@ async function safeTypeText(el, str) {
 
     const currentText = el.textContent || el.innerText;
     if (currentText.includes(str.slice(0, 20))) {
-      debugLog('✅ Text verification successful.');
+      console.log('✅ Text verification successful.');
       addDetailedActivity('✅ Text verification successful', 'success');
       return true;
     } else {
-      debugLog('⚠️ Text verification failed. Using fallback.');
+      console.warn('⚠️ Text verification failed. Using fallback.');
       el.textContent = str;
       el.dispatchEvent(new InputEvent('input', { bubbles: true }));
       return true;
     }
   } catch (error) {
-    errorLog('❌ BULLETPROOF typing error:', error);
+    console.error('❌ BULLETPROOF typing error:', error);
     return false;
   }
 }
@@ -2302,7 +2302,7 @@ async function scrapeXcomAnalytics() {
     return analyticsData;
     
   } catch (error) {
-    errorLog('Analytics scraping error:', error);
+    console.error('Analytics scraping error:', error);
     addDetailedActivity('❌ Analytics scraping failed', 'error');
     return null;
   }
@@ -2354,7 +2354,7 @@ async function generateAnalyticsCSV() {
     return csvString;
     
   } catch (error) {
-    errorLog('CSV generation error:', error);
+    console.error('CSV generation error:', error);
     addDetailedActivity('❌ CSV export failed', 'error');
     return null;
   }
@@ -2684,7 +2684,7 @@ async function generateSmartReply(tweetText, tweetNumber) {
   // --- ACCOUNT SAFETY: CIRCUIT BREAKER ---
   if (sessionStats.consecutiveApiFailures >= 3) {
     const finalError = sessionStats.lastApiError || 'AI quality failed repeatedly.';
-    errorLog(`💥 CIRCUIT BREAKER TRIPPED! 💥 Final Error: ${finalError}`);
+    console.error(`💥 CIRCUIT BREAKER TRIPPED! 💥 Final Error: ${finalError}`);
     showStatus(`CRITICAL: ${finalError}. Session Stopped.`);
     sessionStats.isRunning = false;
     chrome.runtime.sendMessage({ type: 'BOLDTAKE_STOP' });
@@ -2697,7 +2697,7 @@ async function generateSmartReply(tweetText, tweetNumber) {
   // Use the user's selected language from popup settings
   const targetLanguage = personalization.language || 'english';
   
-  debugLog('🌍 Multi-language mode active - using user selection', targetLanguage);
+  console.log('🌍 Multi-language mode active - using user selection', targetLanguage);
   
   // Get language instructions if not English
   const languageInstructions = targetLanguage !== 'english' ? 
@@ -2741,11 +2741,11 @@ async function generateSmartReply(tweetText, tweetNumber) {
     
     if (hasSevereViolation) {
       addDetailedActivity('🚫 Severe content violation detected', 'warning');
-      debugLog('Severe content safety issue detected');
+      console.log('Severe content safety issue detected');
       reply = null;
     } else {
       // BACKEND TEAM FIX: Accept all other replies from optimized backend
-      debugLog('✅ Content safety passed (lenient mode)');
+      console.log('✅ Content safety passed (lenient mode)');
     }
   }
 
@@ -2758,7 +2758,7 @@ async function generateSmartReply(tweetText, tweetNumber) {
   const isLowQuality = !hasMinLength || !hasProperEnding || !hasCompleteWords || !isNotTruncated;
 
   // ENHANCED QUALITY DEBUG: Log all quality factors
-  debugLog('🔍 Quality Check Debug', {
+  console.log('🔍 Quality Check Debug', {
     hasReply: !!reply,
     replyLength: reply?.length || 0,
     replyPreview: reply?.substring(0, 50) || 'none',
@@ -2778,14 +2778,14 @@ async function generateSmartReply(tweetText, tweetNumber) {
                           !hasCompleteWords ? 'partial word' : 
                           !isNotTruncated ? 'truncated' : 'unknown';
                           
-    debugLog(`Quality Check Failed ${sessionStats.consecutiveApiFailures}/3 - ${failureReason} (${reply?.length || 0} chars)`);
+    console.warn(`Quality Check Failed ${sessionStats.consecutiveApiFailures}/3 - ${failureReason} (${reply?.length || 0} chars)`);
     
     // NO FALLBACKS: Skip this tweet entirely  
     addDetailedActivity(`🚫 Tweet skipped - ${failureReason} reply (${reply?.length || 0} chars)`, 'warning');
     
     return null; // This will cause the tweet to be skipped
   } else {
-    debugLog('✅ Quality reply passed all checks');
+    console.log('✅ Quality reply passed all checks');
     const langLabel = targetLanguage !== 'english' ? 
       `${targetLanguage.charAt(0).toUpperCase() + targetLanguage.slice(1)} ` : '';
     addDetailedActivity(`✅ Quality ${langLabel}reply generated (${reply.length} chars)`, 'success');
@@ -2886,7 +2886,7 @@ async function attemptGeneration(promptTemplate, tweetText, languageContext = {}
     const response = await Promise.race([messagePromise, timeoutPromise]);
 
     if (response.error) {
-      errorLog(`Error from background script: ${response.error}`);
+      console.error(`Error from background script: ${response.error}`);
       sessionStats.lastApiError = response.error; // Store the specific error
       return null;
     }
@@ -2909,7 +2909,7 @@ async function attemptGeneration(promptTemplate, tweetText, languageContext = {}
         .trim();
       
       // CRITICAL: CHARACTER LIMIT VALIDATION (EMERGENCY FIX)
-      debugLog('🔍 CHARACTER CHECK', {
+      console.log('🔍 CHARACTER CHECK', {
         originalLength: response.reply.length,
         cleanedLength: cleanReply.length,
         replyPreview: cleanReply.substring(0, 100),
@@ -2919,9 +2919,9 @@ async function attemptGeneration(promptTemplate, tweetText, languageContext = {}
       
       // AGGRESSIVE FIX: Enforce 240-character limit to prevent Twitter cutoffs
       if (cleanReply.length > 240) {
-        debugLog('⚠️ Reply exceeds safe limit, truncating:', cleanReply.length);
+        console.warn('⚠️ Reply exceeds safe limit, truncating:', cleanReply.length);
         cleanReply = truncateAtSentence(cleanReply, 240);
-        debugLog('✅ Truncated to safe length:', cleanReply.length);
+        console.log('✅ Truncated to safe length:', cleanReply.length);
       }
       
       // SMART LENGTH CHECK: Ensure complete sentences
@@ -2952,11 +2952,11 @@ async function attemptGeneration(promptTemplate, tweetText, languageContext = {}
     return null;
   } catch (error) {
     if (error.message && error.message.includes('timeout')) {
-      errorLog('⏱️ API request timed out after 30 seconds - likely backend issue');
+      console.error('⏱️ API request timed out after 30 seconds - likely backend issue');
       addDetailedActivity('⏱️ API timeout - backend may be down', 'warning');
       sessionStats.lastApiError = 'Request timeout - backend may be down';
     } else {
-      errorLog('💥 AI generation attempt failed:', error.message);
+      console.error('💥 AI generation attempt failed:', error.message);
       sessionStats.lastApiError = `Content Script Error: ${error.message}`;
     }
     
@@ -3142,10 +3142,10 @@ async function selectBestPrompt(tweetText) {
     
     if (currentPercentage < targetPercentage || totalTweets < 3) {
       selectedPrompt = await getSelectedPromptVariation(contentMatchStrategy);
-      debugLog(`🎯 Content match: ${contentMatchStrategy} (${currentPercentage.toFixed(1)}% vs ${targetPercentage}% target)`);
+      console.log(`🎯 Content match: ${contentMatchStrategy} (${currentPercentage.toFixed(1)}% vs ${targetPercentage}% target)`);
       addDetailedActivity(`🎯 Content match ${contentMatchStrategy} • ${selectedPrompt.variationName}`, 'info');
     } else {
-      debugLog(`⚠️ ${contentMatchStrategy} BLOCKED - over limit (${currentPercentage.toFixed(1)}% vs ${targetPercentage}%), forcing variety`);
+      console.log(`⚠️ ${contentMatchStrategy} BLOCKED - over limit (${currentPercentage.toFixed(1)}% vs ${targetPercentage}%), forcing variety`);
       addDetailedActivity(`⚠️ ${contentMatchStrategy} blocked (${currentPercentage.toFixed(1)}% vs ${targetPercentage}%) - forcing variety`, 'warning');
       // FORCE VARIETY: Don't set selectedPrompt - let it fall through to weighted selection
       contentMatchStrategy = null; // Clear it completely
@@ -3161,7 +3161,7 @@ async function selectBestPrompt(tweetText) {
       const startingStrategies = ["Engagement Indie Voice", "Engagement Spark Reply", "The Viral Shot"];
       const randomStrategy = startingStrategies[Math.floor(Math.random() * startingStrategies.length)];
       selectedPrompt = await getSelectedPromptVariation(randomStrategy);
-      debugLog(`🚀 First tweet: Using ${randomStrategy} for strong start`);
+      console.log(`🚀 First tweet: Using ${randomStrategy} for strong start`);
       addDetailedActivity(`🚀 First tweet using ${randomStrategy} • ${selectedPrompt.variationName}`, 'success');
     } else {
       // Calculate which strategies are under their target percentage
@@ -3193,7 +3193,7 @@ async function selectBestPrompt(tweetText) {
             const chosenStrategy = underTargetStrategies[i];
             selectedPrompt = await getSelectedPromptVariation(chosenStrategy.name);
             if (selectedPrompt) {
-              debugLog(`📊 Weighted selection: ${chosenStrategy.name} (${((strategyRotation.usageCount[chosenStrategy.name] || 0) / totalTweets * 100).toFixed(1)}% vs ${chosenStrategy.targetWeight}% target)`);
+              console.log(`📊 Weighted selection: ${chosenStrategy.name} (${((strategyRotation.usageCount[chosenStrategy.name] || 0) / totalTweets * 100).toFixed(1)}% vs ${chosenStrategy.targetWeight}% target)`);
               addDetailedActivity(`📊 Weighted ${chosenStrategy.name} • ${selectedPrompt.variationName} (${((strategyRotation.usageCount[chosenStrategy.name] || 0) / totalTweets * 100).toFixed(1)}%)`, 'info');
             }
             break;
@@ -3203,7 +3203,7 @@ async function selectBestPrompt(tweetText) {
         // Safety check: if weighted selection failed, use first under-target strategy
         if (!selectedPrompt && underTargetStrategies.length > 0) {
           selectedPrompt = await getSelectedPromptVariation(underTargetStrategies[0].name);
-          debugLog(`🔧 Fallback: Using ${underTargetStrategies[0].name} (weighted selection failed)`);
+          console.log(`🔧 Fallback: Using ${underTargetStrategies[0].name} (weighted selection failed)`);
         }
       } else {
         // All strategies at target - use least used
@@ -3213,7 +3213,7 @@ async function selectBestPrompt(tweetText) {
         );
         const randomStrategyName = leastUsedStrategyNames[Math.floor(Math.random() * leastUsedStrategyNames.length)];
         selectedPrompt = await getSelectedPromptVariation(randomStrategyName);
-        debugLog(`⚖️ All targets met: Using least used ${selectedPrompt.name}`);
+        console.log(`⚖️ All targets met: Using least used ${selectedPrompt.name}`);
       }
     }
   }
@@ -3221,12 +3221,12 @@ async function selectBestPrompt(tweetText) {
   // CRITICAL: Ultimate fallback - ensure we always have a strategy
   if (!selectedPrompt) {
     selectedPrompt = await getSelectedPromptVariation("Engagement Indie Voice"); // Default to first strategy
-    debugLog('🚨 EMERGENCY FALLBACK: Using first available strategy');
+    console.log('🚨 EMERGENCY FALLBACK: Using first available strategy');
   }
 
   // Validate selectedPrompt has required properties
   if (!selectedPrompt || !selectedPrompt.name || !selectedPrompt.template) {
-    errorLog('❌ CRITICAL ERROR: Invalid selectedPrompt:', selectedPrompt);
+    console.error('❌ CRITICAL ERROR: Invalid selectedPrompt:', selectedPrompt);
     return { name: "Emergency Fallback", template: "Respond thoughtfully to: {TWEET}" };
   }
 
@@ -3241,7 +3241,7 @@ async function selectBestPrompt(tweetText) {
 
   // Log usage statistics every 5 tweets
   if (sessionStats.processed > 0 && sessionStats.processed % 5 === 0) {
-    debugLog('📊 Strategy Usage Stats', strategyRotation.usageCount);
+    console.log('📊 Strategy Usage Stats', strategyRotation.usageCount);
   }
 
   return selectedPrompt;
@@ -3877,15 +3877,15 @@ function showSessionSummary() {
   
   const timeDisplay = hours > 0 ? `${hours}h ${displayMinutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
   
-  debugLog('\n🎬 === BoldTake Session Complete ===');
-  debugLog(`⏰ Duration: ${timeDisplay}`);
-  debugLog(`🎯 Target: ${sessionStats.target} tweets`);
-  debugLog(`✅ Successful: ${sessionStats.successful}`);
-  debugLog(`❌ Failed: ${sessionStats.failed}`);
-  debugLog(`📊 Success Rate: ${successRate}%`);
-  debugLog(`⚡ Tweets/Hour: ${tweetsPerHour}`);
-  debugLog(`⏱️ Avg Time/Tweet: ${avgTimePerTweet}s`);
-  debugLog(`🎭 Strategy Usage: ${strategyStats}`);
+  console.log('\n🎬 === BoldTake Session Complete ===');
+  console.log(`⏰ Duration: ${timeDisplay}`);
+  console.log(`🎯 Target: ${sessionStats.target} tweets`);
+  console.log(`✅ Successful: ${sessionStats.successful}`);
+  console.log(`❌ Failed: ${sessionStats.failed}`);
+  console.log(`📊 Success Rate: ${successRate}%`);
+  console.log(`⚡ Tweets/Hour: ${tweetsPerHour}`);
+  console.log(`⏱️ Avg Time/Tweet: ${avgTimePerTweet}s`);
+  console.log(`🎭 Strategy Usage: ${strategyStats}`);
   
   // Enhanced status message with key metrics
   const summaryMessage = `🎬 Session Complete!\n` +
@@ -3938,7 +3938,7 @@ async function loadKeywordRotation() {
     chrome.storage.local.get(['boldtake_rotation_keywords', 'keyword_rotation'], (result) => {
       if (result.boldtake_rotation_keywords && result.boldtake_rotation_keywords.length > 0) {
         keywordRotation.keywords = result.boldtake_rotation_keywords;
-        debugLog(`🔄 Loaded ${keywordRotation.keywords.length} rotation keywords:`, keywordRotation.keywords);
+        console.log(`🔄 Loaded ${keywordRotation.keywords.length} rotation keywords:`, keywordRotation.keywords);
       }
       
       if (result.keyword_rotation) {
@@ -3986,7 +3986,7 @@ async function rotateKeyword() {
   
   const newKeyword = keywordRotation.keywords[keywordRotation.currentIndex];
   
-  debugLog(`🔄 Rotating to keyword: "${newKeyword}" (${keywordRotation.currentIndex + 1}/${keywordRotation.keywords.length})`);
+  console.log(`🔄 Rotating to keyword: "${newKeyword}" (${keywordRotation.currentIndex + 1}/${keywordRotation.keywords.length})`);
   addDetailedActivity(`🔄 Rotating to keyword: "${newKeyword}"`, 'info');
   
   // Save rotation state
@@ -4006,12 +4006,12 @@ async function rotateKeyword() {
   const minFaves = minFavesMatch ? minFavesMatch[1] : '500';
   const lang = langMatch ? langMatch[1] : 'en';
   
-  debugLog(`🔍 Extracted from URL - minFaves: ${minFaves}, lang: ${lang}`);
+  console.log(`🔍 Extracted from URL - minFaves: ${minFaves}, lang: ${lang}`);
   
   const baseUrl = 'https://x.com/search?q=';
   const newUrl = `${baseUrl}${encodeURIComponent(newKeyword)}%20min_faves%3A${minFaves}%20lang%3A${lang}&src=typed_query&f=live`;
   
-  debugLog(`🔄 Rotating with preserved settings: min_faves:${minFaves}, lang:${lang}`);
+  console.log(`🔄 Rotating with preserved settings: min_faves:${minFaves}, lang:${lang}`);
   
   // Navigate to new keyword search
   window.location.href = newUrl;
@@ -4054,10 +4054,10 @@ async function loadSession() {
 }
 
 // Initialize
-debugLog('✅ BoldTake Professional ready! Go to X.com and click Start.');
-debugLog('🎯 Session mode: 120 tweets with 2-5m human-like delays (natural behavior simulation)');
-debugLog('�� Spam filtering enabled - only quality tweets targeted');
-debugLog('☕ Optimized for extended automation sessions!');
+console.log('✅ BoldTake Professional ready! Go to X.com and click Start.');
+console.log('🎯 Session mode: 120 tweets with 2-5m human-like delays (natural behavior simulation)');
+console.log('�� Spam filtering enabled - only quality tweets targeted');
+console.log('☕ Optimized for extended automation sessions!');
 
 /**
  * Update persistent analytics data
@@ -4143,7 +4143,7 @@ async function updateAnalyticsData() {
     });
 
   } catch (error) {
-    errorLog('❌ Failed to update analytics data:', error);
+    console.error('❌ Failed to update analytics data:', error);
   }
 }
 
@@ -4160,7 +4160,7 @@ async function getPersonalizationSettings() {
       const validatedLanguage = validateLanguageSupport(rawLanguage);
       
       if (DEBUG_MODE) {
-        debugLog('🌍 Language Settings:', {
+        console.log('🌍 Language Settings:', {
           raw: rawLanguage,
           validated: validatedLanguage
         });
@@ -4191,14 +4191,14 @@ function validateLanguageSupport(language) {
   ];
   
   if (!language || typeof language !== 'string') {
-    debugLog('⚠️ Invalid language type, defaulting to English:', language);
+    console.warn('⚠️ Invalid language type, defaulting to English:', language);
     return 'english';
   }
   
   const normalizedLanguage = language.toLowerCase().trim();
   
   if (!supportedLanguages.includes(normalizedLanguage)) {
-    debugLog('⚠️ Unsupported language, defaulting to English:', language);
+    console.warn('⚠️ Unsupported language, defaulting to English:', language);
     return 'english';
   }
   
@@ -4227,7 +4227,7 @@ function buildEnhancedPrompt(baseTemplate, tweetText, personalization) {
   let remainingSpace = maxPromptLength - baseLength;
   
   if (DEBUG_MODE) {
-    debugLog('🔧 Prompt Enhancement:', {
+    console.log('🔧 Prompt Enhancement:', {
       baseLength,
       remainingSpace,
       language: personalization.language,
@@ -4243,10 +4243,10 @@ function buildEnhancedPrompt(baseTemplate, tweetText, personalization) {
       remainingSpace -= languageInstructions.length + 30;
       
       if (DEBUG_MODE) {
-        debugLog('✅ Added language instructions for', personalization.language);
+        console.log('✅ Added language instructions for', personalization.language);
       }
     } else {
-      debugLog('⚠️ Skipping language instructions - insufficient space');
+      console.warn('⚠️ Skipping language instructions - insufficient space');
     }
   }
   
@@ -4257,21 +4257,21 @@ function buildEnhancedPrompt(baseTemplate, tweetText, personalization) {
       enhancedPrompt += `\n\nTONE STYLE: ${toneInstructions}`;
       
       if (DEBUG_MODE) {
-        debugLog('✅ Added tone instructions for:', personalization.tone);
+        console.log('✅ Added tone instructions for:', personalization.tone);
       }
     } else {
-      debugLog('⚠️ Skipping tone instructions - insufficient space');
+      console.warn('⚠️ Skipping tone instructions - insufficient space');
     }
   }
   
   // FINAL SAFETY CHECK
   if (enhancedPrompt.length > maxPromptLength) {
-    debugLog('⚠️ Prompt too long, truncating:', enhancedPrompt.length);
+    console.warn('⚠️ Prompt too long, truncating:', enhancedPrompt.length);
     enhancedPrompt = enhancedPrompt.substring(0, maxPromptLength - 3) + '...';
   }
   
   if (DEBUG_MODE) {
-    debugLog('🎯 Final prompt length:', enhancedPrompt.length);
+    console.log('🎯 Final prompt length:', enhancedPrompt.length);
   }
   
   return enhancedPrompt;
@@ -4347,7 +4347,7 @@ function detectTweetLanguage(tweetText) {
   }
   
   if (DEBUG_MODE) {
-    debugLog(`🌍 Language detected: ${detectedLanguage} (${maxMatches} matches)`);
+    console.log(`🌍 Language detected: ${detectedLanguage} (${maxMatches} matches)`);
   }
   return detectedLanguage;
 }
@@ -4442,19 +4442,19 @@ function testStrategySelection() {
   const hasNegativeContext = negativeContextPatterns.some(pattern => lowerText.includes(pattern));
   const hasPoliticalPattern = politicalPatterns.some(pattern => lowerText.includes(pattern));
   
-  debugLog('🧪 Strategy Selection Test:');
-  debugLog('Test tweet:', testTweet);
-  debugLog('Has achievement pattern:', hasAchievementPattern);
-  debugLog('Has negative context:', hasNegativeContext);
-  debugLog('Has political pattern:', hasPoliticalPattern);
+  console.log('🧪 Strategy Selection Test:');
+  console.log('Test tweet:', testTweet);
+  console.log('Has achievement pattern:', hasAchievementPattern);
+  console.log('Has negative context:', hasNegativeContext);
+  console.log('Has political pattern:', hasPoliticalPattern);
   
   // Expected: Should select Counter strategy (political), NOT Shout-Out (due to negative context)
   if (hasAchievementPattern && !hasNegativeContext) {
-    debugLog('✅ Test Result: Would select Shout-Out strategy');
+    console.log('✅ Test Result: Would select Shout-Out strategy');
   } else if (hasPoliticalPattern) {
-    debugLog('✅ Test Result: Would select Counter strategy (correct!)');
+    console.log('✅ Test Result: Would select Counter strategy (correct!)');
   } else {
-    debugLog('❌ Test Result: Would select rotation strategy');
+    console.log('❌ Test Result: Would select rotation strategy');
   }
 }
 
