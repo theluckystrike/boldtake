@@ -1326,8 +1326,8 @@ async function processNextTweet() {
       addDetailedActivity(`⚠️ Like failed - tweet may appear again`, 'warning');
       // Mark both elements as failed to like so we can skip them
       tweet.setAttribute('data-boldtake-liked-failed', 'true');
-      if (tweetToLike && tweetToLike !== tweet) {
-        tweetToLike.setAttribute('data-boldtake-liked-failed', 'true');
+      if (currentTweet && currentTweet !== tweet) {
+        currentTweet.setAttribute('data-boldtake-liked-failed', 'true');
       }
     }
   } else {
