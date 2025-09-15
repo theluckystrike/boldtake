@@ -31,14 +31,14 @@
         "https://x.com/*",
         "https://twitter.com/*"
       ],
-      "js": ["config.js", "supabase.min.js", "supabase-config.js", "auth.js", "contentScript.js"],
+      "js": ["supabase.min.js", "supabase-config.js", "auth.js", "contentScript.js"],
       "run_at": "document_idle"
     }
   ],
   
   "web_accessible_resources": [
     {
-      "resources": ["config.js", "supabase.min.js", "supabase-config.js", "auth.js"],
+      "resources": ["supabase.min.js", "supabase-config.js", "auth.js"],
       "matches": ["https://x.com/*", "https://twitter.com/*"]
     }
   ],
