@@ -4,7 +4,7 @@
  */
 
 // Logging functions for content script
-const DEBUG_MODE = false; // Set to true for debugging
+const DEBUG_MODE = true; // Set to true for debugging - IMPORTANT for monitoring
 const debugLog = DEBUG_MODE ? console.log : () => {};
 const errorLog = console.error;
 
@@ -1426,9 +1426,14 @@ async function handleReplyModal(originalTweet) {
     try {
       // Method 1: Check if we're in a new window that needs closing
       if (window.location.href.includes('/compose/post')) {
-        debugLog('🪟 Closing new window tab');
-        window.close();
-        await sleep(1000);
+        debugLog('🪟 Detected new window - attempting to close');
+        // Try to close if it's a popup window
+        if (window.opener) {
+          window.close();
+          await sleep(1000);
+        } else {
+          debugLog('⚠️ Cannot close main window - skipping tweet');
+        }
         return false;
       }
       
@@ -1447,27 +1452,31 @@ async function handleReplyModal(originalTweet) {
       }));
       await sleep(1000);
       
-      // Method 3: Force page refresh as last resort (with cooldown protection)
+      // Method 3: Skip this tweet instead of refreshing
       const now = Date.now();
       const lastRefresh = window.boldtakeLastRefresh || 0;
       if (now - lastRefresh > 60000) { // 1 minute cooldown
-        debugLog('🔄 All recovery methods failed - refreshing page...');
-        addDetailedActivity('🔄 Refreshing page to recover from stuck modal', 'error');
-        window.boldtakeLastRefresh = now;
-        location.reload();
+        debugLog('⚠️ Modal stuck - skipping this tweet to continue session');
+        addDetailedActivity('⚠️ Skipping stuck tweet - continuing session', 'warning');
+        // Mark tweet as processed to skip it
+        if (originalTweet) {
+          originalTweet.setAttribute('data-boldtake-processed', 'true');
+          originalTweet.setAttribute('data-boldtake-modal-failed', 'true');
+        }
+        // Don't refresh - just return false to skip
+        return false;
       } else {
-        debugLog('🛡️ Refresh cooldown active - skipping refresh');
-        addDetailedActivity('🛡️ Modal recovery failed - cooldown active', 'warning');
+        debugLog('🛡️ Recovery cooldown active - skipping tweet');
+        addDetailedActivity('🛡️ Modal recovery cooldown - skipping', 'warning');
       }
     } catch (error) {
       errorLog('Recovery failed:', error);
-      // FIXED: Add cooldown protection here too
-      const now = Date.now();
-      const lastRefresh = window.boldtakeLastRefresh || 0;
-      if (now - lastRefresh > 60000) {
-        window.boldtakeLastRefresh = now;
-        location.reload();
+      // Skip tweet instead of refreshing
+      if (originalTweet) {
+        originalTweet.setAttribute('data-boldtake-processed', 'true');
+        originalTweet.setAttribute('data-boldtake-error', 'true');
       }
+      return false;
     }
     
     return false;
