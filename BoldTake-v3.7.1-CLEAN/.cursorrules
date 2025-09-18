@@ -1,0 +1,211 @@
+# BoldTake Extension - Cursor AI Rules
+
+## 🎯 MANDATORY: Read Before ANY Code Changes
+
+### CRITICAL FILES - DO NOT MODIFY WITHOUT PLAN
+- `manifest.json` - Extension configuration (NEVER add config.js to content_scripts)
+- `background.js` - Service worker ONLY (no DOM access)
+- `contentScript.js` - DOM manipulation ONLY (no direct config imports)
+- `popup.js` - UI management ONLY
+- `auth.js` - Authentication ONLY
+
+### KNOWN ISSUES TO AVOID
+1. **debugLog Conflict**: NEVER import config.js in content scripts - causes duplicate identifier errors
+2. **Timeout Issues**: Always add timeouts to chrome.runtime.sendMessage calls (30s max)
+3. **Modal Detection**: X.com may open replies in new windows - always check for both modal and window
+4. **API Failures**: Backend may be down - always add timeout and recovery mechanisms
+
+## 📋 BEFORE ANY CODE CHANGE
+
+### Step 1: Document the Plan
+```
+CHANGE REQUEST:
+- Problem: [Exact issue with error messages]
+- Root Cause: [Why is this happening?]
+- Solution: [How to fix it]
+- Files Affected: [List each file]
+- Risk Level: [Low/Medium/High]
+- Testing Plan: [How to verify fix]
+```
+
+### Step 2: Check Existing Patterns
+- Search for similar code: `grep -r "pattern" .`
+- Check if solution exists: Look in ARCHITECTURE.md
+- Verify no conflicts: Check KNOWN_ISSUES.md
+
+### Step 3: Implementation Rules
+- ONE file at a time
+- Test after EACH change
+- Run validation script
+- Update documentation
+
+## 🏗️ CODE PATTERNS TO FOLLOW
+
+### API Calls with Timeout
+```javascript
+// ✅ CORRECT - Has timeout
+const timeoutPromise = new Promise((_, reject) => {
+  setTimeout(() => reject(new Error('Timeout')), 30000);
+});
+const response = await Promise.race([apiCall, timeoutPromise]);
+
+// ❌ WRONG - No timeout
+const response = await chrome.runtime.sendMessage({...});
+```
+
+### Logging in Content Scripts
+```javascript
+// ✅ CORRECT - Self-contained logging
+const DEBUG_MODE = false;
+const debugLog = DEBUG_MODE ? console.log : () => {};
+
+// ❌ WRONG - Importing from config
+import { debugLog } from './config.js';
+```
+
+### Error Handling
+```javascript
+// ✅ CORRECT - Detailed error handling
+try {
+  // operation
+} catch (error) {
+  if (error.message.includes('timeout')) {
+    console.error('⏱️ Timeout:', error);
+    // specific recovery
+  } else {
+    console.error('❌ Error:', error);
+    // general recovery
+  }
+}
+
+// ❌ WRONG - Generic handling
+catch (error) {
+  console.error(error);
+}
+```
+
+## 🔍 DEBUGGING CHECKLIST
+
+### When Extension Gets Stuck
+1. Check console for "Weighted selection" message
+2. Look for "API request timeout" after 30s
+3. Verify background script is responding
+4. Check if backend API is running
+5. Test API directly with curl
+
+### Common Error Messages
+- `Identifier 'debugLog' has already been declared` → config.js in content_scripts
+- `Could not establish connection` → Background script crashed
+- `API request timeout` → Backend is down or slow
+- `Unknown backend error` → Check Supabase configuration
+
+## 📁 FILE STRUCTURE RULES
+
+```
+/boldtake-3/
+├── Core Files (DO NOT REORGANIZE)
+│   ├── manifest.json          # Extension config
+│   ├── background.js          # Service worker
+│   ├── contentScript.js       # DOM interaction
+│   ├── popup.js              # UI logic
+│   ├── popup.html            # UI structure
+│   ├── auth.js               # Authentication
+│   └── supabase-config.js    # Supabase client
+│
+├── Documentation (ALWAYS UPDATE)
+│   ├── .cursorrules          # THIS FILE
+│   ├── ARCHITECTURE.md       # System design
+│   ├── DEVELOPMENT_RULES.md  # Dev process
+│   ├── KNOWN_ISSUES.md       # Bug tracker
+│   └── DEBUGGING_GUIDE.md    # Debug procedures
+│
+└── Deployment (VERSION CONTROL)
+    └── BoldTake-v{X.Y.Z}/    # Versioned packages
+```
+
+## 🚀 DEPLOYMENT RULES
+
+### Before Creating Package
+1. Run validation: `node validate-extension.js`
+2. Test in Chrome locally
+3. Verify no console errors
+4. Check all API calls work
+5. Update version in manifest.json
+
+### Package Naming Convention
+```
+BoldTake-v{VERSION}-{STATUS}.zip
+- STATUS: PRODUCTION, DEBUG, TEST, FIX
+- Example: BoldTake-v1.0.9-TIMEOUT-FIX.zip
+```
+
+## ⚠️ NEVER DO THESE
+
+1. **NEVER** add config.js to content_scripts in manifest.json
+2. **NEVER** use chrome.runtime.sendMessage without timeout
+3. **NEVER** commit without testing
+4. **NEVER** modify multiple files without testing each
+5. **NEVER** ignore error messages - document them
+6. **NEVER** use console.log in production - use debugLog
+7. **NEVER** hardcode API URLs or keys
+8. **NEVER** skip the validation script
+
+## 🎯 QUICK FIXES FOR COMMON ISSUES
+
+### Extension Stuck on "Weighted selection"
+```javascript
+// Add timeout to attemptGeneration function
+const timeoutPromise = new Promise((_, reject) => {
+  setTimeout(() => reject(new Error('API timeout')), 30000);
+});
+```
+
+### debugLog Already Declared Error
+```javascript
+// Remove config.js from manifest.json content_scripts
+"js": ["supabase.min.js", "supabase-config.js", "auth.js", "contentScript.js"]
+// NOT: ["config.js", ...]
+```
+
+### Backend Not Responding
+1. Check Supabase dashboard
+2. Test with: `curl {SUPABASE_URL}/functions/v1/generate-reply`
+3. Verify auth token is valid
+4. Check backend logs
+
+## 📝 COMMIT MESSAGE FORMAT
+
+```
+[TYPE] Brief description
+
+- Detailed change 1
+- Detailed change 2
+- Fixes: #issue
+
+Types: FIX, FEAT, DOCS, REFACTOR, TEST
+```
+
+Example:
+```
+[FIX] Add timeout to API calls
+
+- Added 30s timeout to chrome.runtime.sendMessage
+- Prevents hanging when backend is down
+- Fixes: Extension stuck on reply generation
+```
+
+## 🔄 WHEN UPDATING THIS FILE
+
+Add new rules when you discover:
+- A bug that could have been prevented
+- A pattern that works well
+- A debugging technique that helped
+- A deployment issue
+
+Date your additions:
+```
+## [2025-09-15] New Rule: Always add timeouts
+```
+
+---
+Remember: The AI assistant using these rules should ALWAYS consult this file before making changes!
