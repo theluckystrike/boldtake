@@ -1275,12 +1275,8 @@ async function processNextTweet() {
   }
   
   // Now click the reply button to open modal
-  const clickEvent = new MouseEvent('click', {
-    clientX: rect.left + rect.width/2 + clickVariance.x,
-    clientY: rect.top + rect.height/2 + clickVariance.y,
-    bubbles: true
-  });
-  replyButton.dispatchEvent(clickEvent);
+  // STEALTH: Use simple click to avoid popup windows
+  replyButton.click(); // Simple click prevents new window issues
   
   await sleep(randomDelay(2000, 4000)); // Slightly longer delay for realism
 
@@ -1490,10 +1486,18 @@ async function handleReplyModal(originalTweet) {
                       window.location.href.includes('/intent/post');
   
   if (isNewWindow) {
-    debugLog('🪟 Reply opened in new window - switching context');
-    addDetailedActivity('🪟 New window detected - adapting', 'info');
-    // Give the new window time to load
-    await sleep(2000);
+    debugLog('🪟 Reply opened in new window - CLOSING IMMEDIATELY');
+    addDetailedActivity('⚠️ Popup blocked - closing window', 'warning');
+    
+    // Close popup windows immediately - they break our flow
+    if (window.opener) {
+      window.close();
+    } else {
+      // Navigate back if it's not a popup
+      window.history.back();
+    }
+    await sleep(1000);
+    return { success: false, replyText: null }; // Skip this tweet
   }
 
   // Step 1: Find the reply text box using our new robust function
@@ -4218,12 +4222,12 @@ async function loadSession() {
 }
 
 // Initialize - Always show startup
-criticalLog('🥷 BoldTake v3.5.0 STEALTH MODE - Undetectable Automation!');
-criticalLog('👻 Stealth: Smart risk detection prevents account flags');
+criticalLog('🥷 BoldTake v3.6.0 POPUP-BLOCKER - No More Stuck Windows!');
+criticalLog('🚫 Blocks X.com popup windows that break automation');
 criticalLog('🎯 Target: ~20-30 tweets per hour - Natural human pace');
-criticalLog('🛡️ Protection: Auto-stops before X.com detects patterns');
-criticalLog('📍 Stays on your search page - no refreshing');
-criticalLog('🔒 Your account safety is our #1 priority!');
+criticalLog('🛡️ Protection: Smart risk detection (won\'t panic after 3 tweets)');
+criticalLog('📍 Stays on your search page - no popups, no refreshing');
+criticalLog('✅ Fixed: Modal detection, popup prevention, risk thresholds!');
 criticalLog('💪 Speed + Reliability = Maximum productivity!');
 
 /**
