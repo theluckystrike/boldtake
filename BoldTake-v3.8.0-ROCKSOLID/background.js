@@ -159,76 +159,41 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
 
   // Get user session for authentication - BACKGROUND SCRIPT COMPATIBLE
   let userSession = null;
-  let accessToken = null;
-  
   try {
     // Background scripts must use chrome.storage directly (no window/DOM access)
     const storage = await chrome.storage.local.get([
       STORAGE_CONFIG.userSession, 
-      STORAGE_CONFIG.authToken,
-      'boldtake_subscription'
+      STORAGE_CONFIG.authToken
     ]);
-    
     userSession = storage[STORAGE_CONFIG.userSession];
     
-    // Priority 1: Check for Supabase auth token in storage (most reliable)
+    // Also check for Supabase auth token in storage
     const authToken = storage[STORAGE_CONFIG.authToken];
     if (authToken) {
       try {
-        const tokenData = typeof authToken === 'string' ? JSON.parse(authToken) : authToken;
+        const tokenData = JSON.parse(authToken);
         if (tokenData.access_token) {
-          accessToken = tokenData.access_token;
-          debugLog('✅ Found Supabase auth token');
-          
-          // Check if token is expired
-          if (tokenData.expires_at) {
-            const expiresAt = new Date(tokenData.expires_at * 1000);
-            const now = new Date();
-            if (expiresAt <= now) {
-              errorLog('⚠️ Auth token expired at:', expiresAt);
-              return { error: 'Authentication token expired - please login again' };
-            }
-          }
+          userSession = userSession || {};
+          userSession.access_token = tokenData.access_token;
         }
       } catch (parseError) {
         errorLog('Failed to parse auth token:', parseError);
       }
     }
     
-    // Priority 2: Check user session for access token
-    if (!accessToken && userSession) {
-      if (userSession.access_token) {
-        accessToken = userSession.access_token;
-        debugLog('✅ Found token in user session (direct)');
-      } else if (userSession.user?.access_token) {
-        accessToken = userSession.user.access_token;
-        debugLog('✅ Found token in user session (nested)');
-      } else if (userSession.session?.access_token) {
-        accessToken = userSession.session.access_token;
-        debugLog('✅ Found token in user session (session nested)');
-      }
+    if (!userSession || (!userSession.user && !userSession.access_token)) {
+      errorLog('❌ No user session found in storage');
+      debugLog('Storage contents:', storage);
+      return { error: 'User not authenticated - please login' };
     }
     
-    // Validation: Ensure we have a valid token
-    if (!accessToken) {
-      errorLog('❌ No valid access token found');
-      debugLog('Storage contents:', {
-        hasUserSession: !!userSession,
-        hasAuthToken: !!authToken,
-        userEmail: userSession?.user?.email || 'Unknown'
-      });
-      return { error: 'Authentication failed - please login again' };
-    }
-    
-    // Debug: Log authentication status
-    console.log('🔑 Authentication Status:');
-    console.log('  Token:', `${accessToken.substring(0, 20)}...`);
-    console.log('  User:', userSession?.user?.email || 'Unknown');
-    console.log('  Subscription:', storage.boldtake_subscription?.status || 'Unknown');
-    
+    // Debug: Log what token we're using
+    const tokenToUse = userSession.access_token || userSession.user?.access_token;
+    console.log('🔑 Using token:', tokenToUse ? `${tokenToUse.substring(0, 20)}...` : 'NO TOKEN');
+    console.log('📧 User email:', userSession.user?.email || 'Unknown');
   } catch (error) {
-    errorLog('Critical authentication error:', error);
-    return { error: 'Authentication system error - please refresh and try again' };
+    errorLog('Failed to get user session:', error);
+    return { error: 'Authentication error - please login again' };
   }
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -244,8 +209,7 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${accessToken}`,
-            'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNrZXVxZ2l1ZXRsd293am9lY2t1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1MTY0MDMsImV4cCI6MjA3MTA5MjQwM30.OSdzhh41uRfMfkdPXs1UT5p_QpVMNqWMRVmUyRhzwhI'
+            'Authorization': `Bearer ${userSession.access_token || userSession.user.access_token}`
           },
           body: JSON.stringify({
             originalTweet: tweetContext.originalText || prompt,
@@ -272,22 +236,10 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
 
           // Handle specific error cases from your API
           if (response.status === 400) {
-            const errorMsg = errorBody.error || errorBody.message || 'Bad request';
-            errorLog(`400 Error: ${errorMsg}`);
-            
-            // Handle various authentication/authorization errors
-            if (errorMsg.toLowerCase().includes('auth') || 
-                errorMsg.toLowerCase().includes('token') ||
-                errorMsg.toLowerCase().includes('unauthorized')) {
-              // Clear potentially stale auth data
-              try {
-                await chrome.storage.local.remove([STORAGE_CONFIG.authToken]);
-              } catch (e) {
-                debugLog('Failed to clear auth token:', e);
-              }
+            const errorMsg = errorBody.error || 'Bad request';
+            if (errorMsg.includes('authorization header')) {
               return { error: 'Authentication failed - please login again' };
             }
-            
             if (errorMsg.includes('subscription required')) {
               return { error: 'Active subscription required - please upgrade your plan' };
             }
@@ -295,20 +247,12 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
               return { error: errorMsg }; // Show the exact limit message from your API
             }
             if (errorMsg.includes('Missing required fields')) {
-              debugLog('Missing fields in request:', { originalTweet: !!tweetContext.originalText, persona: !!tweetContext.strategy });
-              return { error: 'Invalid request format - missing required data' };
+              return { error: 'Invalid request format - missing originalTweet or persona' };
             }
             return { error: errorMsg };
           }
           
           if (response.status === 401) {
-            errorLog('401 Unauthorized - clearing auth data');
-            // Clear auth data to force re-login
-            try {
-              await chrome.storage.local.remove([STORAGE_CONFIG.authToken, STORAGE_CONFIG.userSession]);
-            } catch (e) {
-              debugLog('Failed to clear auth data:', e);
-            }
             return { error: 'Authentication failed - please login again' };
           }
           

@@ -2895,18 +2895,8 @@ async function generateSmartReply(tweetText, tweetNumber) {
                           
     debugLog(`Quality Check Failed ${sessionStats.consecutiveApiFailures}/3 - ${failureReason} (${reply?.length || 0} chars)`);
     
-    // Check if it's an authentication error before deciding to skip
-    if (sessionStats.authError) {
-      errorLog('❌ Skipping due to authentication error - please re-login');
-      addDetailedActivity(`🔐 Authentication required - please login again`, 'error');
-    } else if (!reply && sessionStats.lastApiError) {
-      // Don't retry if we got no response at all (likely API issue)
-      errorLog('⚠️ Skipping due to API error:', sessionStats.lastApiError);
-      addDetailedActivity(`⚠️ API error: ${sessionStats.lastApiError}`, 'warning');
-    } else {
-      // NO FALLBACKS: Skip this tweet entirely  
-      addDetailedActivity(`🚫 Tweet skipped - ${failureReason} reply (${reply?.length || 0} chars)`, 'warning');
-    }
+    // NO FALLBACKS: Skip this tweet entirely  
+    addDetailedActivity(`🚫 Tweet skipped - ${failureReason} reply (${reply?.length || 0} chars)`, 'warning');
     
     return null; // This will cause the tweet to be skipped
   } else {
@@ -3013,26 +3003,6 @@ async function attemptGeneration(promptTemplate, tweetText, languageContext = {}
     if (response.error) {
       errorLog(`Error from background script: ${response.error}`);
       sessionStats.lastApiError = response.error; // Store the specific error
-      
-      // Handle authentication errors specifically
-      if (response.error.includes('Authentication') || 
-          response.error.includes('login') || 
-          response.error.includes('token')) {
-        errorLog('🔐 Authentication error - user needs to re-login');
-        sessionStats.authError = true;
-        
-        // Send message to popup to show auth error
-        try {
-          await chrome.runtime.sendMessage({
-            type: 'AUTH_ERROR',
-            error: response.error
-          });
-        } catch (e) {
-          // Popup might not be open
-          debugLog('Could not notify popup of auth error');
-        }
-      }
-      
       return null;
     }
     

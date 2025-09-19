@@ -235,38 +235,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Continue with limited functionality
     }
     
-    // Listen for authentication errors from content script
-    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (message.type === 'AUTH_ERROR') {
-            console.error('🔐 Authentication error received:', message.error);
-            
-            // Show authentication error to user
-            if (message.error.includes('Authentication') || message.error.includes('login')) {
-                // Clear session and show login UI
-                chrome.storage.local.remove(['boldtake_user_session', 'sb-ckeuqgiuetlwowjoecku-auth-token']);
-                
-                // Show a helpful error message
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'auth-error-notification';
-                errorDiv.innerHTML = `
-                    <div style="background: #FEF2F2; border: 1px solid #FCA5A5; border-radius: 8px; padding: 12px; margin: 12px;">
-                        <p style="color: #DC2626; font-weight: 600; margin: 0;">⚠️ Authentication Required</p>
-                        <p style="color: #7F1D1D; margin: 4px 0 8px 0; font-size: 14px;">Your session has expired. Please log in again to continue.</p>
-                        <button onclick="location.reload()" style="background: #DC2626; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">Refresh & Login</button>
-                    </div>
-                `;
-                
-                const mainContent = document.querySelector('.main-content');
-                if (mainContent && !document.querySelector('.auth-error-notification')) {
-                    mainContent.insertBefore(errorDiv, mainContent.firstChild);
-                }
-                
-                // Also update the UI to show login
-                window.BoldTakeAuthManager.showLoginUI();
-            }
-        }
-    });
-    
     // Get DOM elements
     startBtn = document.getElementById('start-button');
     stopBtn = document.getElementById('stop-button');
