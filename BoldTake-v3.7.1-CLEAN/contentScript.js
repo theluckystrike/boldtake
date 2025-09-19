@@ -1499,18 +1499,15 @@ async function handleReplyModal(originalTweet) {
                       window.location.href.includes('/intent/post');
   
   if (isNewWindow) {
-    debugLog('🪟 Reply opened in new window - CLOSING IMMEDIATELY');
-    addDetailedActivity('⚠️ Popup blocked - closing window', 'warning');
+    debugLog('🪟 Popup detected - WORKING IN POPUP MODE');
+    addDetailedActivity('🔄 Handling reply in popup window', 'info');
     
-    // Close popup windows immediately - they break our flow
-    if (window.opener) {
-      window.close();
-    } else {
-      // Navigate back if it's not a popup
-      window.history.back();
-    }
-    await sleep(1000);
-    return { success: false, replyText: null }; // Skip this tweet
+    // NEW STRATEGY: Work IN the popup instead of closing it
+    // Give popup time to fully load
+    await sleep(3000);
+    
+    // Don't close - continue to find text area below
+    // The popup should have the compose box ready
   }
 
   // Step 1: Find the reply text box using our new robust function
@@ -4235,12 +4232,12 @@ async function loadSession() {
 }
 
 // Initialize - Always show startup
-criticalLog('⚡ BoldTake v3.7.1 CLEAN - Stable & Tested!');
-criticalLog('🎯 Force-modal click to prevent popups');
-criticalLog('✅ All syntax errors fixed and validated');
+criticalLog('🔥 BoldTake v3.7.2 POPUP-HANDLER - Works IN Popups!');
+criticalLog('🪟 Handles X.com forcing replies into popups');
+criticalLog('✅ Types and posts INSIDE popup windows');
 criticalLog('🛡️ Smart risk detection (realistic thresholds)');
 criticalLog('📍 20-30 tweets/hour natural pace');
-criticalLog('💪 Production-ready with no duplicate declarations!');
+criticalLog('💪 Emergency fix for X.com popup behavior!');
 criticalLog('💪 Speed + Reliability = Maximum productivity!');
 
 /**
