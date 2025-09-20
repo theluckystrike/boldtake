@@ -1109,9 +1109,8 @@ function assessAccountRisk() {
   // Determine risk level
   if (riskScore >= 80) {
     riskLevel = 'critical';
-    sessionStats.isRunning = false; // EMERGENCY STOP
-    errorLog('🚨🚨🚨 CRITICAL RISK - EMERGENCY STOP ACTIVATED');
-    addDetailedActivity('🚨 EMERGENCY STOP - Account protection', 'error');
+    // Don't stop here - let processNextTweet handle the restart logic
+    errorLog('🚨 CRITICAL RISK DETECTED');
   } else if (riskScore >= 60) {
     riskLevel = 'high';
   } else if (riskScore >= 40) {
@@ -1147,8 +1146,24 @@ async function processNextTweet() {
   // Assess overall account risk
   const riskLevel = assessAccountRisk();
   if (riskLevel === 'critical') {
-    errorLog('🛑 Critical risk detected - stopping immediately');
-    return false;
+    errorLog('🛑 Critical risk detected - entering cooldown');
+    sessionStats.isRunning = false;
+    
+    // AUTO-RESTART: Wait 5 minutes then resume automatically
+    updateStatus('⏸️ Safety cooldown - auto-resuming in 5 minutes...');
+    await sleep(300000); // 5 minute cooldown
+    
+    // Reset risk factors and resume
+    securityState.consecutiveFailures = 0;
+    sessionStats.failed = 0;
+    sessionStats.retryAttempts = 0;
+    sessionStats.hourlyCount = 0;
+    sessionStats.accountRisk = 'low';
+    sessionStats.riskScore = 0;
+    
+    updateStatus('🔄 Auto-resuming after cooldown...');
+    sessionStats.isRunning = true;
+    return true; // Continue processing
   }
   
   // Add extra delay for high risk
