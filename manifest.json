@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "BoldTake Professional",
-  "version": "3.9.14",
+  "version": "3.9.15",
   "description": "Professional AI-powered X.com automation with intelligent engagement and subscription management",
   
   "action": {

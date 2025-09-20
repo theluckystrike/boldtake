@@ -610,6 +610,19 @@ async function startSession() {
         return;
     }
     
+    // AUTO-SWITCH TO DASHBOARD TAB to show session logs
+    const dashboardTab = document.querySelector('[data-tab="dashboard"]');
+    const dashboardPanel = document.getElementById('dashboard-tab');
+    if (dashboardTab && dashboardPanel) {
+        // Remove active from all tabs and panels
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+        
+        // Activate dashboard
+        dashboardTab.classList.add('active');
+        dashboardPanel.classList.add('active');
+    }
+    
     try {
         // IMMEDIATELY disable button to prevent rapid clicking
         startBtn.disabled = true;
