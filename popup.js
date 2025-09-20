@@ -1042,7 +1042,7 @@ function savePersonalizationSettings() {
 function setupTabNavigation() {
     const tabButtons = document.querySelectorAll('.tab-btn');
     
-    // Hide all panels initially
+    // Hide all panels initially except settings
     const allPanels = [
         document.getElementById('settings-panel'),
         document.getElementById('analytics-panel'),
@@ -1106,6 +1106,13 @@ function setupTabNavigation() {
             debugLog(`📑 Switched to ${targetTab} tab`);
         });
     });
+    
+    // Show settings tab by default
+    const settingsTab = document.querySelector('[data-tab="settings"]');
+    if (settingsTab) {
+        settingsTab.click();
+        debugLog('🎯 Settings tab shown by default');
+    }
 }
 
 /**
