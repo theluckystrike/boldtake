@@ -3,12 +3,12 @@
  * Intelligent AI-powered engagement system
  */
 
-// ULTRA-STEALTH MODE: NO CONSOLE OUTPUT
-// X.com can override console methods to detect automation!
-const SHOW_LOGS = false;
-const debugLog = () => {}; // Completely silent
-const errorLog = () => {}; // No error logging
-const criticalLog = () => {}; // No critical messages
+// DEBUG MODE ENABLED - Full logging for troubleshooting
+const SHOW_LOGS = true;
+const debugLog = (...args) => console.log('[DEBUG]', ...args);
+const errorLog = (...args) => console.error('[ERROR]', ...args);
+const criticalLog = (...args) => console.log('[CRITICAL]', ...args);
+console.log('🚀 BoldTake v3.9.10 DEBUG MODE ACTIVE');
 
 // Activity tracking for live feed
 let recentActivities = [];
@@ -670,8 +670,11 @@ const SAFE_FALLBACK_REPLIES = [
 // --- Initialization ---
 
 // On script load, check for an active session and resume if needed
+console.log('🎯 INITIALIZE: BoldTake v3.9.10 starting...');
 (async function initialize() {
+  console.log('🔄 Step 1: Loading session...');
   await loadSession();
+  console.log('🎲 Step 2: Loading keyword rotation...');
   await loadKeywordRotation();
   
   // Initialize network monitoring system
@@ -679,17 +682,20 @@ const SAFE_FALLBACK_REPLIES = [
   
   // Check if this is a new session launched from the popup
   const { isNewSession } = await chrome.storage.local.get('isNewSession');
+  console.log('🏁 Step 3: Check session status - isNewSession:', isNewSession, 'isRunning:', sessionStats.isRunning);
 
   if (isNewSession) {
     // It's a new session, so clear the flag and auto-start.
     await chrome.storage.local.remove('isNewSession');
-    debugLog('Starting new session from popup...');
+    console.log('🆕 Starting NEW session from popup...');
     startContinuousSession(); // Start a fresh session
   } else if (sessionStats.isRunning) {
     // It's not a new session, but one was running, so resume it.
-    debugLog('Resuming active session...');
+    console.log('🔄 Resuming ACTIVE session...');
     showStatus(`Resuming active session: ${sessionStats.successful}/${sessionStats.target} tweets`);
     startContinuousSession(true); // Start without resetting stats
+  } else {
+    console.log('💤 No active session - waiting for user action');
   }
 })();
 
@@ -711,11 +717,10 @@ window.addEventListener('beforeunload', () => {
 // --- Message Handling ---
 
 // Listen for messages from popup
+console.log('👂 Setting up message listener for popup communication');
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  // Only log non-stats messages to reduce console spam
-  if (message.type !== 'GET_SESSION_STATS') {
-    debugLog('Received message:', message.type);
-  }
+  // Log ALL messages in debug mode
+  console.log('📨 Message received:', message.type, message);
   
   if (message.type === 'BOLDTAKE_START') {
     debugLog('🎯 Starting BoldTake continuous session...');
@@ -1981,14 +1986,12 @@ async function safeTypeText(el, str) {
 }
 
 function showStatus(message) {
-  // Only log status in debug mode to reduce console spam
-  debugLog(`[STATUS] ${message}`);
+  console.log(`[STATUS] ${message}`);
   updateCornerWidget(message);
 }
 
 function updateStatus(message) {
-  // Only log status in debug mode to reduce console spam
-  debugLog(`[STATUS] ${message}`);
+  console.log(`[STATUS UPDATE] ${message}`);
   updateCornerWidget(message);
 }
 
@@ -4200,16 +4203,27 @@ async function rotateKeyword() {
 }
 
 async function loadSession() {
+  console.log('📦 Loading session from storage...');
   return new Promise(resolve => {
-    chrome.storage.local.get(['boldtake_session', 'strategy_rotation'], (result) => {
+    chrome.storage.local.get(['boldtake_session', 'strategy_rotation', 'boldtake_user_session'], (result) => {
+      console.log('🔍 Full storage result:', result);
       if (result.boldtake_session) {
         sessionStats = result.boldtake_session;
+        console.log('✅ Session restored:', sessionStats);
       } else {
         sessionStats = { processed: 0, successful: 0, failed: 0, target: 120, isRunning: false };
+        console.log('🆕 Created new session stats');
+      }
+      
+      if (result.boldtake_user_session) {
+        console.log('👤 User authenticated:', result.boldtake_user_session.user?.email || 'Session active');
+      } else {
+        console.warn('⚠️ No user session found - authentication may be required');
       }
       
       if (result.strategy_rotation) {
         strategyRotation = result.strategy_rotation;
+        console.log('🎲 Strategy rotation loaded:', strategyRotation);
       } else {
         // Initialize strategy rotation tracking
         strategyRotation = {
@@ -4643,4 +4657,7 @@ function testStrategySelection() {
 //   setTimeout(testStrategySelection, 1000);
 // }
 
-debugLog('BoldTake Professional content script loaded and ready');
+console.log('✅ BoldTake Professional v3.9.10 DEBUG - Content script fully loaded');
+console.log('🔍 Debug mode active - Full logging enabled');
+console.log('📊 Initial status:', sessionStats);
+updateStatus('BoldTake v3.9.10 DEBUG Ready');
