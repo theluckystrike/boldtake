@@ -3,11 +3,12 @@
  * Intelligent AI-powered engagement system
  */
 
-// Logging functions - ALWAYS SHOW for monitoring
-const SHOW_LOGS = true; // Always true - we need to see what's happening
-const debugLog = console.log; // Show everything
-const errorLog = console.error;
-const criticalLog = console.log; // Always show critical messages
+// ULTRA-STEALTH MODE: NO CONSOLE OUTPUT
+// X.com can override console methods to detect automation!
+const SHOW_LOGS = false;
+const debugLog = () => {}; // Completely silent
+const errorLog = () => {}; // No error logging
+const criticalLog = () => {}; // No critical messages
 
 // Activity tracking for live feed
 let recentActivities = [];
@@ -839,18 +840,18 @@ async function startContinuousSession(isResuming = false) {
     
     // Initialize comprehensive session statistics
     // SUBSCRIPTION-AWARE: Get daily limit from authentication system
-    let dailyLimit = 120; // Default fallback
+    let dailyLimit = 200; // Default Creator tier (aligned with website pricing)
     try {
       if (window.BoldTakeAuthManager) {
-        const baseLimit = window.BoldTakeAuthManager.getDailyLimit() || 120;
+        const baseLimit = window.BoldTakeAuthManager.getDailyLimit() || 200;
         // CUSTOMER SATISFACTION: Add +5 buffer to advertised limits
-        // This ensures users get slightly more than promised (125 for Pro, 10 for Trial)
+        // This ensures users get slightly more than promised (205 for Creator, etc.)
         dailyLimit = baseLimit + 5;
         debugLog(`🎁 Daily limit with satisfaction buffer: ${dailyLimit} (base: ${baseLimit} + 5 bonus)`);
       }
     } catch (error) {
-      debugLog('⚠️ Could not get subscription limit, using default 125 (120+5)');
-      dailyLimit = 125; // Default with buffer
+      debugLog('⚠️ Could not get subscription limit, using default 205 (200+5)');
+      dailyLimit = 205; // Default Creator tier with buffer
     }
 
     sessionStats = {
@@ -4197,8 +4198,8 @@ async function loadSession() {
   });
 }
 
-// Initialize silently - minimal logging for safety
-console.log('BoldTake ready');
+// Initialize completely silently - NO console output for maximum safety
+// X.com can detect console.log activity!
 
 /**
  * Update persistent analytics data

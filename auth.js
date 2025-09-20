@@ -160,9 +160,9 @@ async function refreshSubscriptionStatus() {
             const overrideResult = {
                 success: true,
                 status: 'active', 
-                limit: 120
+                limit: 200  // Creator tier ($29.99/month) - aligned with website
             };
-            console.log('🎉 Applied universal premium override - user now has full access');
+            console.log('🎉 Applied Creator tier access - 200 replies/day');
             
             authState.subscriptionStatus = {
                 status: overrideResult.status,
