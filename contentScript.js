@@ -1090,30 +1090,30 @@ function assessAccountRisk() {
   let riskLevel = 'low';
   let riskScore = 0;
   
-  // Burst activity check
-  if (recentActions >= 2) riskScore += 20;
-  if (recentActions >= 3) riskScore += 40;
+  // Burst activity check - RELAXED for normal usage
+  if (recentActions >= 4) riskScore += 10;  // Was 2 -> 4, reduced score
+  if (recentActions >= 6) riskScore += 20;  // Was 3 -> 6, reduced score
   
-  // Hourly activity check  
-  if (hourlyActions >= 8) riskScore += 20;
-  if (hourlyActions >= 10) riskScore += 30;
-  if (hourlyActions >= 12) riskScore += 50;
+  // Hourly activity check - ALIGNED with 30-35 tweets/hour target
+  if (hourlyActions >= 25) riskScore += 10;  // Was 8 -> 25
+  if (hourlyActions >= 30) riskScore += 20;  // Was 10 -> 30
+  if (hourlyActions >= 40) riskScore += 30;  // Was 12 -> 40, reduced score
   
   // Failure rate check
   if (failureRate > 0.3) riskScore += 20;
   if (failureRate > 0.5) riskScore += 40;
   
-  // Consecutive actions check
-  if (sessionStats.retryAttempts >= 2) riskScore += 30;
+  // Consecutive actions check - RELAXED
+  if (sessionStats.retryAttempts >= 5) riskScore += 20;  // Was 2 -> 5, reduced score
   
-  // Determine risk level
-  if (riskScore >= 80) {
+  // Determine risk level - ADJUSTED THRESHOLDS
+  if (riskScore >= 100) {  // Was 80 -> 100
     riskLevel = 'critical';
     // Don't stop here - let processNextTweet handle the restart logic
     errorLog('🚨 CRITICAL RISK DETECTED');
-  } else if (riskScore >= 60) {
+  } else if (riskScore >= 70) {  // Was 60 -> 70
     riskLevel = 'high';
-  } else if (riskScore >= 40) {
+  } else if (riskScore >= 50) {  // Was 40 -> 50
     riskLevel = 'medium';
   }
   
@@ -1166,10 +1166,10 @@ async function processNextTweet() {
     return true; // Continue processing
   }
   
-  // Add extra delay for high risk
+  // Add extra delay for high risk - REDUCED
   if (riskLevel === 'high') {
-    debugLog('⚠️ High risk - adding safety delay');
-    await sleep(300000); // 5 minute safety delay
+    debugLog('⚠️ High risk - adding short safety delay');
+    await sleep(60000); // 1 minute only (was 5 minutes)
   }
   
   // Silent processing - only update status bar
@@ -1465,13 +1465,15 @@ for (let i = 0; i < 5; i++) { // Reduced to 5 for faster failure
  */
 async function gracefullyCloseModal() {
   debugLog('Attempting to gracefully close reply modal...');
+  
+  // Method 1: Click close button
   const closeButton = document.querySelector('[data-testid="app-bar-close"]');
   if (closeButton) {
     closeButton.click();
-    await sleep(1000);
-    return;
+    await sleep(500);
   }
-  // Fallback to sending an Escape key press
+  
+  // Method 2: Press Escape key
   document.body.dispatchEvent(new KeyboardEvent('keydown', {
     key: 'Escape',
     code: 'Escape',
@@ -1480,7 +1482,27 @@ async function gracefullyCloseModal() {
     bubbles: true,
     cancelable: true
   }));
-  await sleep(1000);
+  await sleep(500);
+  
+  // Method 3: If modal opened in new window, close it
+  if (window.opener) {
+    window.close();
+    await sleep(500);
+  }
+  
+  // Method 4: Click outside the modal to close
+  const backdrop = document.querySelector('[role="dialog"]')?.parentElement;
+  if (backdrop) {
+    backdrop.click();
+    await sleep(500);
+  }
+  
+  // Method 5: Force reload if all else fails (last resort)
+  const modalStillOpen = document.querySelector('[data-testid="tweetTextarea_0"]');
+  if (modalStillOpen) {
+    debugLog('Modal stuck - forcing page refresh');
+    location.reload();
+  }
 }
 
 async function handleReplyModal(originalTweet) {
