@@ -835,7 +835,7 @@ async function startContinuousSession(isResuming = false) {
   
   // INITIALIZATION: Set up fresh session or resume existing
   if (!isResuming) {
-    console.log('🎬 === BoldTake Session Started ===');
+    // Session started silently
     
     // Initialize comprehensive session statistics
     // SUBSCRIPTION-AWARE: Get daily limit from authentication system
@@ -904,7 +904,7 @@ async function startContinuousSession(isResuming = false) {
       
       // SAFETY CHECKPOINT 1: Verify session is still active
       if (!sessionStats.isRunning) {
-        console.log('🛑 Session stopped during main loop');
+        // Session stopped silently
         break;
       }
       
@@ -914,7 +914,7 @@ async function startContinuousSession(isResuming = false) {
       
       // SAFETY CHECKPOINT 2: Check session status after processing
       if (!sessionStats.isRunning) {
-        console.log('🛑 Session stopped after tweet processing');
+        // Session stopped silently
         break;
       }
       
@@ -1156,9 +1156,8 @@ async function processNextTweet() {
     await sleep(300000); // 5 minute safety delay
   }
   
-  updateStatus(`🔍 Processing tweet ${sessionStats.processed + 1}/${sessionStats.target}...`);
-  addDetailedActivity(`🔍 Processing tweet ${sessionStats.processed + 1}/${sessionStats.target}`, 'info');
-  debugLog(`\n🎯 === Tweet ${sessionStats.processed + 1}/${sessionStats.target} ===`);
+  // Silent processing - only update status bar
+  updateStatus(`Processing ${sessionStats.processed + 1}/${sessionStats.target}`);
 
   let tweet;
   let attempt = 0;
@@ -1174,12 +1173,8 @@ async function processNextTweet() {
     }
     
     attempt++;
-    debugLog(`🚫 Attempt ${attempt}/${maxAttempts}: No suitable tweets found. Scrolling...`);
-    addDetailedActivity(`🚫 No tweets found (${attempt}/${maxAttempts}). Scrolling for more...`, 'warning');
+    // Silent scroll and wait
     window.scrollTo(0, document.body.scrollHeight);
-    
-    debugLog('⏳ Waiting 3 seconds for new tweets to load...');
-    addDetailedActivity(`⏳ Loading new tweets...`, 'info');
     await sleep(3000); // Wait for content to load
   }
 
@@ -1351,7 +1346,7 @@ async function processNextTweet() {
  * @returns {Promise<HTMLElement|null>} The found text area element or null.
  */
 async function findReplyTextArea() {
-  debugLog('🔍 Actively searching for reply text area...');
+  // Silent search for text area
   const selectors = [
     '[data-testid="tweetTextarea_0"]', // Primary selector
     'div.public-DraftEditor-content[role="textbox"]', // Stable fallback
@@ -1473,8 +1468,7 @@ async function gracefullyCloseModal() {
 }
 
 async function handleReplyModal(originalTweet) {
-  console.log('🎯 Handling Reply Modal...');
-  addDetailedActivity('🎯 Handling Reply Modal', 'info');
+  // Silent modal handling
   
   // Check if we're in a new window/tab situation
   const isNewWindow = window.location.href.includes('/compose/post') || 
@@ -1589,8 +1583,8 @@ async function handleReplyModal(originalTweet) {
     addDetailedActivity(`⏳ Waiting for reply to post...`, 'info');
     const closed = await waitForModalToClose();
     if (closed) {
-      console.log('✅ Reply modal closed successfully.');
-      sessionStats.lastAction = '✅ Reply modal closed successfully';
+      // Reply modal closed silently
+      sessionStats.lastAction = 'Reply sent';
       addDetailedActivity(`🎉 Reply posted successfully! Building engagement...`, 'success');
       return { success: true, replyText };
     } else {
@@ -1659,8 +1653,7 @@ async function findTweet() {
     const found = performanceCache.getAll('tweets', selector, 2000); // 2s cache
     if (found.length > 0) {
       tweets = Array.from(found);
-      console.log(`📊 Found ${tweets.length} unprocessed tweets using selector: ${selector}`);
-      addDetailedActivity(`📊 Found ${tweets.length} unprocessed tweets`, 'info');
+      // Silent - found tweets
       break;
     }
   }
@@ -1686,16 +1679,15 @@ async function findTweet() {
     // This prevents double commenting on the same tweet
     const unlikeButton = tweet.querySelector('[data-testid="unlike"]');
     if (unlikeButton) {
-      debugLog('💚 Skipping already liked tweet (already replied) - preventing double comment');
+      // SILENT - no logging to avoid detection
       tweet.setAttribute('data-boldtake-processed', 'true');
       tweet.setAttribute('data-boldtake-already-liked', 'true');
-      addDetailedActivity('💚 Skipping liked tweet - already replied', 'info');
       continue;
     }
     
     // Also check if we failed to like it before but still replied
     if (tweet.getAttribute('data-boldtake-liked-failed') === 'true') {
-      debugLog('⚠️ Skipping tweet we previously replied to (like failed)');
+      // SILENT - no logging
       tweet.setAttribute('data-boldtake-processed', 'true');
       continue;
     }
@@ -1704,8 +1696,7 @@ async function findTweet() {
     const replyButton = tweet.querySelector('[data-testid="reply"]');
     if (replyButton && replyButton.getAttribute('aria-label') && 
         replyButton.getAttribute('aria-label').includes('can reply')) {
-      debugLog('🚫 Skipping tweet with reply restrictions (mentioned users only)');
-      addDetailedActivity('🚫 Skipped tweet with reply restrictions', 'warning');
+      // SILENT - no logging
       tweet.setAttribute('data-boldtake-processed', 'true');
       continue;
     }
@@ -1715,7 +1706,7 @@ async function findTweet() {
     const words = cleanText.split(/\s+/).filter(word => word.length > 0);
     
     if (words.length <= 1 || cleanText.length < 15) {
-      debugLog('🚫 Skipping tweet - insufficient content (single word or too short)');
+      // SILENT - no logging
       tweet.setAttribute('data-boldtake-processed', 'true');
       continue;
     }
@@ -1756,12 +1747,10 @@ async function findTweet() {
     const isSpam = spamPatterns.some(pattern => tweetText.includes(pattern)) || isAdvancedSpam;
     
     if (!isSpam) {
-      console.log('✅ Found clean, unliked tweet to process');
-      addDetailedActivity('✅ Found clean, unliked tweet to process', 'success');
+      // Found good tweet - minimal logging
       return tweet;
     } else {
-      debugLog('🚫 Skipping spam/inappropriate tweet');
-      // Mark as processed so we don't check it again
+      // SILENT - no logging for spam
       tweet.setAttribute('data-boldtake-processed', 'true');
     }
   }
@@ -4032,7 +4021,7 @@ function showSessionSummary() {
   
   const timeDisplay = hours > 0 ? `${hours}h ${displayMinutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
   
-  console.log('\n🎬 === BoldTake Session Complete ===');
+  // Session complete - show only in status
   debugLog(`⏰ Duration: ${timeDisplay}`);
   debugLog(`🎯 Target: ${sessionStats.target} tweets`);
   debugLog(`✅ Successful: ${sessionStats.successful}`);
@@ -4208,11 +4197,8 @@ async function loadSession() {
   });
 }
 
-// Initialize - Always show startup
-criticalLog('BoldTake v3.9.5');
-criticalLog('Processing 30-35 tweets per hour');
-criticalLog('Session-based operation');
-criticalLog('Ready');
+// Initialize silently - minimal logging for safety
+console.log('BoldTake ready');
 
 /**
  * Update persistent analytics data
