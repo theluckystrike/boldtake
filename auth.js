@@ -18,7 +18,7 @@ let authState = {
  */
 async function initializeAuth() {
     try {
-        console.log('🔐 Initializing authentication');
+        // Silent initialization
         
         // Initialize Supabase
         await window.BoldTakeAuth.initializeSupabase();
@@ -38,17 +38,17 @@ async function initializeAuth() {
                 // Check subscription status
                 await refreshSubscriptionStatus();
                 
-                console.log('✅ User authenticated', user.email);
+                // Silent authentication success
                 showAuthenticatedUI();
             } else {
                 showLoginUI();
             }
         } else {
-            console.log('👤 No authenticated user found');
+            // Silent - no user found
             showLoginUI();
         }
     } catch (error) {
-        console.error('❌ Failed to initialize authentication:', error);
+        // Silent error handling
         showLoginUI();
     }
 }
@@ -58,7 +58,7 @@ async function initializeAuth() {
  */
 async function handleLogin(email, password) {
     try {
-        console.log('🔐 Attempting to sign in user...');
+        // Silent login attempt
         
         const result = await window.BoldTakeAuth.signInUser(email, password);
         
@@ -75,23 +75,18 @@ async function handleLogin(email, password) {
                 }
             });
             
-            // CRITICAL: Also ensure Supabase auth token is properly stored
-            if (result.session?.access_token) {
-                console.log('🔑 Storing access token for background script');
-            }
-            
             // Check subscription status
             await refreshSubscriptionStatus();
             
-            console.log('✅ Login successful');
+            // Silent login success
             showAuthenticatedUI();
             return { success: true };
         } else {
-            console.error('❌ Login failed:', result.error);
+            // Silent login failure
             return { success: false, error: result.error };
         }
     } catch (error) {
-        console.error('❌ Login error:', error);
+        // Silent error
         return { success: false, error: error.message };
     }
 }
@@ -101,7 +96,7 @@ async function handleLogin(email, password) {
  */
 async function handleLogout() {
     try {
-        console.log('🔐 Signing out user...');
+        // Silent logout
         
         const result = await window.BoldTakeAuth.signOutUser();
         
@@ -123,15 +118,15 @@ async function handleLogout() {
                 'boldtake_keyword_rotation'
             ]);
             
-            console.log('✅ Logout successful - all user data cleared');
+            // Silent logout success
             showLoginUI();
             return { success: true };
         } else {
-            console.error('❌ Logout failed:', result.error);
+            // Silent logout failure
             return { success: false, error: result.error };
         }
     } catch (error) {
-        console.error('❌ Logout error:', error);
+        // Silent error
         return { success: false, error: error.message };
     }
 }
@@ -141,28 +136,21 @@ async function handleLogout() {
  */
 async function refreshSubscriptionStatus() {
     try {
-        console.log('📊 Checking subscription status');
-        console.log('🕐 Timestamp', new Date().toISOString());
-        console.log('📧 User email', authState.user?.email || 'Not logged in');
+        // Silent subscription check
         
         const result = await window.BoldTakeAuth.checkSubscriptionStatus();
-        
-        // CRITICAL DEBUG: Log the exact API response for troubleshooting
-        console.log('🔍 Subscription API Response', JSON.stringify(result, null, 2));
-        console.log('🔍 Previous status', authState.subscriptionStatus);
         
         // UNIVERSAL PREMIUM OVERRIDE: For any authenticated user with subscription issues
         // This provides premium access while webhook/subscription issues are resolved
         if (authState.user && authState.user.email) {
-            console.log('🔧 Premium access activated');
-            console.log('📧 User', authState.user.email);
+            // Silent premium activation
             
             const overrideResult = {
                 success: true,
                 status: 'active', 
                 limit: 200  // Creator tier ($29.99/month) - aligned with website
             };
-            console.log('🎉 Applied Creator tier access - 200 replies/day');
+            // Silent premium access granted
             
             authState.subscriptionStatus = {
                 status: overrideResult.status,
@@ -175,7 +163,7 @@ async function refreshSubscriptionStatus() {
                 boldtake_subscription: authState.subscriptionStatus
             });
             
-            console.log('✅ Premium access granted', authState.subscriptionStatus);
+            // Silent premium access granted
             updateUIForSubscriptionStatus();
             return authState.subscriptionStatus;
         }
@@ -192,11 +180,11 @@ async function refreshSubscriptionStatus() {
                 boldtake_subscription: authState.subscriptionStatus
             });
             
-            console.log('✅ Subscription status updated:', authState.subscriptionStatus);
+            // Silent subscription update
             updateUIForSubscriptionStatus();
             return authState.subscriptionStatus;
         } else {
-            console.error('❌ Failed to check subscription:', result.error);
+            // Silent subscription check failure
             
             // CRITICAL BUSINESS PROTECTION: Never immediately lock out users
             // Give 24-hour grace period for API/webhook issues
@@ -219,7 +207,7 @@ async function refreshSubscriptionStatus() {
                     lastCheck: Date.now()
                 };
                 
-                console.log(`🛡️ CUSTOMER PROTECTION: ${isNewUser ? 'New user' : 'Grace period'} - maintaining ${fallbackStatus} status`);
+                // Silent grace period protection
             } else {
                 // Only after grace period expires
                 authState.subscriptionStatus = {
@@ -227,14 +215,14 @@ async function refreshSubscriptionStatus() {
                     limit: 0,
                     lastCheck: Date.now()
                 };
-                console.log('⏰ Grace period expired - showing verification screen');
+                // Silent grace period expiry
             }
             
             updateUIForSubscriptionStatus();
             return authState.subscriptionStatus;
         }
     } catch (error) {
-        console.error('❌ Subscription check error:', error);
+        // Silent error handling
         // CRITICAL FIX: For new users, default to trial instead of inactive
         const isNewUser = !authState.subscriptionStatus || authState.subscriptionStatus.lastCheck === 0;
         authState.subscriptionStatus = {
@@ -242,7 +230,7 @@ async function refreshSubscriptionStatus() {
             limit: isNewUser ? 5 : 0,
             lastCheck: Date.now()
         };
-        console.log(`🔧 Network error during subscription check - defaulting to ${authState.subscriptionStatus.status} for ${isNewUser ? 'new' : 'existing'} user`);
+        // Silent network error handling
         updateUIForSubscriptionStatus();
         return authState.subscriptionStatus;
     }
@@ -284,7 +272,7 @@ function getDailyLimit() {
  * Show login UI
  */
 function showLoginUI() {
-    console.log('🎨 Showing login UI');
+    // Silent UI update
     
     // Hide main extension UI
     const mainContent = document.querySelector('.main-content');
@@ -306,7 +294,7 @@ function showLoginUI() {
  * Show authenticated UI
  */
 function showAuthenticatedUI() {
-    console.log('🎨 Showing authenticated UI');
+    // Silent UI update
     
     // Show main extension UI
     const mainContent = document.querySelector('.main-content');
@@ -347,12 +335,12 @@ function updateAuthUI() {
  */
 function updateUIForSubscriptionStatus() {
     if (!authState.subscriptionStatus) {
-        console.warn('⚠️ updateUIForSubscriptionStatus called but no subscription status available');
+        // Silent warning
         return;
     }
     
     const { status, limit } = authState.subscriptionStatus;
-    console.log(`🎨 UI ${status} (${limit}/day)`);
+    // Silent UI update
     
     // Get UI elements
     const trialBanner = document.getElementById('trial-banner');
@@ -390,9 +378,7 @@ function updateUIForSubscriptionStatus() {
             }
             if (mainContent) mainContent.style.display = 'block';
             
-            // A+++ FEATURE: Show celebration message for upgrade (once only)
-            console.log('🎉 Premium subscription active');
-            console.log('✅ UI transition complete');
+            // Silent premium activation
             
             // Success notification disabled to prevent spam
             // showUpgradeSuccessNotification();
@@ -402,7 +388,7 @@ function updateUIForSubscriptionStatus() {
         default:
             // CRITICAL BUSINESS PROTECTION: Never lock out users who might be paying
             // Always show refresh button prominently and give benefit of the doubt
-            console.warn('⚠️ BUSINESS CRITICAL: User appears inactive - showing verification screen');
+            // Silent verification screen
             
             // Show lock screen but with customer-friendly messaging
             if (subscriptionLocked) subscriptionLocked.style.display = 'flex';
@@ -410,11 +396,11 @@ function updateUIForSubscriptionStatus() {
             
             // Auto-attempt refresh for potential paying customers
             setTimeout(async () => {
-                console.log('🔄 Auto-attempting subscription refresh for customer protection...');
+                // Silent auto-refresh attempt
                 try {
                     await refreshSubscriptionStatus();
                 } catch (error) {
-                    console.log('⚠️ Auto-refresh failed, user can manually refresh');
+                    // Silent auto-refresh failure
                 }
             }, 2000);
             break;
@@ -453,7 +439,7 @@ function updateUIForSubscriptionStatus() {
         }
     }
     
-    console.log(`🎨 UI complete ${status} (${limit}/day)`);
+    // Silent UI update complete
 }
 
 /**
@@ -501,7 +487,6 @@ function showUpgradeSuccessNotification() {
         
     } catch (error) {
         // Silent failure - don't disrupt user experience
-        console.log('⚠️ Upgrade notification failed (non-critical):', error);
     }
 }
 
@@ -510,7 +495,7 @@ function showUpgradeSuccessNotification() {
  */
 async function refreshAuthSession() {
     try {
-        console.log('🔄 Refreshing authentication session...');
+        // Silent session refresh
         
         // Get the current session from Supabase
         const client = window.BoldTakeAuth.getSupabaseClient();
@@ -526,7 +511,7 @@ async function refreshAuthSession() {
         }
         
         if (!session) {
-            console.warn('⚠️ No active session found');
+            // Silent - no active session
             return false;
         }
         
@@ -539,12 +524,11 @@ async function refreshAuthSession() {
             }
         });
         
-        console.log('✅ Session refreshed successfully');
-        console.log('🔑 Access token updated:', session.access_token.substring(0, 20) + '...');
+        // Silent session refresh success
         
         return true;
     } catch (error) {
-        console.error('❌ Failed to refresh session:', error);
+        // Silent error
         return false;
     }
 }
