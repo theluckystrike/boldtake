@@ -1403,11 +1403,11 @@ async function findReplyTextArea() {
       }
     }
     
-  await sleep(200); // Even shorter delays for faster detection
-}
-
-// ENHANCED FALLBACK: Quick fallback search
-for (let i = 0; i < 5; i++) { // Reduced to 5 for faster failure
+    await sleep(300); // Shorter delays for primary selector
+  }
+  
+  // ENHANCED FALLBACK: More aggressive approach with longer timeouts
+  for (let i = 0; i < 8; i++) { // Increased attempts from 5 to 8
     for (const selector of selectors.slice(1)) { // Skip primary selector
       const textarea = document.querySelector(selector);
       if (textarea && textarea.offsetParent !== null && 
@@ -3069,13 +3069,13 @@ async function attemptGeneration(promptTemplate, tweetText, languageContext = {}
         cleanedLength: cleanReply.length,
         replyPreview: cleanReply.substring(0, 100),
         withinLimit: cleanReply.length <= 280,
-        safeLimit: cleanReply.length <= 260
+        safeLimit: cleanReply.length <= 240
       });
       
-      // SMART TRUNCATION: Use 260-character limit for better content preservation
-      if (cleanReply.length > 260) {
+      // AGGRESSIVE FIX: Enforce 240-character limit to prevent Twitter cutoffs
+      if (cleanReply.length > 240) {
         debugLog('⚠️ Reply exceeds safe limit, truncating:', cleanReply.length);
-        cleanReply = truncateAtSentence(cleanReply, 260);
+        cleanReply = truncateAtSentence(cleanReply, 240);
         debugLog('✅ Truncated to safe length:', cleanReply.length);
       }
       
@@ -4209,10 +4209,10 @@ async function loadSession() {
 }
 
 // Initialize - Always show startup
-criticalLog('🚀 BoldTake v3.9.4 ULTIMATE - Turbo Edition!');
-criticalLog('⚡ TURBO MODE: 30-35 tweets/hour blazing fast!');
+criticalLog('✅ BoldTake v1.1.0 STABLE - Ready to use!');
+criticalLog('🎯 Balanced mode: Natural pacing, smart safety limits');
 criticalLog('📍 Stays on your search page - no refreshing');
-criticalLog('🔥 Enhanced modal detection & faster recovery!');
+criticalLog('💪 Built for reliability - just works!');
 
 /**
  * Update persistent analytics data

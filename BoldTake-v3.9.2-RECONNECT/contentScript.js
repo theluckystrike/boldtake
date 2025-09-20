@@ -87,10 +87,10 @@ const SECURITY_CONFIG = {
   MAX_COMMENTS_PER_HOUR: 20,  // Balanced hourly limit
   MAX_BURST_ACTIONS: 5,        // 5 actions in 10 minute window
   
-  // Timing constraints (milliseconds) - TURBO MODE ~30-35 TWEETS/HOUR
-  MIN_DELAY_BETWEEN_ACTIONS: 45000,   // 45 seconds minimum
-  MAX_DELAY_BETWEEN_ACTIONS: 150000,  // 2.5 minutes maximum  
-  BURST_COOLDOWN_DURATION: 180000,    // 3 minute cooldown if needed
+  // Timing constraints (milliseconds) - OPTIMIZED FOR ~25 TWEETS/HOUR
+  MIN_DELAY_BETWEEN_ACTIONS: 60000,   // 1 minute minimum
+  MAX_DELAY_BETWEEN_ACTIONS: 180000,  // 3 minutes maximum  
+  BURST_COOLDOWN_DURATION: 240000,    // 4 minute cooldown if needed
   
   // Advanced behavioral patterns to mimic human behavior
   HUMAN_VARIANCE_FACTOR: 0.6, // 60% random variance (more natural)
@@ -241,10 +241,10 @@ async function checkActionSafety() {
  */
 function calculateHumanProcessingDelay() {
   const delayConfig = {
-    minDelay: 45000,     // 45 seconds minimum
-    maxDelay: 150000,    // 2.5 minutes maximum
-    baseDelay: 105000,   // 1.75 minutes average (for ~30-35 tweets/hour)
-    variationFactor: 0.35 // ±35% variation
+    minDelay: 60000,     // 1 minute minimum
+    maxDelay: 180000,    // 3 minutes maximum
+    baseDelay: 144000,   // 2.4 minutes average (for ~25 tweets/hour)
+    variationFactor: 0.4 // ±40% variation
   };
   
   // Calculate random variation
@@ -261,7 +261,7 @@ function calculateHumanProcessingDelay() {
   const delayMinutes = Math.round(finalDelay / 60000 * 10) / 10;
   debugLog('⏱️ HUMAN PROCESSING DELAY', {
     delayMinutes: delayMinutes,
-    range: '0.75-2.5 minutes',
+    range: '1-3 minutes',
     behavior: 'natural human timing',
     variation: Math.round((randomVariation / delayConfig.baseDelay) * 100) + '%'
   });
@@ -1403,11 +1403,11 @@ async function findReplyTextArea() {
       }
     }
     
-  await sleep(200); // Even shorter delays for faster detection
-}
-
-// ENHANCED FALLBACK: Quick fallback search
-for (let i = 0; i < 5; i++) { // Reduced to 5 for faster failure
+    await sleep(300); // Shorter delays for primary selector
+  }
+  
+  // ENHANCED FALLBACK: More aggressive approach with longer timeouts
+  for (let i = 0; i < 8; i++) { // Increased attempts from 5 to 8
     for (const selector of selectors.slice(1)) { // Skip primary selector
       const textarea = document.querySelector(selector);
       if (textarea && textarea.offsetParent !== null && 
@@ -3069,13 +3069,13 @@ async function attemptGeneration(promptTemplate, tweetText, languageContext = {}
         cleanedLength: cleanReply.length,
         replyPreview: cleanReply.substring(0, 100),
         withinLimit: cleanReply.length <= 280,
-        safeLimit: cleanReply.length <= 260
+        safeLimit: cleanReply.length <= 240
       });
       
-      // SMART TRUNCATION: Use 260-character limit for better content preservation
-      if (cleanReply.length > 260) {
+      // AGGRESSIVE FIX: Enforce 240-character limit to prevent Twitter cutoffs
+      if (cleanReply.length > 240) {
         debugLog('⚠️ Reply exceeds safe limit, truncating:', cleanReply.length);
-        cleanReply = truncateAtSentence(cleanReply, 260);
+        cleanReply = truncateAtSentence(cleanReply, 240);
         debugLog('✅ Truncated to safe length:', cleanReply.length);
       }
       
@@ -4209,10 +4209,10 @@ async function loadSession() {
 }
 
 // Initialize - Always show startup
-criticalLog('🚀 BoldTake v3.9.4 ULTIMATE - Turbo Edition!');
-criticalLog('⚡ TURBO MODE: 30-35 tweets/hour blazing fast!');
+criticalLog('✅ BoldTake v1.1.0 STABLE - Ready to use!');
+criticalLog('🎯 Balanced mode: Natural pacing, smart safety limits');
 criticalLog('📍 Stays on your search page - no refreshing');
-criticalLog('🔥 Enhanced modal detection & faster recovery!');
+criticalLog('💪 Built for reliability - just works!');
 
 /**
  * Update persistent analytics data
