@@ -245,6 +245,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     minFavesInput = document.getElementById('min-faves-input');
     liveStatus = document.getElementById('liveStatus');
     activityFeed = document.getElementById('activityFeed');
+    
+    // Initialize activity feed
+    if (activityFeed) {
+        activityFeed.innerHTML = '<div class="activity-item">Ready to start...</div>';
+    }
     settingsPanel = document.getElementById('settings-panel');
     analyticsPanel = document.getElementById('analytics-panel');
     roadmapPanel = document.getElementById('roadmap-panel');
@@ -789,6 +794,9 @@ function updateSessionDisplay(stats) {
             // Clear current log and add new activities
             activityLog = [...stats.recentActivities];
             updateActivityFeed();
+        } else if (activityLog.length === 0) {
+            // If no activities yet, show a starting message
+            addActivity('Session active - processing tweets...', 'info');
         }
     } else {
         const status = stats.processed > 0 ? 'Completed' : 'Ready';
