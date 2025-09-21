@@ -351,6 +351,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     stopBtn.disabled = false;
     stopBtn.classList.remove('btn-disabled');
     
+    // Add pause button listener
+    const pauseBtn = document.getElementById('pause-button');
+    if (pauseBtn) {
+        pauseBtn.addEventListener('click', pauseSession);
+    }
+    
+    // Add side panel button listener
+    const sidePanelBtn = document.getElementById('open-sidepanel');
+    if (sidePanelBtn) {
+        sidePanelBtn.addEventListener('click', async () => {
+            try {
+                // Get current window
+                const currentWindow = await chrome.windows.getCurrent();
+                // Open the side panel
+                await chrome.sidePanel.open({ windowId: currentWindow.id });
+            } catch (error) {
+                console.error('Error opening side panel:', error);
+                // Fallback: open in a new window if side panel fails
+                chrome.windows.create({
+                    url: chrome.runtime.getURL('sidepanel.html'),
+                    type: 'popup',
+                    width: 400,
+                    height: 700
+                });
+            }
+        });
+    }
+    
     // Authentication event listeners
     setupAuthEventListeners();
     // Old button event listeners removed - using tab navigation system now
@@ -1465,6 +1493,8 @@ function showNotification(message, type = 'info') {
  * Set up authentication-related event listeners
  */
 function setupAuthEventListeners() {
+    console.log('🔧 Setting up auth event listeners...');
+    
     // Login form submission
     const loginBtn = document.getElementById('login-btn');
     const loginForm = document.getElementById('login-form');
@@ -1474,9 +1504,22 @@ function setupAuthEventListeners() {
     const loginBtnText = document.querySelector('.login-btn-text');
     const loginLoading = document.querySelector('.login-loading');
     
+    console.log('🔍 Element check:', {
+        loginBtn: !!loginBtn,
+        loginForm: !!loginForm,
+        loginEmail: !!loginEmail,
+        loginPassword: !!loginPassword,
+        loginError: !!loginError,
+        loginBtnText: !!loginBtnText,
+        loginLoading: !!loginLoading
+    });
+    
     if (loginBtn && loginEmail && loginPassword) {
+        console.log('✅ Login elements found, attaching event listeners');
+        
         // Handle login button click
         loginBtn.addEventListener('click', async (e) => {
+            console.log('🖱️ Login button clicked!');
             e.preventDefault();
             await handleLoginSubmission();
         });
@@ -1495,19 +1538,34 @@ function setupAuthEventListeners() {
         });
         
         async function handleLoginSubmission() {
+            console.log('🔐 Login submission started');
             const email = loginEmail.value.trim();
             const password = loginPassword.value;
             
+            console.log('📧 Email:', email);
+            console.log('🔑 Password length:', password.length);
+            
             // Validate inputs
             if (!email || !password) {
+                console.log('❌ Missing email or password');
                 showLoginError('Please enter both email and password');
                 return;
             }
             
             if (!isValidEmail(email)) {
+                console.log('❌ Invalid email format');
                 showLoginError('Please enter a valid email address');
                 return;
             }
+            
+            // Check if auth manager is available
+            if (!window.BoldTakeAuthManager) {
+                console.log('❌ BoldTakeAuthManager not available');
+                showLoginError('Authentication system not ready. Please refresh and try again.');
+                return;
+            }
+            
+            console.log('✅ Starting login process...');
             
             // Show loading state
             loginBtn.disabled = true;
@@ -1517,7 +1575,9 @@ function setupAuthEventListeners() {
             
             try {
                 // Attempt login
+                console.log('🔄 Calling handleLogin...');
                 const result = await window.BoldTakeAuthManager.handleLogin(email, password);
+                console.log('📋 Login result:', result);
                 
                 if (result.success) {
                     // Success - UI will be updated by auth manager

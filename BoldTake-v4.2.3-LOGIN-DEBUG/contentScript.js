@@ -5,9 +5,14 @@
 
 // CLEAN LOGGING SYSTEM - Essential updates only
 const SHOW_LOGS = false; // Keep console clean
+const debugMode = false; // Set to true for console logging
 const debugLog = () => {}; // No debug spam
 const errorLog = () => {}; // No error spam  
 const criticalLog = () => {}; // No critical spam
+
+// Session state
+let isSessionActive = false;
+let isPaused = false;
 
 // Activity tracking for live feed
 let recentActivities = [];
@@ -17,6 +22,22 @@ let recentActivities = [];
  * Only shows important user-facing events
  */
 function sessionLog(message, type = 'info') {
+  // Send to side panel
+  chrome.runtime.sendMessage({
+    type: 'SESSION_LOG',
+    data: {
+      message: message,
+      type: type
+    }
+  }).catch(() => {
+    // Side panel might not be open, that's okay
+  });
+  
+  // Also log to console in stealth mode
+  if (debugMode) {
+    console.log(`[BoldTake] ${message}`);
+  }
+  
   // Add to recent activities
   const activity = {
     message: message,
@@ -35,6 +56,14 @@ function sessionLog(message, type = 'info') {
   
   // Update session stats to include activities
   sessionStats.recentActivities = recentActivities;
+  
+  // Send stats update to side panel
+  chrome.runtime.sendMessage({
+    type: 'SESSION_STATS',
+    data: sessionStats
+  }).catch(() => {
+    // Side panel might not be open
+  });
 }
 
 // 🚀 A++ PERFORMANCE CACHE: Reduces DOM queries by 70%+ 
@@ -701,6 +730,9 @@ const SAFE_FALLBACK_REPLIES = [
   // Initialize network monitoring system
   initializeNetworkMonitoring();
   
+  // Log that BoldTake is ready
+  sessionLog('✅ BoldTake Ready', 'info');
+  
   // Check if this is a new session launched from the popup
   const { isNewSession } = await chrome.storage.local.get('isNewSession');
 
@@ -739,11 +771,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     debugLog('🎯 Starting BoldTake continuous session...');
     startContinuousSession();
     sendResponse({success: true, message: 'BoldTake session started'});
+  } else if (message.type === 'BOLDTAKE_PAUSE') {
+    isPaused = !isPaused;
+    sessionStats.isPaused = isPaused;
+    
+    if (isPaused) {
+      sessionLog('⏸️ Session paused', 'warning');
+      debugLog('⏸️ Pausing BoldTake session...');
+    } else {
+      sessionLog('▶️ Session resumed', 'success');
+      debugLog('▶️ Resuming BoldTake session...');
+    }
+    
+    sendResponse({success: true, isPaused: isPaused});
   } else if (message.type === 'BOLDTAKE_STOP') {
     debugLog('🛑 Force stopping BoldTake session...');
     
     // CRITICAL: Force stop everything immediately
     sessionStats.isRunning = false;
+    isSessionActive = false;
+    isPaused = false;
     
     // Clear ALL possible timers and intervals
     if (window.boldtakeCountdownInterval) {
@@ -795,6 +842,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         lastAction: sessionStats.lastAction || null,
         recentActivities: recentActivities || []
       }
+    });
+  } else if (message.type === 'GET_SESSION_STATUS') {
+    sendResponse({
+      isActive: isSessionActive,
+      isPaused: isPaused
     });
   } else if (message.type === 'SCRAPE_ANALYTICS') {
     // Handle analytics scraping request
@@ -851,6 +903,10 @@ async function startContinuousSession(isResuming = false) {
     showStatus('🔄 Session already running!');
     return;
   }
+  
+  // Update session state
+  isSessionActive = true;
+  isPaused = false;
   
   // INITIALIZATION: Set up fresh session or resume existing
   if (!isResuming) {
@@ -1529,7 +1585,9 @@ async function gracefullyCloseModal() {
 }
 
 async function handleReplyModal(originalTweet) {
-  // Silent modal handling
+  // Silent modal handling with timeout protection
+  const modalStartTime = Date.now();
+  const MODAL_TIMEOUT = 30000; // 30 second timeout
   
   // Check if we're in a new window/tab situation
   const isNewWindow = window.location.href.includes('/compose/post') || 
@@ -1542,70 +1600,32 @@ async function handleReplyModal(originalTweet) {
     await sleep(2000);
   }
 
+  // Check for modal timeout
+  if (Date.now() - modalStartTime > MODAL_TIMEOUT) {
+    sessionLog('⏰ Modal timeout - forcing recovery', 'error');
+    await gracefullyCloseModal();
+    return { success: false, replyText: 'Modal timeout' };
+  }
+
   // Step 1: Find the reply text box using our new robust function
   const editable = await findReplyTextArea();
   if (!editable) {
     errorLog('❌ Could not find tweet text area. Modal stuck - attempting recovery...');
-    addDetailedActivity('🔄 Modal stuck - attempting recovery', 'warning');
+    sessionLog('🔄 Modal stuck - attempting recovery', 'warning');
     
     // ENHANCED RECOVERY: Try multiple recovery methods
-    try {
-      // Method 1: Check if we're in a new window that needs closing
-      if (window.location.href.includes('/compose/post')) {
-        debugLog('🪟 Detected new window - attempting to close');
-        // Try to close if it's a popup window
-        if (window.opener) {
-          window.close();
-          await sleep(1000);
-        } else {
-          debugLog('⚠️ Cannot close main window - skipping tweet');
-        }
-        return { success: false, replyText: null };
-      }
-      
-      // Method 2: Try to close modal first
-      const closeButton = document.querySelector('[data-testid="app-bar-close"]');
-      if (closeButton) {
-        closeButton.click();
-        await sleep(1000);
-      }
-      
-      // Method 3: Press Escape key
-      document.body.dispatchEvent(new KeyboardEvent('keydown', {
-        key: 'Escape',
-        code: 'Escape',
-        bubbles: true
-      }));
-      await sleep(1000);
-      
-      // Method 3: Skip this tweet instead of refreshing
-      const now = Date.now();
-      const lastRefresh = window.boldtakeLastRefresh || 0;
-      if (now - lastRefresh > 60000) { // 1 minute cooldown
-        debugLog('⚠️ Modal stuck - skipping this tweet to continue session');
-        addDetailedActivity('⚠️ Skipping stuck tweet - continuing session', 'warning');
-        // Mark tweet as processed to skip it
-        if (originalTweet) {
-          originalTweet.setAttribute('data-boldtake-processed', 'true');
-          originalTweet.setAttribute('data-boldtake-modal-failed', 'true');
-        }
-        // Don't refresh - just return false to skip
-        return { success: false, replyText: null };
-      } else {
-        debugLog('🛡️ Recovery cooldown active - skipping tweet');
-        addDetailedActivity('🛡️ Modal recovery cooldown - skipping', 'warning');
-      }
-    } catch (error) {
-      errorLog('Recovery failed:', error);
-      // Skip tweet instead of refreshing
-      if (originalTweet) {
-        originalTweet.setAttribute('data-boldtake-processed', 'true');
-        originalTweet.setAttribute('data-boldtake-error', 'true');
-      }
-      return { success: false, replyText: null };
+    await gracefullyCloseModal();
+    
+    // Force refresh if modal is really stuck
+    const modalStillOpen = document.querySelector('[data-testid="tweetTextarea_0"]') || 
+                          document.querySelector('[role="dialog"]');
+    if (modalStillOpen) {
+      sessionLog('🔄 Force refreshing page to recover', 'warning');
+      location.reload();
+      return { success: false, replyText: 'Modal stuck - page refreshed' };
     }
     
-    return { success: false, replyText: null };
+    return { success: false, replyText: 'Modal recovery failed' };
   }
 
   // Step 2: Generate the smart reply

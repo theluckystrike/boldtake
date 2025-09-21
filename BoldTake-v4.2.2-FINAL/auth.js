@@ -58,9 +58,18 @@ async function initializeAuth() {
  */
 async function handleLogin(email, password) {
     try {
-        // Silent login attempt
+        console.log('🔐 Auth Manager: handleLogin called');
+        console.log('📧 Auth Manager: Email:', email);
         
+        // Check if BoldTakeAuth is available
+        if (!window.BoldTakeAuth) {
+            console.log('❌ Auth Manager: BoldTakeAuth not available');
+            return { success: false, error: 'Authentication service not ready' };
+        }
+        
+        console.log('🔄 Auth Manager: Calling signInUser...');
         const result = await window.BoldTakeAuth.signInUser(email, password);
+        console.log('📋 Auth Manager: signInUser result:', result);
         
         if (result.success) {
             authState.isAuthenticated = true;
