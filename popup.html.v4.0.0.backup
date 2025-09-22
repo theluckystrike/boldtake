@@ -2738,15 +2738,6 @@
             </div>
         </div>
 
-        <!-- Main Tabs Navigation - IMMEDIATE ACCESS -->
-        <div class="main-tabs">
-            <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
-            <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
-            <button class="tab-btn" data-tab="analytics">📊 Analytics</button>
-            <button class="tab-btn" data-tab="guide">💡 Guide</button>
-            <button class="tab-btn" data-tab="roadmap">🗺️ Roadmap</button>
-        </div>
-
         <div id="settings-panel" class="settings-panel">
             <div class="settings-section">
                 <div class="settings-title">Target Settings</div>
@@ -3289,6 +3280,15 @@
             </div>
         </div>
 
+        <!-- Main Tabs Navigation -->
+        <div class="main-tabs">
+            <button class="tab-btn active" data-tab="dashboard">Dashboard</button>
+            <button class="tab-btn" data-tab="settings">⚙️ Settings</button>
+            <button class="tab-btn" data-tab="analytics">📊 Analytics</button>
+            <button class="tab-btn" data-tab="guide">💡 Guide</button>
+            <button class="tab-btn" data-tab="roadmap">🗺️ Roadmap</button>
+        </div>
+
         <!-- Tab Content Panels -->
         <div class="tab-content">
             
@@ -3304,6 +3304,12 @@
                     <button id="stop-button" class="btn btn-stop" disabled>
                         Stop Session
                     </button>
+                </div>
+
+                <!-- Patience Message -->
+                <div style="background: linear-gradient(135deg, hsl(var(--brand-green) / 0.1), hsl(var(--brand-green) / 0.05)); border: 1px solid hsl(var(--brand-green) / 0.2); border-radius: 8px; padding: 12px; margin: 16px 0; font-size: 12px; line-height: 1.5;">
+                    <div style="color: hsl(var(--brand-green)); font-weight: 600; margin-bottom: 4px;">💡 Be Patient & Watch the Magic!</div>
+                    <div style="color: hsl(var(--text-secondary));">Your first reply will be sent in less than 2 minutes. The session log below shows real-time activity. Just relax and watch as BoldTake automatically engages with tweets at a natural, human-like pace.</div>
                 </div>
 
                 <div class="activity-log">
@@ -3324,11 +3330,7 @@
             </div>
         </div>
 
-                <!-- Patience Message -->
-                <div style="background: linear-gradient(135deg, hsl(var(--brand-green) / 0.1), hsl(var(--brand-green) / 0.05)); border: 1px solid hsl(var(--brand-green) / 0.2); border-radius: 8px; padding: 12px; margin: 16px 0; font-size: 12px; line-height: 1.5;">
-                    <div style="color: hsl(var(--brand-green)); font-weight: 600; margin-bottom: 4px;">💡 Be Patient & Watch the Magic!</div>
-                    <div style="color: hsl(var(--text-secondary));">Your first reply will be sent in less than 2 minutes. The session log above shows real-time activity. Just relax and watch as BoldTake automatically engages with tweets at a natural, human-like pace.</div>
-                </div>
+
 
         <div class="settings-section">
             <div class="settings-title">⚡ AI Strategies (6 Rotating)</div>
