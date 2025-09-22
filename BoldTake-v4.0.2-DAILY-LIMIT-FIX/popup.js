@@ -806,15 +806,11 @@ async function loadSessionState() {
         chrome.tabs.sendMessage(tab.id, { type: 'GET_SESSION_STATS' }, (response) => {
             if (chrome.runtime.lastError) {
                 // Content script might not be loaded yet
-                debugLog('❌ Error getting session stats:', chrome.runtime.lastError.message);
                 return;
             }
             
             if (response && response.stats) {
-                debugLog('📊 Received session stats:', response.stats);
                 updateSessionDisplay(response.stats);
-            } else {
-                debugLog('⚠️ No stats received from content script');
             }
         });
         
@@ -829,15 +825,11 @@ async function loadSessionState() {
  * @param {Object} stats - Session statistics
  */
 function updateSessionDisplay(stats) {
-    debugLog('🔄 Updating session display with stats:', stats);
-    
     // Update counters
-    const successful = stats.successful || 0;
-    successfulCount.textContent = successful;
-    debugLog('📊 Updated successful count to:', successful);
+    successfulCount.textContent = stats.successful || 0;
     
     // Update progress bar
-    updateProgressBar(successful, stats.target || 120);
+    updateProgressBar(stats.successful || 0, stats.target || 120);
     
     // Calculate and update success rate
     const rate = stats.processed > 0 
