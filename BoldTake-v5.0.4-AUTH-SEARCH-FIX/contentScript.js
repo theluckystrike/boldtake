@@ -2423,37 +2423,18 @@ async function performNetworkHealthCheck() {
  * Detect X.com error pages that need refresh
  */
 function detectXcomErrorPage() {
-  // 🛡️ BULLETPROOF: Enhanced error detection for X.com error pages
+  // 🛡️ BULLETPROOF: Use circuit breaker instead of aggressive error detection
   
-  const pageText = document.body?.textContent || '';
-  const pageTitle = document.title || '';
-  
-  // CONFIRMED X.com error page indicators
+  // ONLY detect CONFIRMED X.com error pages with DOM structure
   const hasConfirmedErrorStructure = (
     document.querySelector('[data-testid="error-detail"]') ||
-    document.querySelector('.error-page') ||
-    document.querySelector('[data-testid="error"]')
+                                document.querySelector('.error-page') ||
+    (document.title.includes('Something went wrong') && document.body?.textContent?.includes('Try reloading'))
   );
   
-  // Enhanced text-based error detection for common X.com errors
-  const hasErrorText = (
-    pageText.includes('Something went wrong, but don\'t fret — let\'s give it another shot') ||
-    pageText.includes('Something went wrong. Try reloading.') ||
-    pageText.includes('Some privacy related extensions may cause issues on x.com') ||
-    (pageTitle.includes('Something went wrong') && pageText.includes('Try again')) ||
-    (pageText.includes('Try again') && pageText.includes('privacy related extensions'))
-  );
-  
-  // Only trigger if we have strong evidence of an error page
-  // AND we're not on a normal content page (has tweets, timeline, etc.)
-  const hasNormalContent = (
-    document.querySelector('[data-testid="tweet"]') ||
-    document.querySelector('[data-testid="tweetText"]') ||
-    document.querySelector('[data-testid="primaryColumn"]')
-  );
-  
-  // Return true only if we detect error AND don't have normal content
-  return (hasConfirmedErrorStructure || hasErrorText) && !hasNormalContent;
+  // CRITICAL: Never trigger on normal page content
+  // Let circuit breaker handle repeated failures instead
+  return hasConfirmedErrorStructure;
 }
 
 /**
@@ -2757,19 +2738,7 @@ async function handleXcomPageError() {
   
   // Double-check we still need to refresh (user might have navigated away)
   if (window.location.href === currentUrl && detectXcomErrorPage()) {
-    // ENHANCED: Smart navigation instead of just refreshing the same problematic page
-    if (currentUrl.includes('/explore') || currentUrl.includes('/search') || currentUrl.includes('/notifications')) {
-      addDetailedActivity('🏠 Navigating to home timeline from problematic page', 'info');
-      window.location.href = 'https://x.com/home';
-    } else if (currentUrl.includes('/home') || currentUrl === 'https://x.com/' || currentUrl === 'https://x.com') {
-      // If we're already on home and still getting errors, try a hard refresh
-      addDetailedActivity('🔄 Hard refresh on home timeline', 'warning');
-      window.location.reload(true);
-    } else {
-      // For other pages, navigate to home timeline
-      addDetailedActivity('🏠 Redirecting to home timeline for tweet processing', 'info');
-      window.location.href = 'https://x.com/home';
-    }
+  window.location.href = currentUrl;
   } else {
     addDetailedActivity('🛡️ Page recovered during wait - refresh cancelled', 'success');
   }
