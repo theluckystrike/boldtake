@@ -3149,10 +3149,9 @@ async function startCountdown(delayInMs) {
 
             remainingTime -= 1000;
 
-            if (remainingTime <= 0) {
+            if (remainingTime < 0) {
                 clearInterval(window.boldtakeCountdownInterval);
                 window.boldtakeCountdownInterval = null;
-                addDetailedActivity('⚡ Delay completed - continuing to next tweet', 'success');
                 resolve();
                 return;
             }
