@@ -850,25 +850,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * @returns {Promise<void>} Resolves when session completes or stops
  */
 async function startContinuousSession(isResuming = false) {
-  // CRITICAL FIX: Validate we're on the correct page BEFORE starting any processing
-  const currentUrl = window.location.href;
-  if (currentUrl.includes('/explore') || currentUrl.includes('/search') || currentUrl.includes('/notifications')) {
-    addDetailedActivity('🚨 Wrong page detected - redirecting to home timeline', 'error');
-    sessionLog('🚨 Extension started on wrong page - redirecting to home timeline', 'error');
-    showStatus('🏠 Redirecting to home timeline...');
-    window.location.href = 'https://x.com/home';
-    return; // Stop execution and let the redirect happen
-  }
-  
-  // Also check for X.com error pages before starting
-  if (detectXcomErrorPage()) {
-    addDetailedActivity('🚨 X.com error page detected - redirecting to home timeline', 'error');
-    sessionLog('🚨 X.com error page detected - redirecting to home timeline', 'error');
-    showStatus('🏠 Redirecting to home timeline...');
-    window.location.href = 'https://x.com/home';
-    return; // Stop execution and let the redirect happen
-  }
-  
   // SAFETY CHECK: Prevent duplicate session instances
   if (sessionStats.isRunning && !isResuming) {
     showStatus('🔄 Session already running!');
@@ -1188,16 +1169,6 @@ function assessAccountRisk() {
 }
 
 async function processNextTweet() {
-  // CRITICAL FIX: Validate page before each tweet processing
-  const currentUrl = window.location.href;
-  if (currentUrl.includes('/explore') || currentUrl.includes('/search') || currentUrl.includes('/notifications')) {
-    addDetailedActivity('🚨 Detected navigation to wrong page - redirecting to home timeline', 'error');
-    sessionLog('🚨 User navigated to wrong page during session - redirecting to home timeline', 'error');
-    showStatus('🏠 Redirecting to home timeline...');
-    window.location.href = 'https://x.com/home';
-    return false; // Stop processing
-  }
-  
   // 🛡️ BULLETPROOF: Check circuit breaker before processing
   if (bulletproofStateMachine && !bulletproofStateMachine.shouldAttemptAction()) {
     sessionLog('🔴 Circuit breaker OPEN - skipping tweet processing', 'warning');
