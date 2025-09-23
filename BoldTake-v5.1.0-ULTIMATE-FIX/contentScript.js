@@ -1439,7 +1439,6 @@ async function processNextTweet() {
   if (success) {
     sessionStats.processed++;
     sessionStats.successful++;
-    sessionStats.dailyRepliesUsed++; // Track real daily count
     sessionStats.lastSuccessfulTweet = new Date().getTime();
     sessionStats.retryAttempts = 0; // Reset retry counter on success
     
@@ -1447,11 +1446,6 @@ async function processNextTweet() {
     if (bulletproofStateMachine) {
       bulletproofStateMachine.recordSuccess();
       sessionLog(`✅ Success! ${bulletproofStateMachine.progressTracker.successfulReplies} replies completed`, 'success');
-    
-    // REAL-TIME SYNC: Update backend count every 5 replies
-    if (sessionStats.successful % 5 === 0) {
-      await syncDailyCountWithBackend();
-    }
     }
     
     // STABILITY: Record successful progress
@@ -4311,42 +4305,6 @@ Tweet: "{TWEET}"`
         ]
     }
 ];
-
-/**
- * REAL-TIME SYNC: Sync daily count with backend during active sessions
- * Ensures extension stays aligned with dashboard in real-time
- */
-async function syncDailyCountWithBackend() {
-  try {
-    if (window.BoldTakeAuthManager) {
-      const authState = window.BoldTakeAuthManager.getAuthState();
-      if (authState.isAuthenticated) {
-        const response = await fetch(`${SUPABASE_CONFIG.url}/functions/v1/extension-check-subscription`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${authState.session?.access_token}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ action: 'get_daily_usage' })
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          const backendCount = data.daily_replies_used || 0;
-          
-          // Update session stats with real backend count
-          sessionStats.dailyRepliesUsed = backendCount;
-          sessionStats.successful = backendCount; // Keep UI in sync
-          
-          sessionLog(`🔄 Real-time sync: ${backendCount}/${sessionStats.target} replies (backend confirmed)`, 'info');
-          addDetailedActivity(`🔄 Synced with backend: ${backendCount}/${sessionStats.target}`, 'info');
-        }
-      }
-    }
-  } catch (error) {
-    debugLog('⚠️ Real-time sync failed (continuing with local count):', error);
-  }
-}
 
 function showSessionSummary() {
   const endTime = new Date();
