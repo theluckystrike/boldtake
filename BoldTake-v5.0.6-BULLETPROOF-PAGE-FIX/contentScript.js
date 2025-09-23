@@ -882,67 +882,39 @@ async function startContinuousSession(isResuming = false) {
     
     // Initialize comprehensive session statistics
     // ENHANCED SUBSCRIPTION SYNC: Get actual daily limit from popup settings
-    // CRITICAL FIX: Sync with backend to get REAL daily count and limit
-    let dailyLimit = 500; // Default Pro tier
-    let currentDailyCount = 0; // Real count from backend
+    let dailyLimit = 500; // Default Pro tier (matching your backend: 34/500)
     
     try {
-      // STEP 1: Get real daily count from backend (like dashboard shows)
+      // Method 1: Get from popup daily target setting (most reliable)
+      const settingsResult = await chrome.storage.local.get(['boldtake_daily_target']);
+      if (settingsResult.boldtake_daily_target) {
+        dailyLimit = parseInt(settingsResult.boldtake_daily_target);
+        sessionLog(`⚙️ Synced with popup settings: ${dailyLimit} daily replies`, 'success');
+      } else {
+        // Method 2: Try auth manager as fallback
       if (window.BoldTakeAuthManager) {
-        const authState = window.BoldTakeAuthManager.getAuthState();
-        if (authState.isAuthenticated) {
-          try {
-            const response = await fetch(`${SUPABASE_CONFIG.url}/functions/v1/extension-check-subscription`, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${authState.session?.access_token}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ action: 'get_daily_usage' })
-            });
-            
-            if (response.ok) {
-              const data = await response.json();
-              currentDailyCount = data.daily_replies_used || 0;
-              dailyLimit = data.daily_limit || 500;
-              sessionLog(`🔄 Backend sync: ${currentDailyCount}/${dailyLimit} replies used today`, 'success');
-            } else {
-              sessionLog('⚠️ Could not sync with backend, using local storage fallback', 'warning');
-            }
-          } catch (syncError) {
-            sessionLog('⚠️ Backend sync failed, using local storage fallback', 'warning');
-          }
+          const baseLimit = window.BoldTakeAuthManager.getDailyLimit() || 500;
+          dailyLimit = baseLimit;
+          sessionLog(`🔐 Auth manager limit: ${dailyLimit} daily replies`, 'info');
         }
       }
       
-      // STEP 2: Fallback to popup settings if backend sync failed
-      if (currentDailyCount === 0) {
-        const settingsResult = await chrome.storage.local.get(['boldtake_daily_target', 'boldtake_daily_comments']);
-        if (settingsResult.boldtake_daily_target) {
-          dailyLimit = parseInt(settingsResult.boldtake_daily_target);
-        }
-        // Use local storage count as fallback
-        currentDailyCount = settingsResult.boldtake_daily_comments || 0;
-        sessionLog(`⚙️ Local fallback: ${currentDailyCount}/${dailyLimit} replies`, 'info');
-      }
-      
-      // Ensure we have reasonable limits
+      // Ensure we have a reasonable limit
       if (dailyLimit < 50 || dailyLimit > 1000) {
         dailyLimit = 500; // Pro tier default
         sessionLog(`⚠️ Invalid limit detected, using Pro default: ${dailyLimit}`, 'warning');
       }
       
     } catch (error) {
-      debugLog('⚠️ Could not sync daily count, using defaults:', error);
-      dailyLimit = 500;
-      currentDailyCount = 0;
+      debugLog('⚠️ Could not sync subscription limit, using Pro default:', error);
+      dailyLimit = 500; // Pro tier default matching your backend
     }
     
     sessionLog(`📊 Final daily limit: ${dailyLimit} replies (Pro tier)`, 'success');
 
     sessionStats = {
       processed: 0,               // Total tweets processed this session
-      successful: currentDailyCount, // FIXED: Start with real backend count
+      successful: 0,              // Successfully replied tweets
       failed: 0,                  // Failed processing attempts
       consecutiveApiFailures: 0,  // Circuit breaker for API issues
       lastApiError: null,         // Last API error for debugging
@@ -951,8 +923,7 @@ async function startContinuousSession(isResuming = false) {
       isRunning: true,            // Active session flag
       criticalErrors: 0,          // Critical error counter
       retryAttempts: 0,           // Retry attempt tracking
-      lastSuccessfulTweet: null,  // Last successful tweet timestamp
-      dailyRepliesUsed: currentDailyCount // Track real daily count from backend
+      lastSuccessfulTweet: null   // Last successful tweet timestamp
     };
     
     // PRESERVE strategy counts across sessions for percentage-based distribution
