@@ -1230,6 +1230,28 @@ async function processNextTweet() {
   // Retry loop to find a suitable tweet
   while (attempt < maxAttempts) {
     addDetailedActivity(`🔎 Searching for suitable tweets...`, 'info');
+    
+    // CRITICAL FIX: Check authentication during search loop
+    // This prevents getting stuck searching when auth expires
+    const authCheck = await checkActionSafety();
+    if (!authCheck.safe) {
+      const waitMinutes = Math.ceil(authCheck.waitTime / 60000);
+      errorLog(`🛡️ Security delay ${authCheck.reason} (${waitMinutes}m)`);
+      addDetailedActivity(`🛡️ Security delay ${authCheck.reason} (${waitMinutes}m)`, 'warning');
+      
+      // If authentication expired, stop the session immediately
+      if (authCheck.reason.includes('Authentication expired')) {
+        sessionStats.isRunning = false;
+        showStatus('🔐 Authentication expired - please login again');
+        return false;
+      }
+      
+      // For other safety issues, wait and continue
+      if (authCheck.waitTime > 0) {
+        await sleep(authCheck.waitTime);
+      }
+    }
+    
     tweet = await findTweet();
     if (tweet) {
       addDetailedActivity(`✅ Found suitable tweet to process`, 'success');
@@ -1255,6 +1277,16 @@ async function processNextTweet() {
     debugLog(`⚠️ No tweets found after ${maxAttempts} attempts. Entering smart wait mode...`);
     showStatus(`🔄 No tweets found. Waiting 30s before retrying...`);
     addDetailedActivity('🔄 Entering reconnect mode - will retry in 30s', 'warning');
+    
+    // CRITICAL FIX: Check authentication before entering reconnect mode
+    // This prevents infinite reconnect loops when auth is expired
+    const authCheck = await checkActionSafety();
+    if (!authCheck.safe && authCheck.reason.includes('Authentication expired')) {
+      sessionStats.isRunning = false;
+      showStatus('🔐 Authentication expired - please login again');
+      addDetailedActivity('🔐 Authentication expired during reconnect - stopping session', 'error');
+      return false;
+    }
     
     // Check for network issues
     if (!navigator.onLine) {
