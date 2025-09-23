@@ -696,47 +696,13 @@ const SAFE_FALLBACK_REPLIES = [
 
 // --- Initialization ---
 
-// CRITICAL FIX: Multi-tab protection and crash recovery
+// On script load, check for an active session and resume if needed
 (async function initialize() {
   await loadSession();
   await loadKeywordRotation();
   
   // Initialize network monitoring system
   initializeNetworkMonitoring();
-  
-  // MULTI-TAB PROTECTION: Only allow one active session across all tabs
-  const tabId = `tab_${Date.now()}_${Math.random()}`;
-  const { activeTabId, lastHeartbeat } = await chrome.storage.local.get(['boldtake_active_tab', 'boldtake_last_heartbeat']);
-  
-  // Check if another tab is already running (heartbeat within 30 seconds)
-  const now = Date.now();
-  if (activeTabId && lastHeartbeat && (now - lastHeartbeat < 30000)) {
-    debugLog('🚫 Another tab is already running BoldTake - this tab will be passive');
-    showStatus('🚫 BoldTake is running in another tab');
-    return; // Exit - don't start session
-  }
-  
-  // Claim this tab as the active one
-  await chrome.storage.local.set({
-    'boldtake_active_tab': tabId,
-    'boldtake_last_heartbeat': now
-  });
-  
-  // Start heartbeat to maintain tab ownership
-  setInterval(async () => {
-    await chrome.storage.local.set({
-      'boldtake_last_heartbeat': Date.now()
-    });
-  }, 10000); // Heartbeat every 10 seconds
-  
-  // CRASH RECOVERY: Check for interrupted sessions
-  if (sessionStats.isRunning) {
-    const timeSinceLastAction = now - (sessionStats.lastSuccessfulTweet || sessionStats.startTime || 0);
-    if (timeSinceLastAction > 600000) { // 10 minutes
-      debugLog('🔄 Detected interrupted session - syncing with backend before resume');
-      await syncDailyCountWithBackend(); // Sync before resuming
-    }
-  }
   
   // Check if this is a new session launched from the popup
   const { isNewSession } = await chrome.storage.local.get('isNewSession');
@@ -753,28 +719,7 @@ const SAFE_FALLBACK_REPLIES = [
 })();
 
 // --- Cleanup on Page Unload ---
-window.addEventListener('beforeunload', async () => {
-  // EXTENSION UPDATE PROTECTION: Save current state before unload
-  if (sessionStats.isRunning) {
-    try {
-      // Final sync with backend before unload
-      await syncDailyCountWithBackend();
-      
-      // Save critical session state
-      await chrome.storage.local.set({
-        'boldtake_emergency_backup': {
-          successful: sessionStats.successful,
-          dailyRepliesUsed: sessionStats.dailyRepliesUsed,
-          target: sessionStats.target,
-          timestamp: Date.now(),
-          reason: 'beforeunload'
-        }
-      });
-    } catch (error) {
-      debugLog('⚠️ Emergency backup failed:', error);
-    }
-  }
-  
+window.addEventListener('beforeunload', () => {
   // Clean up network monitoring intervals
   if (networkMonitor.networkCheckInterval) {
     clearInterval(networkMonitor.networkCheckInterval);
@@ -786,9 +731,6 @@ window.addEventListener('beforeunload', async () => {
   // Remove event listeners
   window.removeEventListener('online', handleNetworkOnline);
   window.removeEventListener('offline', handleNetworkOffline);
-  
-  // Release tab ownership
-  await chrome.storage.local.remove(['boldtake_active_tab', 'boldtake_last_heartbeat']);
 });
 
 // --- Message Handling ---
@@ -4379,32 +4321,18 @@ async function syncDailyCountWithBackend() {
     if (window.BoldTakeAuthManager) {
       const authState = window.BoldTakeAuthManager.getAuthState();
       if (authState.isAuthenticated) {
-        // TIMEZONE FIX: Send user's timezone for accurate daily boundaries
-        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const localDate = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
-        
         const response = await fetch(`${SUPABASE_CONFIG.url}/functions/v1/extension-check-subscription`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${authState.session?.access_token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ 
-            action: 'get_daily_usage',
-            timezone: userTimezone,
-            local_date: localDate
-          })
+          body: JSON.stringify({ action: 'get_daily_usage' })
         });
         
         if (response.ok) {
           const data = await response.json();
           const backendCount = data.daily_replies_used || 0;
-          
-          // CRITICAL: Detect daily reset boundary
-          if (sessionStats.dailyRepliesUsed && backendCount < sessionStats.dailyRepliesUsed) {
-            debugLog('🌅 Daily reset detected - backend count reset to 0');
-            addDetailedActivity('🌅 Daily limit reset - new day started', 'success');
-          }
           
           // Update session stats with real backend count
           sessionStats.dailyRepliesUsed = backendCount;
@@ -4412,12 +4340,6 @@ async function syncDailyCountWithBackend() {
           
           sessionLog(`🔄 Real-time sync: ${backendCount}/${sessionStats.target} replies (backend confirmed)`, 'info');
           addDetailedActivity(`🔄 Synced with backend: ${backendCount}/${sessionStats.target}`, 'info');
-          
-          // EXTENSION UPDATE PROTECTION: Save sync timestamp
-          await chrome.storage.local.set({
-            'boldtake_last_sync': Date.now(),
-            'boldtake_last_backend_count': backendCount
-          });
         }
       }
     }
