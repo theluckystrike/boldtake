@@ -1010,7 +1010,7 @@ async function startContinuousSession(isResuming = false) {
     // Initialize comprehensive session statistics
     // ENHANCED SUBSCRIPTION SYNC: Get actual daily limit from popup settings
     // CRITICAL FIX: Sync with backend to get REAL daily count and limit
-    let dailyLimit = 200; // Default Creator tier (matches your $29.99 plan)
+    let dailyLimit = 500; // Default Pro tier
     let currentDailyCount = 0; // Real count from backend
     
     try {
@@ -1031,7 +1031,7 @@ async function startContinuousSession(isResuming = false) {
             if (response.ok) {
               const data = await response.json();
               currentDailyCount = data.daily_replies_used || 0;
-              dailyLimit = data.daily_limit || 200;
+              dailyLimit = data.daily_limit || 500;
               sessionLog(`🔄 Backend sync: ${currentDailyCount}/${dailyLimit} replies used today`, 'success');
             } else {
               sessionLog('⚠️ Could not sync with backend, using local storage fallback', 'warning');
@@ -1042,35 +1042,30 @@ async function startContinuousSession(isResuming = false) {
         }
       }
       
-      // STEP 2: Always check popup settings for daily target (this is where user sets their limit)
-      const settingsResult = await safeStorageGet(['boldtake_daily_target', 'boldtake_daily_comments']);
-      if (settingsResult.boldtake_daily_target) {
-        const popupLimit = parseInt(settingsResult.boldtake_daily_target);
-        if (popupLimit > 0 && popupLimit <= 1000) {
-          dailyLimit = popupLimit;
-          sessionLog(`⚙️ Using popup setting: ${dailyLimit} replies/day`, 'success');
-        }
-      }
-      
-      // Use local storage count as fallback if backend sync failed
+      // STEP 2: Fallback to popup settings if backend sync failed
       if (currentDailyCount === 0) {
+        const settingsResult = await chrome.storage.local.get(['boldtake_daily_target', 'boldtake_daily_comments']);
+        if (settingsResult.boldtake_daily_target) {
+          dailyLimit = parseInt(settingsResult.boldtake_daily_target);
+        }
+        // Use local storage count as fallback
         currentDailyCount = settingsResult.boldtake_daily_comments || 0;
-        sessionLog(`⚙️ Local count fallback: ${currentDailyCount}/${dailyLimit} replies`, 'info');
+        sessionLog(`⚙️ Local fallback: ${currentDailyCount}/${dailyLimit} replies`, 'info');
       }
       
       // Ensure we have reasonable limits
       if (dailyLimit < 50 || dailyLimit > 1000) {
-        dailyLimit = 200; // Creator tier default
-        sessionLog(`⚠️ Invalid limit detected, using Creator default: ${dailyLimit}`, 'warning');
+        dailyLimit = 500; // Pro tier default
+        sessionLog(`⚠️ Invalid limit detected, using Pro default: ${dailyLimit}`, 'warning');
       }
       
     } catch (error) {
       debugLog('⚠️ Could not sync daily count, using defaults:', error);
-      dailyLimit = 200; // Creator tier default
+      dailyLimit = 500;
       currentDailyCount = 0;
     }
     
-    sessionLog(`📊 Final daily limit: ${dailyLimit} replies (Creator tier)`, 'success');
+    sessionLog(`📊 Final daily limit: ${dailyLimit} replies (Pro tier)`, 'success');
 
     sessionStats = {
       processed: 0,               // Total tweets processed this session
