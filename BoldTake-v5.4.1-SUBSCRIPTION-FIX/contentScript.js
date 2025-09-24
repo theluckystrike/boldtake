@@ -974,28 +974,20 @@ async function startContinuousSession(isResuming = false) {
   const currentUrl = window.location.href;
   addDetailedActivity(`📍 Current page: ${currentUrl}`, 'info');
   
-  // ENHANCED: Check for X.com error pages FIRST (most critical)
+  if (currentUrl.includes('/explore') || currentUrl.includes('/search') || currentUrl.includes('/notifications')) {
+    addDetailedActivity('🚨 Wrong page detected - redirecting to home timeline', 'error');
+    sessionLog('🚨 Extension started on wrong page - redirecting to home timeline', 'error');
+    showStatus('🏠 Redirecting to home timeline...');
+    window.location.href = 'https://x.com/home';
+    return; // Stop execution and let the redirect happen
+  }
+  
+  // Also check for X.com error pages before starting
   if (detectXcomErrorPage()) {
     addDetailedActivity('🚨 X.com error page detected - redirecting to home timeline', 'error');
     sessionLog('🚨 X.com error page detected - redirecting to home timeline', 'error');
     showStatus('🏠 Redirecting to home timeline...');
-    // Force immediate redirect
-    setTimeout(() => {
-      window.location.href = 'https://x.com/home';
-    }, 1000);
-    return; // Stop execution and let the redirect happen
-  }
-  
-  // ENHANCED: More aggressive wrong page detection
-  if (currentUrl.includes('/explore') || currentUrl.includes('/search') || currentUrl.includes('/notifications') || 
-      currentUrl.includes('/messages') || currentUrl.includes('/settings') || currentUrl.includes('/compose')) {
-    addDetailedActivity('🚨 Wrong page detected - redirecting to home timeline', 'error');
-    sessionLog('🚨 Extension started on wrong page - redirecting to home timeline', 'error');
-    showStatus('🏠 Redirecting to home timeline...');
-    // Force immediate redirect
-    setTimeout(() => {
-      window.location.href = 'https://x.com/home';
-    }, 1000);
+    window.location.href = 'https://x.com/home';
     return; // Stop execution and let the redirect happen
   }
   
@@ -1134,16 +1126,6 @@ async function startContinuousSession(isResuming = false) {
       if (!sessionStats.isRunning) {
         // Session stopped silently
         break;
-      }
-      
-      // CRITICAL: Check for error pages during active session
-      if (detectXcomErrorPage()) {
-        addDetailedActivity('🚨 Error page detected during session - redirecting', 'error');
-        sessionLog('🚨 Error page detected during session - redirecting', 'error');
-        setTimeout(() => {
-          window.location.href = 'https://x.com/home';
-        }, 1000);
-        break; // Stop session and redirect
       }
       
       // CORE PROCESSING: Find and process the next suitable tweet
