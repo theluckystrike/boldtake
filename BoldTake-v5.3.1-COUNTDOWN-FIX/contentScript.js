@@ -744,17 +744,11 @@ const SAFE_FALLBACK_REPLIES = [
   if (isNewSession) {
     // It's a new session, so clear the flag and auto-start.
     await chrome.storage.local.remove('isNewSession');
-    addDetailedActivity('🚀 Starting new session from popup', 'success');
     startContinuousSession(); // Start a fresh session
   } else if (sessionStats.isRunning) {
     // It's not a new session, but one was running, so resume it.
-    addDetailedActivity(`🔄 Resuming session: ${sessionStats.successful}/${sessionStats.target} tweets`, 'info');
     showStatus(`Resuming active session: ${sessionStats.successful}/${sessionStats.target} tweets`);
     startContinuousSession(true); // Start without resetting stats
-  } else {
-    // DIAGNOSTIC: No active session detected
-    addDetailedActivity('⏸️ No active session detected - waiting for user to start', 'info');
-    showStatus('⏸️ Ready to start - click "Start Session" in popup');
   }
 })();
 
@@ -914,14 +908,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * @returns {Promise<void>} Resolves when session completes or stops
  */
 async function startContinuousSession(isResuming = false) {
-  // DIAGNOSTIC: Log session start attempt
-  addDetailedActivity(`🎯 Session start attempt (resuming: ${isResuming})`, 'info');
-  debugLog(`🎯 startContinuousSession called - isResuming: ${isResuming}`);
-  
   // CRITICAL FIX: Validate we're on the correct page BEFORE starting any processing
   const currentUrl = window.location.href;
-  addDetailedActivity(`📍 Current page: ${currentUrl}`, 'info');
-  
   if (currentUrl.includes('/explore') || currentUrl.includes('/search') || currentUrl.includes('/notifications')) {
     addDetailedActivity('🚨 Wrong page detected - redirecting to home timeline', 'error');
     sessionLog('🚨 Extension started on wrong page - redirecting to home timeline', 'error');
@@ -941,14 +929,9 @@ async function startContinuousSession(isResuming = false) {
   
   // SAFETY CHECK: Prevent duplicate session instances
   if (sessionStats.isRunning && !isResuming) {
-    addDetailedActivity('🔄 Session already running - blocking duplicate start', 'warning');
     showStatus('🔄 Session already running!');
-    debugLog('🔄 Blocked duplicate session start - sessionStats.isRunning:', sessionStats.isRunning);
     return;
   }
-  
-  // DIAGNOSTIC: Log session state
-  addDetailedActivity(`📊 Session state - Running: ${sessionStats.isRunning}, Processed: ${sessionStats.processed || 0}/${sessionStats.target || 0}`, 'info');
   
   // INITIALIZATION: Set up fresh session or resume existing
   if (!isResuming) {
