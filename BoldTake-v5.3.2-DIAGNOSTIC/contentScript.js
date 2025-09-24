@@ -694,53 +694,6 @@ const SAFE_FALLBACK_REPLIES = [
   "Something to consider. There are a lot of factors at play here."
 ];
 
-// --- Chrome Storage Helper ---
-
-/**
- * CRITICAL FIX: Chrome storage operations with timeout protection
- * Prevents hanging when Chrome storage API fails or is slow
- */
-async function safeStorageGet(keys, timeoutMs = 5000) {
-  try {
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Chrome storage timeout')), timeoutMs);
-    });
-    const storagePromise = chrome.storage.local.get(keys);
-    return await Promise.race([storagePromise, timeoutPromise]);
-  } catch (error) {
-    debugLog('⚠️ Chrome storage get timeout:', error);
-    return {};
-  }
-}
-
-async function safeStorageSet(data, timeoutMs = 5000) {
-  try {
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Chrome storage timeout')), timeoutMs);
-    });
-    const storagePromise = chrome.storage.local.set(data);
-    await Promise.race([storagePromise, timeoutPromise]);
-    return true;
-  } catch (error) {
-    debugLog('⚠️ Chrome storage set timeout:', error);
-    return false;
-  }
-}
-
-async function safeStorageRemove(keys, timeoutMs = 5000) {
-  try {
-    const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Chrome storage timeout')), timeoutMs);
-    });
-    const storagePromise = chrome.storage.local.remove(keys);
-    await Promise.race([storagePromise, timeoutPromise]);
-    return true;
-  } catch (error) {
-    debugLog('⚠️ Chrome storage remove timeout:', error);
-    return false;
-  }
-}
-
 // --- Initialization ---
 
 // CRITICAL FIX: Multi-tab protection and crash recovery
@@ -753,11 +706,7 @@ async function safeStorageRemove(keys, timeoutMs = 5000) {
   
   // MULTI-TAB PROTECTION: Only allow one active session across all tabs
   const tabId = `tab_${Date.now()}_${Math.random()}`;
-  
-  // CRITICAL FIX: Use safe storage operations with timeout protection
-  const result = await safeStorageGet(['boldtake_active_tab', 'boldtake_last_heartbeat']);
-  const activeTabId = result.boldtake_active_tab;
-  const lastHeartbeat = result.boldtake_last_heartbeat;
+  const { activeTabId, lastHeartbeat } = await chrome.storage.local.get(['boldtake_active_tab', 'boldtake_last_heartbeat']);
   
   // Check if another tab is already running (heartbeat within 30 seconds)
   const now = Date.now();
@@ -768,7 +717,7 @@ async function safeStorageRemove(keys, timeoutMs = 5000) {
   }
   
   // Claim this tab as the active one
-  await safeStorageSet({
+  await chrome.storage.local.set({
     'boldtake_active_tab': tabId,
     'boldtake_last_heartbeat': now
   });
@@ -790,12 +739,11 @@ async function safeStorageRemove(keys, timeoutMs = 5000) {
   }
   
   // Check if this is a new session launched from the popup
-  const sessionResult = await safeStorageGet('isNewSession');
-  const isNewSession = sessionResult.isNewSession;
+  const { isNewSession } = await chrome.storage.local.get('isNewSession');
 
   if (isNewSession) {
     // It's a new session, so clear the flag and auto-start.
-    await safeStorageRemove('isNewSession');
+    await chrome.storage.local.remove('isNewSession');
     addDetailedActivity('🚀 Starting new session from popup', 'success');
     startContinuousSession(); // Start a fresh session
   } else if (sessionStats.isRunning) {
