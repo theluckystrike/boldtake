@@ -5,6 +5,10 @@
  * and UI updates based on authentication status.
  */
 
+// Logging functions
+const debugLog = (...args) => console.log('[BoldTake Auth]', ...args);
+const errorLog = (...args) => console.error('[BoldTake Auth ERROR]', ...args);
+
 // Authentication state
 let authState = {
     isAuthenticated: false,
@@ -18,7 +22,7 @@ let authState = {
  */
 async function initializeAuth() {
     try {
-        console.log('🔐 Initializing authentication');
+        debugLog('🔐 Initializing authentication');
         
         // Initialize Supabase
         await window.BoldTakeAuth.initializeSupabase();
@@ -38,7 +42,7 @@ async function initializeAuth() {
                 // Check subscription status
                 await refreshSubscriptionStatus();
                 
-                console.log('✅ User authenticated', user.email);
+                debugLog('✅ User authenticated', user.email);
                 showAuthenticatedUI();
             } else {
                 showLoginUI();
@@ -136,28 +140,28 @@ async function handleLogout() {
  */
 async function refreshSubscriptionStatus() {
     try {
-        console.log('📊 Checking subscription status');
-        console.log('🕐 Timestamp', new Date().toISOString());
-        console.log('📧 User email', authState.user?.email || 'Not logged in');
+        debugLog('📊 Checking subscription status');
+        debugLog('🕐 Timestamp', new Date().toISOString());
+        debugLog('📧 User email', authState.user?.email || 'Not logged in');
         
         const result = await window.BoldTakeAuth.checkSubscriptionStatus();
         
         // CRITICAL DEBUG: Log the exact API response for troubleshooting
-        console.log('🔍 Subscription API Response', JSON.stringify(result, null, 2));
-        console.log('🔍 Previous status', authState.subscriptionStatus);
+        debugLog('🔍 Subscription API Response', JSON.stringify(result, null, 2));
+        debugLog('🔍 Previous status', authState.subscriptionStatus);
         
         // UNIVERSAL PREMIUM OVERRIDE: For any authenticated user with subscription issues
         // This provides premium access while webhook/subscription issues are resolved
         if (authState.user && authState.user.email) {
-            console.log('🔧 Premium access activated');
-            console.log('📧 User', authState.user.email);
+            debugLog('🔧 Premium access activated');
+            debugLog('📧 User', authState.user.email);
             
             const overrideResult = {
                 success: true,
                 status: 'active', 
                 limit: 120
             };
-            console.log('🎉 Applied universal premium override - user now has full access');
+            debugLog('🎉 Applied universal premium override - user now has full access');
             
             authState.subscriptionStatus = {
                 status: overrideResult.status,
@@ -170,7 +174,7 @@ async function refreshSubscriptionStatus() {
                 boldtake_subscription: authState.subscriptionStatus
             });
             
-            console.log('✅ Premium access granted', authState.subscriptionStatus);
+            debugLog('✅ Premium access granted', authState.subscriptionStatus);
             updateUIForSubscriptionStatus();
             return authState.subscriptionStatus;
         }
@@ -347,7 +351,7 @@ function updateUIForSubscriptionStatus() {
     }
     
     const { status, limit } = authState.subscriptionStatus;
-    console.log(`🎨 UI ${status} (${limit}/day)`);
+    debugLog(`🎨 UI ${status} (${limit}/day)`);
     
     // Get UI elements
     const trialBanner = document.getElementById('trial-banner');
@@ -386,8 +390,8 @@ function updateUIForSubscriptionStatus() {
             if (mainContent) mainContent.style.display = 'block';
             
             // A+++ FEATURE: Show celebration message for upgrade (once only)
-            console.log('🎉 Premium subscription active');
-            console.log('✅ UI transition complete');
+            debugLog('🎉 Premium subscription active');
+            debugLog('✅ UI transition complete');
             
             // Success notification disabled to prevent spam
             // showUpgradeSuccessNotification();
@@ -448,7 +452,7 @@ function updateUIForSubscriptionStatus() {
         }
     }
     
-    console.log(`🎨 UI complete ${status} (${limit}/day)`);
+    debugLog(`🎨 UI complete ${status} (${limit}/day)`);
 }
 
 /**

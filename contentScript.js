@@ -5,9 +5,9 @@
 
 // Logging functions - ALWAYS SHOW for monitoring
 const SHOW_LOGS = true; // Always true - we need to see what's happening
-const debugLog = console.log; // Show everything
-const errorLog = console.error;
-const criticalLog = console.log; // Always show critical messages
+const debugLog = SHOW_LOGS ? (...args) => console.log('[BoldTake]', ...args) : () => {};
+const errorLog = (...args) => console.error('[BoldTake ERROR]', ...args);
+const criticalLog = (...args) => console.log('[BoldTake CRITICAL]', ...args);
 
 // Activity tracking for live feed
 let recentActivities = [];
@@ -1714,7 +1714,7 @@ async function gracefullyCloseModal() {
 }
 
 async function handleReplyModal(originalTweet) {
-  console.log('🎯 Handling Reply Modal...');
+  debugLog('🎯 Handling Reply Modal...');
   addDetailedActivity('🎯 Handling Reply Modal', 'info');
   
   // Check if we're in a new window/tab situation
@@ -1808,15 +1808,22 @@ async function handleReplyModal(originalTweet) {
   
   addDetailedActivity(`✅ High-quality reply generated successfully`, 'success');
 
-  debugLog('⌨️ Typing reply', replyText);
-  addDetailedActivity(`⌨️ Typing reply "${replyText.substring(0, 50)}..."`, 'info');
+  // CRITICAL SECURITY FIX: Remove any character count information that might have leaked in
+  const sanitizedReply = replyText
+    .replace(/\(\d+\s*chars?\)/gi, '') // Remove "(X char)" or "(X chars)"
+    .replace(/\(\d+\s*characters?\)/gi, '') // Remove "(X character)" or "(X characters)"
+    .replace(/\s+/g, ' ') // Clean up extra spaces
+    .trim();
+
+  debugLog('⌨️ Typing reply', sanitizedReply);
+  addDetailedActivity(`⌨️ Typing reply "${sanitizedReply.substring(0, 50)}..."`, 'info');
 
   // Step 3: Type using the "bulletproof" method
-  const typed = await safeTypeText(editable, replyText);
+  const typed = await safeTypeText(editable, sanitizedReply);
   if (!typed) {
     errorLog('❌ Typing failed inside reply modal.');
     await gracefullyCloseModal();
-    return { success: false, replyText };
+    return { success: false, replyText: sanitizedReply };
   }
   
   await sleep(500); // Reduced pause after typing
@@ -1830,20 +1837,20 @@ async function handleReplyModal(originalTweet) {
     addDetailedActivity(`⏳ Waiting for reply to post...`, 'info');
     const closed = await waitForModalToClose();
     if (closed) {
-      console.log('✅ Reply modal closed successfully.');
+      debugLog('✅ Reply modal closed successfully.');
       sessionStats.lastAction = '✅ Reply modal closed successfully';
       addDetailedActivity(`🎉 Reply posted successfully! Building engagement...`, 'success');
-      return { success: true, replyText };
+      return { success: true, replyText: sanitizedReply };
     } else {
       errorLog('❌ Reply modal did not close after sending.');
       addDetailedActivity(`❌ Reply modal failed to close`, 'error');
-      return { success: false, replyText };
+      return { success: false, replyText: sanitizedReply };
     }
   } else {
     errorLog('❌ Sending reply failed.');
     addDetailedActivity(`❌ Failed to send reply`, 'error');
     await gracefullyCloseModal();
-    return { success: false, replyText };
+    return { success: false, replyText: sanitizedReply };
   }
 }
 
@@ -1900,7 +1907,7 @@ async function findTweet() {
     const found = performanceCache.getAll('tweets', selector, 2000); // 2s cache
     if (found.length > 0) {
       tweets = Array.from(found);
-      console.log(`📊 Found ${tweets.length} unprocessed tweets using selector: ${selector}`);
+      debugLog(`📊 Found ${tweets.length} unprocessed tweets using selector: ${selector}`);
       addDetailedActivity(`📊 Found ${tweets.length} unprocessed tweets`, 'info');
       break;
     }
@@ -4359,7 +4366,7 @@ function showSessionSummary() {
   
   const timeDisplay = hours > 0 ? `${hours}h ${displayMinutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
   
-  console.log('\n🎬 === BoldTake Session Complete ===');
+  debugLog('\n🎬 === BoldTake Session Complete ===');
   debugLog(`⏰ Duration: ${timeDisplay}`);
   debugLog(`🎯 Target: ${sessionStats.target} tweets`);
   debugLog(`✅ Successful: ${sessionStats.successful}`);
