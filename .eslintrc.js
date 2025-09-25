@@ -33,6 +33,10 @@ module.exports = {
     'debug-*.js',
     'extreme-*.js',
     'fix-*.js',
-    'X.com*'
+    'X.com*',
+    'scripts/',
+    '**/*.backup',
+    '**/*.zip',
+    '**/*.html'
   ]
 };

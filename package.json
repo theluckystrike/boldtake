@@ -3,7 +3,7 @@
   "version": "5.5.1",
   "description": "Professional AI-powered X.com automation",
   "scripts": {
-    "lint": "eslint . --ext .js --ignore-pattern 'node_modules/**' --ignore-pattern 'BoldTake-*/**' --ignore-pattern '*.min.js' --ignore-pattern 'test/**' --ignore-pattern 'debug-*.js' --ignore-pattern 'extreme-*.js' --ignore-pattern 'fix-*.js' --ignore-pattern 'X.com*'",
+    "lint": "eslint *.js --ignore-pattern '*.min.js' --ignore-pattern 'debug-*.js' --ignore-pattern 'extreme-*.js' --ignore-pattern 'fix-*.js' --ignore-pattern 'X.com*'",
     "lint:fix": "npm run lint -- --fix",
     "test": "echo 'Tests will be added in future versions'",
     "validate": "node validate-extension.js"
