@@ -195,8 +195,8 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
     
     // Debug: Log what token we're using
     const tokenToUse = userSession.access_token || userSession.user?.access_token;
-    debugLog('🔑 Using token:', tokenToUse ? `${tokenToUse.substring(0, 20)}...` : 'NO TOKEN');
-    debugLog('📧 User email:', userSession.user?.email || 'Unknown');
+    console.log('🔑 Using token:', tokenToUse ? `${tokenToUse.substring(0, 20)}...` : 'NO TOKEN');
+    console.log('📧 User email:', userSession.user?.email || 'Unknown');
   } catch (error) {
     errorLog('Failed to get user session:', error);
     return { error: 'Authentication error - please login again' };
@@ -266,7 +266,7 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
             const retryAfter = response.headers.get('retry-after');
             const waitTime = retryAfter ? parseInt(retryAfter) : Math.pow(2, attempt);
             if (attempt < maxRetries) {
-              debugLog(`⏳ Rate limited. Waiting ${waitTime}s before retry...`);
+              console.log(`⏳ Rate limited. Waiting ${waitTime}s before retry...`);
               await new Promise(resolve => setTimeout(resolve, waitTime * 1000));
               continue;
             }
@@ -275,7 +275,7 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
           
           if (response.status >= 500) {
             if (attempt < maxRetries) {
-              debugLog(`🔄 Server error (${response.status}). Retrying in ${attempt * 2}s...`);
+              console.log(`🔄 Server error (${response.status}). Retrying in ${attempt * 2}s...`);
               await new Promise(resolve => setTimeout(resolve, attempt * 2000));
               continue;
             }
@@ -390,6 +390,6 @@ function mapStrategyToPersona(strategy) {
     return "indie-voice";
   }
   
-  debugLog(`🎯 Persona mapping ${strategy} → ${mappedPersona}`);
+  console.log(`🎯 Persona mapping ${strategy} → ${mappedPersona}`);
   return mappedPersona;
 }

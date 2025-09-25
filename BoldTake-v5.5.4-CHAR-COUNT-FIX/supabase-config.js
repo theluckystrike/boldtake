@@ -63,7 +63,7 @@ async function initializeSupabase() {
             }
         );
         
-        // Supabase client initialized successfully
+        console.log('✅ Supabase client initialized successfully');
         return supabaseClient;
     } catch (error) {
         console.error('❌ Failed to initialize Supabase client:', error);
@@ -129,7 +129,7 @@ async function signInUser(email, password) {
         
         if (error) throw error;
         
-        // User signed in successfully
+        console.log('✅ User signed in successfully');
         return { success: true, user: data.user, session: data.session };
     } catch (error) {
         console.error('❌ Sign in failed:', error);
@@ -149,7 +149,7 @@ async function signOutUser() {
         
         if (error) throw error;
         
-        // User signed out successfully
+        console.log('✅ User signed out successfully');
         return { success: true };
     } catch (error) {
         console.error('❌ Sign out failed:', error);
@@ -170,7 +170,7 @@ async function checkSubscriptionStatus() {
         
         if (error) throw error;
         
-        // Subscription status retrieved successfully
+        console.log('✅ Subscription status retrieved:', data);
         return {
             success: true,
             status: data.status, // 'trialing', 'active', 'inactive'

@@ -201,7 +201,7 @@ async function autoRefreshSubscriptionOnOpen() {
         }
         
         debugLog('🔄 AUTO-REFRESH: Checking subscription status on popup open...');
-        debugLog('💡 A+++ FEATURE: Auto-refreshing subscription for seamless post-payment experience');
+        console.log('💡 A+++ FEATURE: Auto-refreshing subscription for seamless post-payment experience');
         
         // Force fresh subscription check (ignores cache)
         await window.BoldTakeAuthManager.refreshSubscriptionStatus();
@@ -765,7 +765,7 @@ async function startSession() {
  * Stops the current BoldTake automation session
  */
 async function stopSession() {
-    debugLog('🛑 Stopping BoldTake session...');
+    console.log('🛑 Stopping BoldTake session...');
     
     try {
         // Update UI to show stopping state
@@ -778,7 +778,7 @@ async function stopSession() {
         // Send stop message to content script
         chrome.tabs.sendMessage(tab.id, { type: 'BOLDTAKE_STOP' }, (response) => {
             if (chrome.runtime.lastError) {
-                debugLog('Content script not available, session likely already stopped');
+                console.log('Content script not available, session likely already stopped');
             }
             updateUIForStoppedSession();
         });
@@ -821,7 +821,7 @@ async function loadSessionState() {
         
     } catch (error) {
         // Silently handle errors
-        debugLog('📊 Content script not ready yet...');
+        console.log('📊 Content script not ready yet...');
     }
 }
 
@@ -1622,8 +1622,8 @@ function setupAuthEventListeners() {
                 refreshSubscriptionBtn.disabled = true;
                 refreshSubscriptionBtn.innerHTML = '<div class="loading"></div>Checking...';
                 
-                debugLog('🔄 Manual subscription refresh triggered');
-                debugLog('📧 Refreshing for current user');
+                console.log('🔄 Manual subscription refresh triggered');
+                console.log('📧 Refreshing for current user');
                 
                 // FORCE fresh API call (no cache)
                 await window.BoldTakeAuthManager.refreshSubscriptionStatus();
