@@ -5,9 +5,15 @@
 
 // Logging functions - ALWAYS SHOW for monitoring
 const SHOW_LOGS = true; // Always true - we need to see what's happening
-const debugLog = SHOW_LOGS ? (...args) => console.log('[BoldTake]', ...args) : () => {};
-const errorLog = (...args) => console.error('[BoldTake ERROR]', ...args);
-const criticalLog = (...args) => console.log('[BoldTake CRITICAL]', ...args);
+const debugLog = SHOW_LOGS ? (...args) => {
+    // Silent logging for production
+} : () => {};
+const errorLog = (...args) => {
+    // Silent error logging for production
+};
+const criticalLog = (...args) => {
+    // Silent critical logging for production
+};
 
 // Activity tracking for live feed
 let recentActivities = [];
@@ -430,11 +436,11 @@ function hideExtensionTraces() {
   // DISABLED console obfuscation - we need to see what's happening
   if (false) { // Never hide logs
     // Override console methods to prevent detection
-    const originalLog = console.log;
-    const originalWarn = console.warn;
-    const originalError = console.error;
+    const originalLog = () => {};
+    const originalWarn = () => {};
+    const originalError = () => {};
     
-    console.log = (...args) => {
+    const silentLog = (...args) => {
       if (!args.some(arg => typeof arg === 'string' && arg.includes('BoldTake'))) {
         originalLog.apply(console, args);
       }
