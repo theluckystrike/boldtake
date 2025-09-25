@@ -6,13 +6,22 @@
 // Logging functions - ALWAYS SHOW for monitoring
 const SHOW_LOGS = true; // Always true - we need to see what's happening
 const debugLog = SHOW_LOGS ? (...args) => {
-    // Silent logging for production
+    // Content script logging (essential for functionality)
+    if (typeof console !== 'undefined' && console.log) {
+        console.log('[BoldTake]', ...args);
+    }
 } : () => {};
 const errorLog = (...args) => {
-    // Silent error logging for production
+    // Error logging (essential for functionality)
+    if (typeof console !== 'undefined' && console.error) {
+        console.error('[BoldTake ERROR]', ...args);
+    }
 };
 const criticalLog = (...args) => {
-    // Silent critical logging for production
+    // Critical logging (essential for functionality)
+    if (typeof console !== 'undefined' && console.log) {
+        console.log('[BoldTake CRITICAL]', ...args);
+    }
 };
 
 // Activity tracking for live feed

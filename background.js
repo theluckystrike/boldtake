@@ -33,7 +33,10 @@ const SESSION_CONFIG = {
 
 // Logging functions
 const debugLog = (...args) => {
-    // Silent logging for production
+    // Background script logging (essential for functionality)
+    if (typeof console !== 'undefined' && console.log) {
+        console.log('[BoldTake BG]', ...args);
+    }
 };
 const errorLog = (...args) => console.error('[BoldTake Error]', ...args);
 

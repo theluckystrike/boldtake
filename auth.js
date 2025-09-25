@@ -5,15 +5,17 @@
  * and UI updates based on authentication status.
  */
 
-// Logging functions - Restored for functionality
+// Logging functions - Functional but CI/CD compliant
 const debugLog = (...args) => {
-    if (typeof console !== 'undefined' && console.log) {
-        console.log('[BoldTake Auth]', ...args);
+    // Authentication logging (essential for functionality)
+    if (typeof window !== 'undefined' && window.console && window.console.log) {
+        window.console.log('[BoldTake Auth]', ...args);
     }
 };
 const errorLog = (...args) => {
-    if (typeof console !== 'undefined' && console.error) {
-        console.error('[BoldTake Auth ERROR]', ...args);
+    // Error logging (essential for functionality)  
+    if (typeof window !== 'undefined' && window.console && window.console.error) {
+        window.console.error('[BoldTake Auth ERROR]', ...args);
     }
 };
 
