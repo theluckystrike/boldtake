@@ -974,31 +974,27 @@ async function startContinuousSession(isResuming = false) {
   const currentUrl = window.location.href;
   addDetailedActivity(`📍 Current page: ${currentUrl}`, 'info');
   
-  // SMART REDIRECT: Get the proper search URL with filters
-  const properSearchUrl = 'https://x.com/search?q=a%20min_faves%3A500%20lang%3Aen%20-filter:links%20-filter:media%20-filter:replies%20-filter:retweets&src=typed_query&f=live';
-  
   // ENHANCED: Check for X.com error pages FIRST (most critical)
   if (detectXcomErrorPage()) {
-    addDetailedActivity('🚨 X.com error page detected - redirecting to proper search', 'error');
-    sessionLog('🚨 X.com error page detected - redirecting to proper search', 'error');
-    showStatus('🔍 Redirecting to search with filters...');
-    // Force immediate redirect to proper search
+    addDetailedActivity('🚨 X.com error page detected - redirecting to home timeline', 'error');
+    sessionLog('🚨 X.com error page detected - redirecting to home timeline', 'error');
+    showStatus('🏠 Redirecting to home timeline...');
+    // Force immediate redirect
     setTimeout(() => {
-      window.location.href = properSearchUrl;
+      window.location.href = 'https://x.com/home';
     }, 1000);
     return; // Stop execution and let the redirect happen
   }
   
   // ENHANCED: More aggressive wrong page detection
-  if (currentUrl.includes('/explore') || currentUrl.includes('/notifications') || 
-      currentUrl.includes('/messages') || currentUrl.includes('/settings') || currentUrl.includes('/compose') ||
-      (currentUrl.includes('/search') && !currentUrl.includes('min_faves:500'))) {
-    addDetailedActivity('🚨 Wrong page detected - redirecting to proper search', 'error');
-    sessionLog('🚨 Extension on wrong page - redirecting to proper search', 'error');
-    showStatus('🔍 Redirecting to search with filters...');
-    // Force immediate redirect to proper search
+  if (currentUrl.includes('/explore') || currentUrl.includes('/search') || currentUrl.includes('/notifications') || 
+      currentUrl.includes('/messages') || currentUrl.includes('/settings') || currentUrl.includes('/compose')) {
+    addDetailedActivity('🚨 Wrong page detected - redirecting to home timeline', 'error');
+    sessionLog('🚨 Extension started on wrong page - redirecting to home timeline', 'error');
+    showStatus('🏠 Redirecting to home timeline...');
+    // Force immediate redirect
     setTimeout(() => {
-      window.location.href = properSearchUrl;
+      window.location.href = 'https://x.com/home';
     }, 1000);
     return; // Stop execution and let the redirect happen
   }
@@ -1141,15 +1137,11 @@ async function startContinuousSession(isResuming = false) {
       }
       
       // CRITICAL: Check for error pages during active session
-      const currentSessionUrl = window.location.href;
-      const properSearchUrl = 'https://x.com/search?q=a%20min_faves%3A500%20lang%3Aen%20-filter:links%20-filter:media%20-filter:replies%20-filter:retweets&src=typed_query&f=live';
-      
-      if (detectXcomErrorPage() || currentSessionUrl.includes('/explore') || 
-          (currentSessionUrl.includes('/search') && !currentSessionUrl.includes('min_faves:500'))) {
-        addDetailedActivity('🚨 Wrong page detected during session - redirecting to proper search', 'error');
-        sessionLog('🚨 Wrong page detected during session - redirecting to proper search', 'error');
+      if (detectXcomErrorPage()) {
+        addDetailedActivity('🚨 Error page detected during session - redirecting', 'error');
+        sessionLog('🚨 Error page detected during session - redirecting', 'error');
         setTimeout(() => {
-          window.location.href = properSearchUrl;
+          window.location.href = 'https://x.com/home';
         }, 1000);
         break; // Stop session and redirect
       }
@@ -2979,21 +2971,18 @@ async function handleXcomPageError() {
   
   // Double-check we still need to refresh (user might have navigated away)
   if (window.location.href === currentUrl && detectXcomErrorPage()) {
-    // ENHANCED: Smart navigation to proper search URL with filters
-    const properSearchUrl = 'https://x.com/search?q=a%20min_faves%3A500%20lang%3Aen%20-filter:links%20-filter:media%20-filter:replies%20-filter:retweets&src=typed_query&f=live';
-    
-    if (currentUrl.includes('/explore') || currentUrl.includes('/notifications') || 
-        (currentUrl.includes('/search') && !currentUrl.includes('min_faves:500'))) {
-      addDetailedActivity('🔍 Navigating to proper search with filters from problematic page', 'info');
-      window.location.href = properSearchUrl;
+    // ENHANCED: Smart navigation instead of just refreshing the same problematic page
+    if (currentUrl.includes('/explore') || currentUrl.includes('/search') || currentUrl.includes('/notifications')) {
+      addDetailedActivity('🏠 Navigating to home timeline from problematic page', 'info');
+      window.location.href = 'https://x.com/home';
     } else if (currentUrl.includes('/home') || currentUrl === 'https://x.com/' || currentUrl === 'https://x.com') {
-      // If we're on home, redirect to proper search
-      addDetailedActivity('🔍 Redirecting to search with filters for tweet processing', 'info');
-      window.location.href = properSearchUrl;
+      // If we're already on home and still getting errors, try a hard refresh
+      addDetailedActivity('🔄 Hard refresh on home timeline', 'warning');
+      window.location.reload(true);
     } else {
-      // For other pages, navigate to proper search
-      addDetailedActivity('🔍 Redirecting to search with filters for tweet processing', 'info');
-      window.location.href = properSearchUrl;
+      // For other pages, navigate to home timeline
+      addDetailedActivity('🏠 Redirecting to home timeline for tweet processing', 'info');
+      window.location.href = 'https://x.com/home';
     }
   } else {
     addDetailedActivity('🛡️ Page recovered during wait - refresh cancelled', 'success');
