@@ -1,0 +1,50 @@
+{
+  "name": "boldtake-extension",
+  "version": "5.5.1",
+  "description": "Professional AI-powered X.com automation",
+  "scripts": {
+    "lint": "eslint *.js --ignore-pattern '*.min.js' --ignore-pattern 'debug-*.js' --ignore-pattern 'extreme-*.js' --ignore-pattern 'fix-*.js' --ignore-pattern 'X.com*'",
+    "lint:fix": "npm run lint -- --fix",
+    "test": "echo 'Tests will be added in future versions'",
+    "validate": "node validate-extension.js"
+  },
+  "devDependencies": {
+    "eslint": "^8.50.0",
+    "eslint-plugin-security": "^1.7.1"
+  },
+  "eslintConfig": {
+    "extends": ["eslint:recommended", "plugin:security/recommended"],
+    "env": {
+      "browser": true,
+      "webextensions": true,
+      "es2021": true,
+      "node": true
+    },
+    "parserOptions": {
+      "ecmaVersion": 2021,
+      "sourceType": "script"
+    },
+    "rules": {
+      "no-console": "off",
+      "no-debugger": "warn",
+      "no-alert": "off",
+      "security/detect-eval-with-expression": "error",
+      "security/detect-non-literal-regexp": "off",
+      "security/detect-object-injection": "off",
+      "security/detect-non-literal-fs-filename": "off",
+      "security/detect-unsafe-regex": "off",
+      "no-unused-vars": "off",
+      "no-undef": "off",
+      "no-constant-condition": "off",
+      "no-useless-escape": "off",
+      "no-inner-declarations": "off"
+    },
+    "ignorePatterns": [
+      "node_modules/",
+      "BoldTake-*/",
+      "boldtake all versions/",
+      "*.min.js",
+      "supabase.min.js"
+    ]
+  }
+}
