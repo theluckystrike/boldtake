@@ -5,7 +5,9 @@
 
 // Stealth mode - minimal popup logging
 const DEBUG_MODE = false;
-const debugLog = DEBUG_MODE ? console.log : () => {};
+const debugLog = () => {
+    // Silent logging for production
+};
 
 debugLog('🚀 BoldTake Professional popup loaded');
 

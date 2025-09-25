@@ -32,7 +32,9 @@ const SESSION_CONFIG = {
 };
 
 // Logging functions
-const debugLog = (...args) => console.log('[BoldTake]', ...args);
+const debugLog = (...args) => {
+    // Silent logging for production
+};
 const errorLog = (...args) => console.error('[BoldTake Error]', ...args);
 
 // --- Message Handling ---

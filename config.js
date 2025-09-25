@@ -113,7 +113,7 @@ function getConfig(component) {
  */
 function debugLog(...args) {
     if (!BOLDTAKE_CONFIG.extension.productionMode || BOLDTAKE_CONFIG.extension.debugMode) {
-        console.log('[BoldTake]', ...args);
+        // Silent logging for production
     }
 }
 

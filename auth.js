@@ -6,8 +6,12 @@
  */
 
 // Logging functions
-const debugLog = (...args) => console.log('[BoldTake Auth]', ...args);
-const errorLog = (...args) => console.error('[BoldTake Auth ERROR]', ...args);
+const debugLog = (...args) => {
+    // Silent logging for production
+};
+const errorLog = (...args) => {
+    // Silent error logging for production
+};
 
 // Authentication state
 let authState = {

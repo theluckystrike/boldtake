@@ -107,7 +107,7 @@ async function stopSession() {
         
         chrome.tabs.sendMessage(tab.id, { type: 'BOLDTAKE_STOP' }, (response) => {
             if (chrome.runtime.lastError) {
-                console.log('Session already stopped');
+                // Session already stopped
             }
             
             isSessionActive = false;

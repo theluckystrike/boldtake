@@ -157,5 +157,5 @@ if (!validation.success) {
     console.error('🚨 BoldTake Configuration Errors:', validation.errors);
     throw new Error(`Configuration validation failed: ${validation.errors.join(', ')}`);
 } else {
-    console.log('✅ BoldTake configuration validated successfully');
+    // BoldTake configuration validated successfully
 }
