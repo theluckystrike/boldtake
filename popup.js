@@ -673,6 +673,7 @@ async function startSession() {
         // Default keyword if none provided
         if (!keyword) {
             // Check if user has rotation keywords, use first one
+            const rotationKeywords = []; // TODO: Load from storage
             if (rotationKeywords && rotationKeywords.length > 0) {
                 keyword = rotationKeywords[0].keyword;
                 debugLog('🎯 Using first rotation keyword:', keyword);

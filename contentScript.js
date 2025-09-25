@@ -650,6 +650,22 @@ const SAFE_FALLBACK_REPLIES = [
 
 // --- Chrome Storage Helper ---
 
+// Define missing variables to prevent initialization errors
+let STABILITY_SYSTEM = {
+  initialize: () => debugLog('🛡️ Legacy stability system initialized'),
+  recordProgress: () => {},
+  handleError: (error) => debugLog('⚠️ Stability system error:', error)
+};
+
+let bulletproofStateMachine = null;
+let sessionLog = (message, type = 'info') => addDetailedActivity(message, type);
+
+// Import SUPABASE_CONFIG from global scope (loaded by supabase-config.js)
+const SUPABASE_CONFIG = window.SUPABASE_CONFIG || {
+  url: 'https://your-supabase-url.supabase.co',
+  anonKey: 'your-anon-key'
+};
+
 /**
  * CRITICAL FIX: Chrome storage operations with timeout protection
  * Prevents hanging when Chrome storage API fails or is slow
@@ -4939,14 +4955,6 @@ function resetWatchdog() {
   }
 }
 
-// Initialize bulletproof system
-initializeBulletproofSystem();
-
-// Fallback to legacy system if needed
-if (!bulletproofStateMachine) {
-  STABILITY_SYSTEM.initialize();
-}
-
-// Initialization complete
-sessionLog('✅ BoldTake v5.0 Ready - Bulletproof Architecture', 'success');
-updateStatus('BoldTake Ready');
+// Initialization complete - system is ready
+debugLog('✅ BoldTake v5.5.0 Ready - Smart Redirect System');
+// Note: Main initialization happens in the initialize() function above
