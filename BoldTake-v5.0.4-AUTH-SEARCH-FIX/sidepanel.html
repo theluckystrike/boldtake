@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BoldTake Live Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* BoldTake Brand Colors */
+            --brand-green: 158 64% 52%;        /* #34D399 */
+            --brand-green-dark: 158 64% 42%;   /* Darker shade */
+            --text-primary: 210 20% 98%;       /* #F9FAFB */
+            --text-secondary: 220 9% 68%;      /* #9CA3AF */
+            --bg-primary: 216 34% 7%;          /* #111827 */
+            --bg-secondary: 215 28% 12%;       /* #1F2937 */
+            
+            /* Apple-inspired spacing */
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            
+            /* Apple-inspired radius */
+            --radius-sm: 6px;
+            --radius-md: 12px;
+            --radius-lg: 16px;
+            
+            /* Apple-inspired shadows */
+            --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.1);
+            --shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.15);
+            --shadow-brand: 0 4px 20px rgba(52, 211, 153, 0.2);
+            
+            /* Apple-inspired transitions */
+            --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100%;
+            height: 100vh;
+            background: hsl(var(--bg-primary));
+            color: hsl(var(--text-primary));
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            line-height: 1.4;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header - Clean and minimal */
+        .header {
+            background: linear-gradient(180deg, hsl(var(--bg-secondary)) 0%, hsl(var(--bg-primary)) 100%);
+            padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            position: relative;
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand-title {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            color: hsl(var(--text-primary));
+        }
+
+        .brand-accent {
+            color: hsl(var(--brand-green));
+        }
+
+        .status-pill {
+            background: rgba(52, 211, 153, 0.1);
+            border: 1px solid rgba(52, 211, 153, 0.2);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: hsl(var(--brand-green));
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .status-text {
+            font-size: 11px;
+            font-weight: 500;
+            color: hsl(var(--brand-green));
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Stats Grid - Apple Card Style */
+        .stats-container {
+            padding: 0 var(--spacing-lg) var(--spacing-lg);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .stat-card {
+            background: hsl(var(--bg-secondary));
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            transition: var(--transition-smooth);
+        }
+
+        .stat-card:hover {
+            border-color: rgba(52, 211, 153, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .stat-label {
+            font-size: 10px;
+            font-weight: 500;
+            color: hsl(var(--text-secondary));
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: hsl(var(--text-primary));
+            letter-spacing: -0.02em;
+            display: flex;
+            align-items: baseline;
+            gap: var(--spacing-xs);
+        }
+
+        .stat-value.accent {
+            color: hsl(var(--brand-green));
+        }
+
+        .stat-unit {
+            font-size: 12px;
+            font-weight: 400;
+            color: hsl(var(--text-secondary));
+        }
+
+        /* Progress Bar - Apple Style */
+        .progress-container {
+            grid-column: 1 / -1;
+            background: hsl(var(--bg-secondary));
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .progress-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: hsl(var(--text-secondary));
+        }
+
+        .progress-value {
+            font-size: 12px;
+            font-weight: 600;
+            color: hsl(var(--brand-green));
+        }
+
+        .progress-track {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, hsl(var(--brand-green)), hsl(var(--brand-green-dark)));
+            border-radius: 2px;
+            transition: width var(--transition-smooth);
+            box-shadow: var(--shadow-brand);
+        }
+
+        /* Controls - Apple Button Style */
+        .controls {
+            padding: 0 var(--spacing-lg) var(--spacing-lg);
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: var(--spacing-sm);
+        }
+
+        .btn {
+            padding: var(--spacing-sm) var(--spacing-md);
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition-fast);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-xs);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, hsl(var(--brand-green)), hsl(var(--brand-green-dark)));
+            color: white;
+            box-shadow: var(--shadow-brand);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 25px rgba(52, 211, 153, 0.3);
+        }
+
+        .btn-secondary {
+            background: hsl(var(--bg-secondary));
+            color: hsl(var(--text-primary));
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Activity Log - Clean List Style */
+        .log-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+
+        .log-header {
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: hsl(var(--bg-secondary));
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .log-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: hsl(var(--text-primary));
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .log-actions {
+            display: flex;
+            gap: var(--spacing-xs);
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            color: hsl(var(--text-secondary));
+            font-size: 11px;
+            font-weight: 500;
+            padding: var(--spacing-xs) var(--spacing-sm);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            transition: var(--transition-fast);
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: hsl(var(--text-primary));
+        }
+
+        .log-feed {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--spacing-md) var(--spacing-lg);
+            background: hsl(var(--bg-primary));
+        }
+
+        .log-entry {
+            display: flex;
+            align-items: flex-start;
+            gap: var(--spacing-sm);
+            padding: var(--spacing-sm) 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            animation: slideIn 0.3s ease;
+        }
+
+        .log-entry:last-child {
+            border-bottom: none;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .log-time {
+            font-size: 11px;
+            font-weight: 500;
+            color: hsl(var(--text-secondary));
+            min-width: 40px;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .log-message {
+            flex: 1;
+            font-size: 13px;
+            line-height: 1.4;
+            color: hsl(var(--text-primary));
+        }
+
+        .log-entry.success .log-message {
+            color: hsl(var(--brand-green));
+        }
+
+        .log-entry.error .log-message {
+            color: #FF6B6B;
+        }
+
+        .log-entry.warning .log-message {
+            color: #FFD93D;
+        }
+
+        .log-entry.info .log-message {
+            color: hsl(var(--text-primary));
+        }
+
+        /* Empty State */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: hsl(var(--text-secondary));
+            text-align: center;
+        }
+
+        .empty-icon {
+            font-size: 32px;
+            margin-bottom: var(--spacing-sm);
+            opacity: 0.6;
+        }
+
+        .empty-text {
+            font-size: 13px;
+            font-weight: 400;
+        }
+
+        /* Scrollbar - Apple Style */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Loading State */
+        .loading-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(52, 211, 153, 0.2);
+            border-top: 2px solid hsl(var(--brand-green));
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 320px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="header-content">
+            <div class="brand-title">
+                Bold<span class="brand-accent">Take</span>
+            </div>
+            <div class="status-pill">
+                <div class="status-dot" id="statusDot"></div>
+                <span class="status-text" id="statusText">Ready</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-container">
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Replies</div>
+                <div class="stat-value accent">
+                    <span id="replies-sent">0</span>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-label">Success</div>
+                <div class="stat-value">
+                    <span id="success-rate">0</span>
+                    <span class="stat-unit">%</span>
+                </div>
+            </div>
+            
+            <div class="progress-container">
+                <div class="progress-header">
+                    <span class="progress-label">Daily Progress</span>
+                    <span class="progress-value" id="progress-text">0 / 205</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+        <div class="controls-grid">
+            <button id="start-session-btn" class="btn btn-primary">
+                Start Session
+            </button>
+            <button id="pause-session-btn" class="btn btn-secondary" disabled>
+                Pause
+            </button>
+            <button id="stop-session-btn" class="btn btn-secondary" disabled>
+                Stop
+            </button>
+        </div>
+    </div>
+
+    <!-- Activity Log -->
+    <div class="log-section">
+        <div class="log-header">
+            <div class="log-title">
+                <span>Activity</span>
+            </div>
+            <div class="log-actions">
+                <button class="action-btn" id="clear-log-btn">Clear</button>
+            </div>
+        </div>
+        
+        <div class="log-feed" id="log-feed">
+            <div class="empty-state">
+                <div class="empty-icon">🚀</div>
+                <div class="empty-text">Start a session to see live activity</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="sidepanel.js"></script>
+</body>
+</html>
+</html>

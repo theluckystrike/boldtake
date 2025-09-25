@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "BoldTake",
+  "version": "1.0.6",
+  "description": "Your unfair advantage on X.com. AI that crafts expert replies to build your authority & grow your audience 24/7.",
+  
+  "action": {
+    "default_title": "BoldTake Professional",
+    "default_popup": "popup.html"
+  },
+  
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs"
+  ],
+  
+  "host_permissions": [
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://*.supabase.co/*"
+  ],
+  
+  "background": {
+    "service_worker": "background.js"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": [
+        "https://x.com/*",
+        "https://twitter.com/*"
+      ],
+      "js": ["supabase.min.js", "supabase-config.js", "auth.js", "contentScript.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  
+  "web_accessible_resources": [
+    {
+      "resources": ["supabase.min.js", "supabase-config.js", "auth.js"],
+      "matches": ["https://x.com/*", "https://twitter.com/*"]
+    }
+  ],
+  
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  }
+}

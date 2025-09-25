@@ -159,6 +159,8 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
 
   // Get user session for authentication - BACKGROUND SCRIPT COMPATIBLE
   let userSession = null;
+  let accessToken = null;
+  
   try {
     // Background scripts must use chrome.storage directly (no window/DOM access)
     const storage = await chrome.storage.local.get([
@@ -171,10 +173,14 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
     const authToken = storage[STORAGE_CONFIG.authToken];
     if (authToken) {
       try {
-        const tokenData = JSON.parse(authToken);
+        const tokenData = typeof supabaseToken === 'string' ? JSON.parse(supabaseToken) : supabaseToken;
         if (tokenData.access_token) {
-          userSession = userSession || {};
-          userSession.access_token = tokenData.access_token;
+          accessToken = tokenData.access_token;
+          debugLog('✅ Found token from Supabase storage');
+          // Extract user info from token if available
+          if (tokenData.user) {
+            userSession = { user: tokenData.user };
+          }
         }
       } catch (parseError) {
         errorLog('Failed to parse auth token:', parseError);
@@ -209,7 +215,7 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${userSession.access_token || userSession.user.access_token}`
+            'Authorization': `Bearer ${accessToken}`
           },
           body: JSON.stringify({
             originalTweet: tweetContext.originalText || prompt,
