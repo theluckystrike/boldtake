@@ -5,12 +5,16 @@
  * and UI updates based on authentication status.
  */
 
-// Logging functions
+// Logging functions - Restored for functionality
 const debugLog = (...args) => {
-    // Silent logging for production
+    if (typeof console !== 'undefined' && console.log) {
+        console.log('[BoldTake Auth]', ...args);
+    }
 };
 const errorLog = (...args) => {
-    // Silent error logging for production
+    if (typeof console !== 'undefined' && console.error) {
+        console.error('[BoldTake Auth ERROR]', ...args);
+    }
 };
 
 // Authentication state

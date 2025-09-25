@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+dist/
+build/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+
+# Test files
+test/
+coverage/
+
+# Backup files
+*.backup
+*.bak
+
+# Debug and development files
+debug-*.js
+extreme-*.js
+fix-*.js
+
+# Old version directories (should not be in repo)
+BoldTake-*/
+boldtake all versions/
+
+# Zip files
+*.zip
+
+# User scripts
+X.com*
+
+# Environment files
+.env
+.env.local
+.env.production

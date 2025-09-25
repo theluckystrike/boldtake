@@ -29,6 +29,7 @@ module.exports = {
     'boldtake all versions/',
     '*.min.js',
     'supabase.min.js',
+    'validate-extension.js',
     'test/',
     'debug-*.js',
     'extreme-*.js',
