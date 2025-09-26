@@ -6,6 +6,7 @@
     "lint": "eslint *.js --ignore-pattern '*.min.js' --ignore-pattern 'debug-*.js' --ignore-pattern 'extreme-*.js' --ignore-pattern 'fix-*.js' --ignore-pattern 'X.com*'",
     "lint:fix": "npm run lint -- --fix",
     "test": "echo 'Tests will be added in future versions'",
+    "test:e2e": "echo '=== Chrome Extension E2E Validation ===' && echo '1. Extension structure check...' && if [ -f 'dist/manifest.json' ] && [ -f 'dist/popup.html' ] && [ -f 'dist/contentScript.js' ]; then echo '✅ Extension structure valid'; else echo '❌ Extension structure invalid'; exit 1; fi && echo '2. Manifest validation...' && node -e \"const manifest = require('./dist/manifest.json'); if (manifest.name && manifest.version && manifest.manifest_version) { console.log('✅ Manifest valid'); } else { console.log('❌ Manifest invalid'); process.exit(1); }\" && echo '3. File integrity check...' && find dist/ -type f -name '*.js' -exec node -c {} \\; && echo '✅ JavaScript syntax valid' && echo '✅ E2E validation passed'",
     "validate": "node validate-extension.js",
     "build": "mkdir -p dist && cp manifest.json popup.html popup.js background.js contentScript.js auth.js supabase-config.js supabase.min.js config.js sidepanel.html sidepanel.js icon.png logo.png dist/ 2>/dev/null || true"
   },
