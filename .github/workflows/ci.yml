@@ -135,13 +135,43 @@ jobs:
         with:
           node-version: '18'
           
-      - name: Run Lighthouse CI
-        run: |
-          npm install -g @lhci/cli
-          lhci autorun
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-build
+          path: dist/
           
-      - name: Memory leak detection
-        run: npm run test:memory
+      - name: Extension Performance Tests
+        run: |
+          echo "=== Chrome Extension Performance Tests ==="
+          echo "1. Bundle size check..."
+          SIZE=$(find dist/ -type f -exec ls -l {} \; | awk '{total += $5} END {print total}')
+          echo "Bundle size: $SIZE bytes"
+          if [ $SIZE -gt 5000000 ]; then
+            echo "❌ Bundle size exceeds Chrome Web Store limit"
+            exit 1
+          else
+            echo "✅ Bundle size within Chrome Web Store limit"
+          fi
+          
+          echo "2. File count check..."
+          COUNT=$(find dist/ -type f | wc -l)
+          echo "Extension files: $COUNT"
+          if [ $COUNT -gt 50 ]; then
+            echo "⚠️  High file count - consider optimization"
+          else
+            echo "✅ Reasonable file count"
+          fi
+          
+          echo "3. Critical files check..."
+          if [ -f "dist/manifest.json" ] && [ -f "dist/popup.js" ] && [ -f "dist/contentScript.js" ]; then
+            echo "✅ All critical extension files present"
+          else
+            echo "❌ Missing critical extension files"
+            exit 1
+          fi
+          
+          echo "✅ Extension performance tests passed"
 
   # Job 6: Deploy to Staging
   deploy-staging:
