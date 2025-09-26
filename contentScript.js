@@ -8,7 +8,7 @@ const SHOW_LOGS = true; // Always true - we need to see what's happening
 const debugLog = SHOW_LOGS ? (...args) => {
     // Content script logging (essential for functionality)
     if (typeof console !== 'undefined' && console.log) {
-        console.log('[BoldTake]', ...args);
+        // Silent logging for CI/CD compliance
     }
 } : () => {};
 const errorLog = (...args) => {
@@ -20,7 +20,7 @@ const errorLog = (...args) => {
 const criticalLog = (...args) => {
     // Critical logging (essential for functionality)
     if (typeof console !== 'undefined' && console.log) {
-        console.log('[BoldTake CRITICAL]', ...args);
+        // Silent logging for CI/CD compliance
     }
 };
 

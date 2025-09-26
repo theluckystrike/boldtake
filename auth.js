@@ -9,7 +9,7 @@
 const debugLog = (...args) => {
     // Authentication logging (essential for functionality)
     if (typeof window !== 'undefined' && window.console && window.console.log) {
-        window.console.log('[BoldTake Auth]', ...args);
+        // Silent logging for CI/CD compliance
     }
 };
 const errorLog = (...args) => {

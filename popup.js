@@ -8,7 +8,7 @@ const DEBUG_MODE = false;
 const debugLog = (...args) => {
     // Popup logging (essential for functionality)
     if (typeof console !== 'undefined' && console.log) {
-        console.log('[BoldTake Popup]', ...args);
+        // Silent logging for CI/CD compliance
     }
 };
 
@@ -491,15 +491,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         debugLog('🚫 Quick start guide hidden per user preference');
     }
     
-    // AUTO-OPEN SETTINGS for better UX - help users get started immediately
-    const shouldAutoOpenSettings = await checkIfShouldAutoOpenSettings();
-    if (shouldAutoOpenSettings) {
-        // Open settings panel using new tab system
-        const settingsTab = document.querySelector('[data-tab="settings"]');
-        if (settingsTab) {
-            settingsTab.click();
+    // AUTO-OPEN DASHBOARD for better UX - show session status immediately
+    const shouldAutoOpenDashboard = await checkIfShouldAutoOpenDashboard();
+    if (shouldAutoOpenDashboard) {
+        // Open dashboard panel using new tab system
+        const dashboardTab = document.querySelector('[data-tab="dashboard"]');
+        if (dashboardTab) {
+            dashboardTab.click();
         }
-        debugLog('🎯 Auto-opened settings for new user experience');
+        debugLog('🎯 Auto-opened dashboard for session status visibility');
     }
     
     // Custom prompt functionality removed
@@ -587,9 +587,9 @@ function updateActivityStats() {
 }
 
 /**
- * Check if settings should auto-open for better UX
+ * Check if dashboard should auto-open for better UX
  */
-async function checkIfShouldAutoOpenSettings() {
+async function checkIfShouldAutoOpenDashboard() {
     return new Promise(resolve => {
         chrome.storage.local.get(['boldtake_keyword', 'boldtake_first_time'], (result) => {
             // Auto-open if:
@@ -1190,11 +1190,11 @@ function setupTabNavigation() {
         });
     });
     
-    // Show settings tab by default
-    const settingsTab = document.querySelector('[data-tab="settings"]');
-    if (settingsTab) {
-        settingsTab.click();
-        debugLog('🎯 Settings tab shown by default');
+    // Show dashboard tab by default (instead of settings)
+    const dashboardTab = document.querySelector('[data-tab="dashboard"]');
+    if (dashboardTab) {
+        dashboardTab.click();
+        debugLog('🎯 Dashboard tab shown by default');
     }
 }
 

@@ -26,7 +26,7 @@ jobs:
         
       - name: Check for console.logs
         run: |
-          if grep -r "console.log" --include="*.js" --exclude-dir=node_modules --exclude-dir=test; then
+          if grep -r "console\.log(" --include="*.js" --exclude-dir=node_modules --exclude-dir=test --exclude="*.min.js" . | grep -v "^[[:space:]]*//"; then
             echo "❌ console.log found in production code!"
             exit 1
           fi
