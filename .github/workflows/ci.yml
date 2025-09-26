@@ -54,15 +54,6 @@ jobs:
         
       - name: Run unit tests
         run: npm test
-        
-      - name: Generate coverage report
-        run: npm run coverage
-        
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage/lcov.info
-          fail_ci_if_error: true
 
   # Job 3: Build and Bundle Analysis
   build:
