@@ -1909,11 +1909,16 @@ async function waitForModalToClose() {
 }
 
 async function findTweet() {
-  // Multiple selectors for better tweet detection
+  // UPDATED: Multiple selectors for better tweet detection (X.com 2025)
   const selectors = [
-    '[data-testid="tweet"]:not([data-boldtake-processed="true"])',
-    'article[data-testid="tweet"]:not([data-boldtake-processed="true"])',
-    '[role="article"]:not([data-boldtake-processed="true"])'
+    // Primary selector for current X.com structure
+    '[data-testid="tweet"]',
+    // Fallback selectors for different X.com layouts
+    'article[data-testid="tweet"]',
+    '[role="article"]',
+    // Additional selectors for search results
+    '[data-testid="searchResult"]',
+    '.css-175oi2r r-1loqt21'  // X.com's dynamic class
   ];
   
   // 🚀 A++ OPTIMIZATION: Use performance cache for tweet queries
@@ -1928,6 +1933,7 @@ async function findTweet() {
     }
   }
   
+  // ENHANCED: Better error handling when no tweets found
   if (tweets.length === 0) {
     debugLog('📊 No tweets found with any selector');
     
@@ -1938,10 +1944,73 @@ async function findTweet() {
       return null;
     }
     
+    // Check if we're on the correct page
+    const currentUrl = window.location.href;
+    if (!currentUrl.includes('/search') || !currentUrl.includes('min_faves:')) {
+      addDetailedActivity('🔴 Not on proper search page - redirecting', 'error');
+      sessionLog('🔴 Not on proper search page - redirecting to search with filters', 'error');
+      // Redirect to proper search page
+      const properSearchUrl = 'https://x.com/search?q=a%20min_faves%3A500%20lang%3Aen%20-filter:links%20-filter:media%20-filter:replies%20-filter:retweets&src=typed_query&f=live';
+      setTimeout(() => {
+        window.location.href = properSearchUrl;
+      }, 2000);
+      return null;
+    }
+    
+    // CRITICAL: Add detailed diagnostics for debugging
+    addDetailedActivity('🔍 No tweets found - running diagnostics...', 'warning');
+    
+    // Check if page is still loading
+    const loadingElements = document.querySelectorAll('[role="progressbar"], [aria-label*="loading"], [data-testid="loading"]');
+    if (loadingElements.length > 0) {
+      addDetailedActivity('⏳ Page still loading - waiting...', 'info');
+      await sleep(3000);
+      return null; // Try again on next iteration
+    }
+    
+    // Check if we need to scroll to load more tweets
+    const scrollHeight = document.body.scrollHeight;
+    const currentScroll = window.scrollY + window.innerHeight;
+    
+    if (currentScroll >= scrollHeight - 100) {
+      // Already at bottom, no more tweets to load
+      addDetailedActivity('📄 Reached bottom of page - no more tweets', 'warning');
+      sessionLog('📄 Reached bottom of page - no more tweets to process', 'warning');
+      
+      // Wait a bit and try scrolling again in case new tweets load
+      await sleep(5000);
+      window.scrollTo(0, document.body.scrollHeight);
+      await sleep(3000);
+      
+      // Check again after scrolling
+      const newTweets = document.querySelectorAll(selectors[0]);
+      if (newTweets.length === 0) {
+        addDetailedActivity('🔄 No new tweets after scrolling - trying different keyword', 'info');
+        // Trigger keyword rotation to get fresh content
+        await rotateKeyword();
+        return null;
+      }
+    } else {
+      // Not at bottom yet, scroll down to load more tweets
+      addDetailedActivity('📜 Scrolling down to load more tweets...', 'info');
+      window.scrollTo(0, document.body.scrollHeight);
+      await sleep(3000);
+      return null; // Try again on next iteration
+    }
+    
     return null;
   }
   
   // Filter out spam, inappropriate content, and already liked tweets
+  debugLog(`🔍 Starting tweet filtering process with ${tweets.length} tweets`);
+  addDetailedActivity(`🔍 Filtering ${tweets.length} tweets for suitable content...`, 'info');
+  
+  let skippedCount = 0;
+  let likedCount = 0;
+  let restrictedCount = 0;
+  let shortCount = 0;
+  let spamCount = 0;
+  
   for (let tweet of tweets) {
     const tweetText = (tweet.textContent || '').toLowerCase();
     
@@ -1949,6 +2018,7 @@ async function findTweet() {
     // This prevents double commenting on the same tweet
     const unlikeButton = tweet.querySelector('[data-testid="unlike"]');
     if (unlikeButton) {
+      likedCount++;
       debugLog('💚 Skipping already liked tweet (already replied) - preventing double comment');
       tweet.setAttribute('data-boldtake-processed', 'true');
       tweet.setAttribute('data-boldtake-already-liked', 'true');
@@ -1958,6 +2028,7 @@ async function findTweet() {
     
     // Also check if we failed to like it before but still replied
     if (tweet.getAttribute('data-boldtake-liked-failed') === 'true') {
+      skippedCount++;
       debugLog('⚠️ Skipping tweet we previously replied to (like failed)');
       tweet.setAttribute('data-boldtake-processed', 'true');
       continue;
@@ -1967,6 +2038,7 @@ async function findTweet() {
     const replyButton = tweet.querySelector('[data-testid="reply"]');
     if (replyButton && replyButton.getAttribute('aria-label') && 
         replyButton.getAttribute('aria-label').includes('can reply')) {
+      restrictedCount++;
       debugLog('🚫 Skipping tweet with reply restrictions (mentioned users only)');
       addDetailedActivity('🚫 Skipped tweet with reply restrictions', 'warning');
       tweet.setAttribute('data-boldtake-processed', 'true');
@@ -1978,7 +2050,8 @@ async function findTweet() {
     const words = cleanText.split(/\s+/).filter(word => word.length > 0);
     
     if (words.length <= 1 || cleanText.length < 15) {
-      debugLog('🚫 Skipping tweet - insufficient content (single word or too short)');
+      shortCount++;
+      debugLog('📏 Skipping tweet - insufficient content (single word or too short)');
       tweet.setAttribute('data-boldtake-processed', 'true');
       continue;
     }
@@ -2018,18 +2091,34 @@ async function findTweet() {
     
     const isSpam = spamPatterns.some(pattern => tweetText.includes(pattern)) || isAdvancedSpam;
     
+    if (isSpam) {
+      spamCount++;
+      debugLog('🚫 Skipping spam tweet - matched spam patterns');
+      tweet.setAttribute('data-boldtake-processed', 'true');
+      continue;
+    }
+    
     if (!isSpam) {
       // Found good tweet - minimal logging
-      return tweet;
-    } else {
-      debugLog('🚫 Skipping spam/inappropriate tweet');
-      // Mark as processed so we don't check it again
-      tweet.setAttribute('data-boldtake-processed', 'true');
+      debugLog(`✅ Found suitable tweet after filtering ${tweets.length} tweets`);
+      addDetailedActivity(`✅ Found suitable tweet (filtered: ${likedCount} liked, ${restrictedCount} restricted, ${shortCount} short, ${spamCount} spam)`, 'success');
+      STABILITY_SYSTEM.recordProgress(); // Record progress for stability monitoring
+      return tweet; // Return the first suitable tweet
     }
   }
   
-  debugLog('❌ No clean, unliked tweets found');
-  return null;
+  // If we get here, all tweets were filtered out
+  debugLog(`📊 All ${tweets.length} tweets filtered out: ${likedCount} liked, ${restrictedCount} restricted, ${shortCount} short, ${spamCount} spam, ${skippedCount} other`);
+  addDetailedActivity(`📊 All tweets filtered: ${likedCount} liked, ${restrictedCount} restricted, ${shortCount} short, ${spamCount} spam`, 'warning');
+  
+  // If we have too many liked tweets, try scrolling to get fresh content
+  if (likedCount > tweets.length * 0.8) { // 80% or more are already liked
+    addDetailedActivity('🔄 Too many liked tweets - scrolling for fresh content', 'info');
+    window.scrollTo(0, document.body.scrollHeight);
+    await sleep(3000);
+  }
+  
+  return null; // No suitable tweets found
 }
 
 async function likeTweet(tweet) {
@@ -4482,7 +4571,9 @@ async function checkKeywordRotation() {
  * Rotate to the next keyword and refresh the page
  */
 async function rotateKeyword() {
-  if (keywordRotation.keywords.length === 0) return;
+  if (keywordRotation.keywords.length === 0) {
+    return;
+  }
   
   // Move to next keyword
   keywordRotation.currentIndex = (keywordRotation.currentIndex + 1) % keywordRotation.keywords.length;
