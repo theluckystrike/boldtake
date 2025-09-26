@@ -7,7 +7,7 @@
     "lint:fix": "npm run lint -- --fix",
     "test": "echo 'Tests will be added in future versions'",
     "validate": "node validate-extension.js",
-    "build": "mkdir -p dist && cp -r *.js *.html *.json *.png *.md dist/ 2>/dev/null || true"
+    "build": "mkdir -p dist && cp manifest.json popup.html popup.js background.js contentScript.js auth.js supabase-config.js supabase.min.js config.js sidepanel.html sidepanel.js icon.png logo.png dist/ 2>/dev/null || true"
   },
   "devDependencies": {
     "eslint": "^8.50.0",
