@@ -6,7 +6,8 @@
     "lint": "eslint *.js --ignore-pattern '*.min.js' --ignore-pattern 'debug-*.js' --ignore-pattern 'extreme-*.js' --ignore-pattern 'fix-*.js' --ignore-pattern 'X.com*'",
     "lint:fix": "npm run lint -- --fix",
     "test": "echo 'Tests will be added in future versions'",
-    "validate": "node validate-extension.js"
+    "validate": "node validate-extension.js",
+    "build": "mkdir -p dist && cp -r *.js *.html *.json *.png *.md dist/ 2>/dev/null || true"
   },
   "devDependencies": {
     "eslint": "^8.50.0",
