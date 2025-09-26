@@ -220,6 +220,8 @@ jobs:
           
       - name: Tag release
         run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           VERSION=$(node -p "require('./manifest.json').version")
           git tag -a "v$VERSION" -m "Release v$VERSION"
           git push origin "v$VERSION"
