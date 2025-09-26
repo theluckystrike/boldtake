@@ -224,4 +224,4 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           VERSION=$(node -p "require('./manifest.json').version")
           git tag -a "v$VERSION" -m "Release v$VERSION"
-          git push origin "v$VERSION"
+          echo "Release tag v$VERSION created locally (push manually if needed)"
