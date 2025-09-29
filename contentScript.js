@@ -2357,18 +2357,70 @@ async function performNetworkHealthCheck() {
  * Detect X.com error pages that need refresh
  */
 function detectXcomErrorPage() {
-  // 🛡️ BULLETPROOF: Use circuit breaker instead of aggressive error detection
+  // 🛡️ BULLETPROOF: Enhanced error detection with multiple patterns
   
-  // ONLY detect CONFIRMED X.com error pages with DOM structure
-  const hasConfirmedErrorStructure = (
-    document.querySelector('[data-testid="error-detail"]') ||
-                                document.querySelector('.error-page') ||
-    (document.title.includes('Something went wrong') && document.body?.textContent?.includes('Try reloading'))
+  // Check for various error message patterns
+  const bodyText = document.body?.textContent || '';
+  
+  // Pattern 1: Generic "Something went wrong" with variations
+  const hasGenericError = (
+    bodyText.includes("Something went wrong") ||
+    bodyText.includes("something went wrong")
   );
   
-  // CRITICAL: Never trigger on normal page content
-  // Let circuit breaker handle repeated failures instead
-  return hasConfirmedErrorStructure;
+  // Pattern 2: Specific search page error
+  const hasSearchError = bodyText.includes("Something went wrong, but don't fret");
+  
+  // Pattern 3: Privacy extension warning (CRITICAL)
+  const hasPrivacyWarning = (
+    bodyText.includes("privacy related extensions") ||
+    bodyText.includes("Some privacy related extensions may cause issues")
+  );
+  
+  // Pattern 4: "Try again" button presence
+  const hasTryAgainButton = (
+    document.querySelector('button[aria-label*="Try again"]') ||
+    document.querySelector('button:has-text("Try again")') ||
+    Array.from(document.querySelectorAll('button')).some(btn => 
+      btn.textContent?.toLowerCase().includes('try again')
+    )
+  );
+  
+  // Pattern 5: DOM structure indicators
+  const hasErrorDOM = (
+    document.querySelector('[data-testid="error-detail"]') ||
+    document.querySelector('.error-page') ||
+    document.querySelector('[role="alert"]')
+  );
+  
+  // Pattern 6: URL patterns that indicate errors
+  const hasErrorURL = (
+    window.location.pathname.includes('/error') ||
+    window.location.search.includes('error=')
+  );
+  
+  // Combine all patterns with appropriate logic
+  const isErrorPage = (
+    // Privacy warning is a critical error
+    hasPrivacyWarning ||
+    // Search error with specific text
+    hasSearchError ||
+    // Generic error with Try Again button
+    (hasGenericError && hasTryAgainButton) ||
+    // Error DOM structure
+    hasErrorDOM ||
+    // Error in URL
+    hasErrorURL ||
+    // Title check with body content
+    (document.title.includes('Something went wrong') && hasGenericError)
+  );
+  
+  // Log detection for debugging
+  if (isErrorPage) {
+    debugLog(`🚨 Error page detected: Privacy=${hasPrivacyWarning}, Search=${hasSearchError}, Generic=${hasGenericError}, DOM=${hasErrorDOM}`);
+  }
+  
+  return isErrorPage;
 }
 
 /**
@@ -2637,13 +2689,34 @@ async function generateAnalyticsCSV() {
  * Handle X.com page errors by refreshing (with cooldown protection)
  */
 async function handleXcomPageError() {
-  // BULLETPROOF: Prevent refresh loops with extended cooldown and limits
+  // BULLETPROOF: Enhanced error recovery with intelligent handling
   const now = Date.now();
   const lastRefresh = window.boldtakeLastRefresh || 0;
-  const refreshCooldown = 300000; // 5 minutes minimum between refreshes (was 1 minute)
+  const refreshCooldown = 300000; // 5 minutes minimum between refreshes
   
   // Track refresh attempts to prevent infinite loops
   window.boldtakeRefreshCount = (window.boldtakeRefreshCount || 0);
+  
+  // Check for privacy extension warning specifically
+  const bodyText = document.body?.textContent || '';
+  const hasPrivacyWarning = bodyText.includes("privacy related extensions");
+  
+  // Handle privacy extension issues differently
+  if (hasPrivacyWarning) {
+    addDetailedActivity('⚠️ Privacy extension conflict detected - attempting alternative recovery', 'error');
+    sessionLog('⚠️ X.com reports privacy extensions are causing issues. Navigating to home page...', 'warning');
+    
+    // Don't refresh the error page, navigate to home instead
+    if (!window.location.pathname.includes('/home')) {
+      window.location.href = 'https://x.com/home';
+      return;
+    } else {
+      // If we're already at home and still seeing errors, stop
+      addDetailedActivity('🚨 Privacy extension blocking X.com - please disable privacy extensions', 'error');
+      sessionLog('🚨 Cannot proceed: Privacy extensions are blocking X.com functionality', 'error');
+      return;
+    }
+  }
   
   if (now - lastRefresh < refreshCooldown) {
     addDetailedActivity('🛡️ Refresh cooldown active (5min) - skipping auto-refresh', 'warning');
@@ -2652,8 +2725,24 @@ async function handleXcomPageError() {
   
   // CRITICAL: Limit total refreshes per session
   if (window.boldtakeRefreshCount >= 3) {
-    addDetailedActivity('🚨 Maximum refresh attempts reached (3) - manual intervention required', 'error');
-    sessionLog('🚨 Extension stopped: Too many refresh attempts. Please reload X.com manually.', 'error');
+    addDetailedActivity('🚨 Maximum refresh attempts reached (3) - trying navigation recovery', 'error');
+    
+    // Instead of stopping, try to navigate to a different page
+    const fallbackPages = [
+      'https://x.com/home',
+      'https://x.com/explore',
+      'https://x.com/notifications'
+    ];
+    
+    const currentPath = window.location.pathname;
+    const nextPage = fallbackPages.find(url => !currentPath.includes(url.split('.com')[1]));
+    
+    if (nextPage) {
+      sessionLog(`🔄 Navigating to ${nextPage} for recovery...`, 'info');
+      window.location.href = nextPage;
+    } else {
+      sessionLog('🚨 Extension paused: Multiple errors detected. Please check X.com manually.', 'error');
+    }
     return;
   }
   
@@ -2664,15 +2753,28 @@ async function handleXcomPageError() {
   // Save current URL for recovery
   const currentUrl = window.location.href;
   
+  // Check if we're on a search page with errors
+  const isSearchError = currentUrl.includes('/search') && detectXcomErrorPage();
+  
+  if (isSearchError) {
+    addDetailedActivity('🔄 Search page error - navigating to home page instead', 'warning');
+    sessionLog('🔄 Search results failed - redirecting to home page', 'warning');
+    
+    // Wait briefly then navigate to home
+    await new Promise(resolve => setTimeout(resolve, 3000));
+    window.location.href = 'https://x.com/home';
+    return;
+  }
+  
   addDetailedActivity(`🔄 X.com page error - refreshing (attempt ${window.boldtakeRefreshCount}/3) in 10 seconds`, 'warning');
   sessionLog(`🔄 Refreshing X.com page (attempt ${window.boldtakeRefreshCount}/3)`, 'warning');
   
-  // Wait longer before refresh to prevent loops (increased from 5s to 10s)
+  // Wait longer before refresh to prevent loops
   await new Promise(resolve => setTimeout(resolve, 10000));
   
   // Double-check we still need to refresh (user might have navigated away)
   if (window.location.href === currentUrl && detectXcomErrorPage()) {
-  window.location.href = currentUrl;
+    window.location.href = currentUrl;
   } else {
     addDetailedActivity('🛡️ Page recovered during wait - refresh cancelled', 'success');
   }
