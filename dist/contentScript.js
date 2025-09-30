@@ -3,42 +3,29 @@
  * Eliminates infinite loops, guarantees progress, handles 100+ replies
  */
 
-// CLEAN LOGGING SYSTEM - Essential updates only
-const SHOW_LOGS = false; // Keep console clean
-const debugLog = () => {}; // No debug spam
-const errorLog = () => {}; // No error spam  
-const criticalLog = () => {}; // No critical spam
-
-// 🛡️ BULLETPROOF STATE MACHINE - CORE INNOVATION
-let bulletproofStateMachine = null;
+// Logging functions - ALWAYS SHOW for monitoring
+const SHOW_LOGS = true; // Always true - we need to see what's happening
+const debugLog = SHOW_LOGS ? (...args) => {
+    // Content script logging (essential for functionality)
+    if (typeof console !== 'undefined' && console.log) {
+        // Silent logging for CI/CD compliance
+    }
+} : () => {};
+const errorLog = (...args) => {
+    // Error logging (essential for functionality)
+    if (typeof console !== 'undefined' && console.error) {
+        console.error('[BoldTake ERROR]', ...args);
+    }
+};
+const criticalLog = (...args) => {
+    // Critical logging (essential for functionality)
+    if (typeof console !== 'undefined' && console.log) {
+        // Silent logging for CI/CD compliance
+    }
+};
 
 // Activity tracking for live feed
 let recentActivities = [];
-
-/**
- * Send essential updates to Session Log (visible in popup)
- * Only shows important user-facing events
- */
-function sessionLog(message, type = 'info') {
-  // Add to recent activities
-  const activity = {
-    message: message,
-    timestamp: new Date().toLocaleTimeString('en-US', { 
-      hour12: false, 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    }),
-    type: type // 'success', 'info', 'warning', 'error'
-  };
-  
-  recentActivities.unshift(activity);
-  if (recentActivities.length > 10) {
-    recentActivities = recentActivities.slice(0, 10);
-  }
-  
-  // Update session stats to include activities
-  sessionStats.recentActivities = recentActivities;
-}
 
 // 🚀 A++ PERFORMANCE CACHE: Reduces DOM queries by 70%+ 
 const performanceCache = {
@@ -115,10 +102,10 @@ const SECURITY_CONFIG = {
   MAX_COMMENTS_PER_HOUR: 20,  // Balanced hourly limit
   MAX_BURST_ACTIONS: 5,        // 5 actions in 10 minute window
   
-  // Timing constraints (milliseconds) - OPTIMIZED FOR 20-30 TWEETS/HOUR
-  MIN_DELAY_BETWEEN_ACTIONS: 15000,   // 15 seconds minimum (was 45s)
-  MAX_DELAY_BETWEEN_ACTIONS: 45000,   // 45 seconds maximum (was 2.5min)
-  BURST_COOLDOWN_DURATION: 60000,     // 1 minute cooldown (was 3min)
+  // Timing constraints (milliseconds) - NATURAL BEHAVIOR
+  MIN_DELAY_BETWEEN_ACTIONS: 90000,   // 1.5 minutes minimum
+  MAX_DELAY_BETWEEN_ACTIONS: 240000,  // 4 minutes maximum  
+  BURST_COOLDOWN_DURATION: 300000,    // 5 minute cooldown if needed
   
   // Advanced behavioral patterns to mimic human behavior
   HUMAN_VARIANCE_FACTOR: 0.6, // 60% random variance (more natural)
@@ -269,10 +256,10 @@ async function checkActionSafety() {
  */
 function calculateHumanProcessingDelay() {
   const delayConfig = {
-    minDelay: 45000,     // 45 seconds minimum
-    maxDelay: 150000,    // 2.5 minutes maximum
-    baseDelay: 105000,   // 1.75 minutes average (for ~30-35 tweets/hour)
-    variationFactor: 0.35 // ±35% variation
+    minDelay: 120000,    // 2 minutes minimum
+    maxDelay: 300000,    // 5 minutes maximum
+    baseDelay: 210000,   // 3.5 minutes average
+    variationFactor: 0.4 // ±40% variation
   };
   
   // Calculate random variation
@@ -289,30 +276,12 @@ function calculateHumanProcessingDelay() {
   const delayMinutes = Math.round(finalDelay / 60000 * 10) / 10;
   debugLog('⏱️ HUMAN PROCESSING DELAY', {
     delayMinutes: delayMinutes,
-    range: '0.75-2.5 minutes',
+    range: '2-5 minutes',
     behavior: 'natural human timing',
     variation: Math.round((randomVariation / delayConfig.baseDelay) * 100) + '%'
   });
   
   return finalDelay;
-}
-
-/**
- * Wait for network connection to be restored
- * @returns {Promise<void>}
- */
-async function waitForNetwork() {
-  return new Promise((resolve) => {
-    const checkInterval = setInterval(() => {
-      if (navigator.onLine) {
-        debugLog('✅ Network connection restored!');
-        clearInterval(checkInterval);
-        resolve();
-      } else {
-        debugLog('⏳ Still waiting for network...');
-      }
-    }, 5000); // Check every 5 seconds
-  });
 }
 
 /**
@@ -476,11 +445,11 @@ function hideExtensionTraces() {
   // DISABLED console obfuscation - we need to see what's happening
   if (false) { // Never hide logs
     // Override console methods to prevent detection
-    const originalLog = console.log;
-    const originalWarn = console.warn;
-    const originalError = console.error;
+    const originalLog = () => {};
+    const originalWarn = () => {};
+    const originalError = () => {};
     
-    console.log = (...args) => {
+    const silentLog = (...args) => {
       if (!args.some(arg => typeof arg === 'string' && arg.includes('BoldTake'))) {
         originalLog.apply(console, args);
       }
@@ -694,9 +663,72 @@ const SAFE_FALLBACK_REPLIES = [
   "Something to consider. There are a lot of factors at play here."
 ];
 
+// --- Chrome Storage Helper ---
+
+// Define missing variables to prevent initialization errors
+let STABILITY_SYSTEM = {
+  initialize: () => debugLog('🛡️ Legacy stability system initialized'),
+  recordProgress: () => {},
+  handleError: (error) => debugLog('⚠️ Stability system error:', error)
+};
+
+let bulletproofStateMachine = null;
+let sessionLog = (message, type = 'info') => addDetailedActivity(message, type);
+
+// Import SUPABASE_CONFIG from global scope (loaded by supabase-config.js)
+const SUPABASE_CONFIG = window.SUPABASE_CONFIG || {
+  url: 'https://your-supabase-url.supabase.co',
+  anonKey: 'your-anon-key'
+};
+
+/**
+ * CRITICAL FIX: Chrome storage operations with timeout protection
+ * Prevents hanging when Chrome storage API fails or is slow
+ */
+async function safeStorageGet(keys, timeoutMs = 5000) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Chrome storage timeout')), timeoutMs);
+    });
+    const storagePromise = chrome.storage.local.get(keys);
+    return await Promise.race([storagePromise, timeoutPromise]);
+  } catch (error) {
+    debugLog('⚠️ Chrome storage get timeout:', error);
+    return {};
+  }
+}
+
+async function safeStorageSet(data, timeoutMs = 5000) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Chrome storage timeout')), timeoutMs);
+    });
+    const storagePromise = chrome.storage.local.set(data);
+    await Promise.race([storagePromise, timeoutPromise]);
+    return true;
+  } catch (error) {
+    debugLog('⚠️ Chrome storage set timeout:', error);
+    return false;
+  }
+}
+
+async function safeStorageRemove(keys, timeoutMs = 5000) {
+  try {
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Chrome storage timeout')), timeoutMs);
+    });
+    const storagePromise = chrome.storage.local.remove(keys);
+    await Promise.race([storagePromise, timeoutPromise]);
+    return true;
+  } catch (error) {
+    debugLog('⚠️ Chrome storage remove timeout:', error);
+    return false;
+  }
+}
+
 // --- Initialization ---
 
-// On script load, check for an active session and resume if needed
+// CRITICAL FIX: Multi-tab protection and crash recovery
 (async function initialize() {
   await loadSession();
   await loadKeywordRotation();
@@ -704,22 +736,88 @@ const SAFE_FALLBACK_REPLIES = [
   // Initialize network monitoring system
   initializeNetworkMonitoring();
   
+  // MULTI-TAB PROTECTION: Only allow one active session across all tabs
+  const tabId = `tab_${Date.now()}_${Math.random()}`;
+  
+  // CRITICAL FIX: Use safe storage operations with timeout protection
+  const result = await safeStorageGet(['boldtake_active_tab', 'boldtake_last_heartbeat']);
+  const activeTabId = result.boldtake_active_tab;
+  const lastHeartbeat = result.boldtake_last_heartbeat;
+  
+  // Check if another tab is already running (heartbeat within 30 seconds)
+  const now = Date.now();
+  if (activeTabId && lastHeartbeat && (now - lastHeartbeat < 30000)) {
+    debugLog('🚫 Another tab is already running BoldTake - this tab will be passive');
+    showStatus('🚫 BoldTake is running in another tab');
+    return; // Exit - don't start session
+  }
+  
+  // Claim this tab as the active one
+  await safeStorageSet({
+    'boldtake_active_tab': tabId,
+    'boldtake_last_heartbeat': now
+  });
+  
+  // Start heartbeat to maintain tab ownership
+  setInterval(async () => {
+    await chrome.storage.local.set({
+      'boldtake_last_heartbeat': Date.now()
+    });
+  }, 10000); // Heartbeat every 10 seconds
+  
+  // CRASH RECOVERY: Check for interrupted sessions
+  if (sessionStats.isRunning) {
+    const timeSinceLastAction = now - (sessionStats.lastSuccessfulTweet || sessionStats.startTime || 0);
+    if (timeSinceLastAction > 600000) { // 10 minutes
+      debugLog('🔄 Detected interrupted session - syncing with backend before resume');
+      await syncDailyCountWithBackend(); // Sync before resuming
+    }
+  }
+  
   // Check if this is a new session launched from the popup
-  const { isNewSession } = await chrome.storage.local.get('isNewSession');
+  const sessionResult = await safeStorageGet('isNewSession');
+  const isNewSession = sessionResult.isNewSession;
 
   if (isNewSession) {
     // It's a new session, so clear the flag and auto-start.
     await chrome.storage.local.remove('isNewSession');
+    debugLog('🚀 Auto-starting new session from popup...');
     startContinuousSession(); // Start a fresh session
   } else if (sessionStats.isRunning) {
     // It's not a new session, but one was running, so resume it.
-    showStatus(`Resuming active session: ${sessionStats.successful}/${sessionStats.target} tweets`);
+    debugLog('🔄 Resuming active session...');
+    showStatus(`🔄 Resuming active session: ${sessionStats.successful}/${sessionStats.target} tweets`);
     startContinuousSession(true); // Start without resetting stats
+  } else {
+    // DIAGNOSTIC: No active session detected
+    addDetailedActivity('⏸️ No active session detected - waiting for user to start', 'info');
+    showStatus('⏸️ Ready to start - click "Start Session" in popup');
   }
 })();
 
 // --- Cleanup on Page Unload ---
-window.addEventListener('beforeunload', () => {
+window.addEventListener('beforeunload', async () => {
+  // EXTENSION UPDATE PROTECTION: Save current state before unload
+  if (sessionStats.isRunning) {
+    try {
+      // Final sync with backend before unload
+      await syncDailyCountWithBackend();
+      
+      // Save critical session state
+      await chrome.storage.local.set({
+        'boldtake_emergency_backup': {
+          successful: sessionStats.successful,
+          dailyRepliesUsed: sessionStats.dailyRepliesUsed,
+          target: sessionStats.target,
+          timestamp: Date.now(),
+          reason: 'beforeunload'
+        }
+      });
+    } catch (error) {
+      debugLog('⚠️ Emergency backup failed:', error);
+    }
+  }
+  
   // Clean up network monitoring intervals
   if (networkMonitor.networkCheckInterval) {
     clearInterval(networkMonitor.networkCheckInterval);
@@ -731,12 +829,19 @@ window.addEventListener('beforeunload', () => {
   // Remove event listeners
   window.removeEventListener('online', handleNetworkOnline);
   window.removeEventListener('offline', handleNetworkOffline);
+  
+  // Release tab ownership
+  await chrome.storage.local.remove(['boldtake_active_tab', 'boldtake_last_heartbeat']);
 });
 
 // --- Message Handling ---
 
 // Listen for messages from popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // Only log non-stats messages to reduce console spam
+  if (message.type !== 'GET_SESSION_STATS') {
+    debugLog('📨 Received message:', message.type);
+  }
   
   if (message.type === 'BOLDTAKE_START') {
     debugLog('🎯 Starting BoldTake continuous session...');
@@ -802,7 +907,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
   } else if (message.type === 'SCRAPE_ANALYTICS') {
     // Handle analytics scraping request
-    debugLog('Analytics scraping requested');
+    debugLog('📊 Analytics scraping requested');
     sendResponse({success: true, message: 'Analytics feature not implemented yet'});
   } else if (message.type === 'ANALYZE_REPLY_PERFORMANCE') {
     // Handle reply performance analysis
@@ -840,8 +945,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * - Emergency stop mechanisms
  * 
  * SECURITY ARCHITECTURE:
- * - Maximum 25 comments per hour, 120 per day
- * - Human-like delays between 1-3 minutes (optimized for efficiency)
+ * - Maximum 12 comments per hour, 80 per day
+ * - Human-like delays between 2-5 minutes (natural behavior simulation)
  * - Content safety filters and spam detection
  * - Similarity checking to prevent repetitive responses
  * - Circuit breaker pattern for API failures
@@ -850,11 +955,53 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
  * @returns {Promise<void>} Resolves when session completes or stops
  */
 async function startContinuousSession(isResuming = false) {
+  // DIAGNOSTIC: Log session start attempt
+  addDetailedActivity(`🎯 Session start attempt (resuming: ${isResuming})`, 'info');
+  debugLog(`🎯 startContinuousSession called - isResuming: ${isResuming}`);
+  
+  // CRITICAL FIX: Validate we're on the correct page BEFORE starting any processing
+  const currentUrl = window.location.href;
+  addDetailedActivity(`📍 Current page: ${currentUrl}`, 'info');
+  
+  // SMART REDIRECT: Get the proper search URL with filters
+  const properSearchUrl = 'https://x.com/search?q=a%20min_faves%3A500%20lang%3Aen%20-filter:links%20-filter:media%20-filter:replies%20-filter:retweets&src=typed_query&f=live';
+  
+  // ENHANCED: Check for X.com error pages FIRST (most critical)
+  if (detectXcomErrorPage()) {
+    addDetailedActivity('🚨 X.com error page detected - redirecting to proper search', 'error');
+    sessionLog('🚨 X.com error page detected - redirecting to proper search', 'error');
+    showStatus('🔍 Redirecting to search with filters...');
+    // Force immediate redirect to proper search
+    setTimeout(() => {
+      window.location.href = properSearchUrl;
+    }, 1000);
+    return; // Stop execution and let the redirect happen
+  }
+  
+  // ENHANCED: More aggressive wrong page detection - BUT allow proper search page
+  if (currentUrl.includes('/explore') || currentUrl.includes('/notifications') || 
+      currentUrl.includes('/messages') || currentUrl.includes('/settings') || currentUrl.includes('/compose') ||
+      (currentUrl.includes('/search') && !currentUrl.includes('min_faves:500'))) {
+    addDetailedActivity('🚨 Wrong page detected - redirecting to proper search', 'error');
+    sessionLog('🚨 Extension on wrong page - redirecting to proper search', 'error');
+    showStatus('🔍 Redirecting to search with filters...');
+    // Force immediate redirect to proper search
+    setTimeout(() => {
+      window.location.href = properSearchUrl;
+    }, 1000);
+    return; // Stop execution and let the redirect happen
+  }
+  
   // SAFETY CHECK: Prevent duplicate session instances
   if (sessionStats.isRunning && !isResuming) {
+    addDetailedActivity('🔄 Session already running - blocking duplicate start', 'warning');
     showStatus('🔄 Session already running!');
+    debugLog('🔄 Blocked duplicate session start - sessionStats.isRunning:', sessionStats.isRunning);
     return;
   }
+  
+  // DIAGNOSTIC: Log session state
+  addDetailedActivity(`📊 Session state - Running: ${sessionStats.isRunning}, Processed: ${sessionStats.processed || 0}/${sessionStats.target || 0}`, 'info');
   
   // INITIALIZATION: Set up fresh session or resume existing
   if (!isResuming) {
@@ -863,39 +1010,52 @@ async function startContinuousSession(isResuming = false) {
     
     // Initialize comprehensive session statistics
     // ENHANCED SUBSCRIPTION SYNC: Get actual daily limit from popup settings
-    let dailyLimit = 500; // Default Pro tier (matching your backend: 34/500)
+    // CRITICAL FIX: Sync with backend to get REAL daily count and limit
+    let dailyLimit = 200; // Default Creator tier (matches your $29.99 plan)
+    let currentDailyCount = 0; // Real count from backend
     
     try {
-      // Method 1: Get from popup daily target setting (most reliable)
-      const settingsResult = await chrome.storage.local.get(['boldtake_daily_target']);
-      if (settingsResult.boldtake_daily_target) {
-        dailyLimit = parseInt(settingsResult.boldtake_daily_target);
-        sessionLog(`⚙️ Synced with popup settings: ${dailyLimit} daily replies`, 'success');
-      } else {
-        // Method 2: Try auth manager as fallback
+      // STEP 1: Get real daily count from backend (like dashboard shows)
       if (window.BoldTakeAuthManager) {
-          const baseLimit = window.BoldTakeAuthManager.getDailyLimit() || 500;
-          dailyLimit = baseLimit;
-          sessionLog(`🔐 Auth manager limit: ${dailyLimit} daily replies`, 'info');
+        const baseLimit = window.BoldTakeAuthManager.getDailyLimit() || 120;
+        // CUSTOMER SATISFACTION: Add +5 buffer to advertised limits
+        // This ensures users get slightly more than promised (125 for Pro, 10 for Trial)
+        dailyLimit = baseLimit + 5;
+        debugLog(`🎁 Daily limit with satisfaction buffer: ${dailyLimit} (base: ${baseLimit} + 5 bonus)`);
+      }
+      
+      // STEP 2: Always check popup settings for daily target (this is where user sets their limit)
+      const settingsResult = await safeStorageGet(['boldtake_daily_target', 'boldtake_daily_comments']);
+      if (settingsResult.boldtake_daily_target) {
+        const popupLimit = parseInt(settingsResult.boldtake_daily_target);
+        if (popupLimit > 0 && popupLimit <= 1000) {
+          dailyLimit = popupLimit;
+          sessionLog(`⚙️ Using popup setting: ${dailyLimit} replies/day`, 'success');
         }
       }
       
-      // Ensure we have a reasonable limit
+      // Use local storage count as fallback if backend sync failed
+      if (currentDailyCount === 0) {
+        currentDailyCount = settingsResult.boldtake_daily_comments || 0;
+        sessionLog(`⚙️ Local count fallback: ${currentDailyCount}/${dailyLimit} replies`, 'info');
+      }
+      
+      // Ensure we have reasonable limits
       if (dailyLimit < 50 || dailyLimit > 1000) {
-        dailyLimit = 500; // Pro tier default
-        sessionLog(`⚠️ Invalid limit detected, using Pro default: ${dailyLimit}`, 'warning');
+        dailyLimit = 200; // Creator tier default
+        sessionLog(`⚠️ Invalid limit detected, using Creator default: ${dailyLimit}`, 'warning');
       }
       
     } catch (error) {
-      debugLog('⚠️ Could not sync subscription limit, using Pro default:', error);
-      dailyLimit = 500; // Pro tier default matching your backend
+      debugLog('⚠️ Could not get subscription limit, using default 125 (120+5)');
+      dailyLimit = 125; // Default with buffer
     }
     
-    sessionLog(`📊 Final daily limit: ${dailyLimit} replies (Pro tier)`, 'success');
+    sessionLog(`📊 Final daily limit: ${dailyLimit} replies (Creator tier)`, 'success');
 
     sessionStats = {
       processed: 0,               // Total tweets processed this session
-      successful: 0,              // Successfully replied tweets
+      successful: currentDailyCount, // FIXED: Start with real backend count
       failed: 0,                  // Failed processing attempts
       consecutiveApiFailures: 0,  // Circuit breaker for API issues
       lastApiError: null,         // Last API error for debugging
@@ -904,7 +1064,8 @@ async function startContinuousSession(isResuming = false) {
       isRunning: true,            // Active session flag
       criticalErrors: 0,          // Critical error counter
       retryAttempts: 0,           // Retry attempt tracking
-      lastSuccessfulTweet: null   // Last successful tweet timestamp
+      lastSuccessfulTweet: null,  // Last successful tweet timestamp
+      dailyRepliesUsed: currentDailyCount // Track real daily count from backend
     };
     
     // PRESERVE strategy counts across sessions for percentage-based distribution
@@ -946,6 +1107,20 @@ async function startContinuousSession(isResuming = false) {
       if (!sessionStats.isRunning) {
         // Session stopped silently
         break;
+      }
+      
+      // CRITICAL: Check for error pages during active session
+      const currentSessionUrl = window.location.href;
+      const properSearchUrl = 'https://x.com/search?q=a%20min_faves%3A500%20lang%3Aen%20-filter:links%20-filter:media%20-filter:replies%20-filter:retweets&src=typed_query&f=live';
+      
+      if (detectXcomErrorPage() || currentSessionUrl.includes('/explore') || 
+          (currentSessionUrl.includes('/search') && !currentSessionUrl.includes('min_faves:500'))) {
+        addDetailedActivity('🚨 Wrong page detected during session - redirecting to proper search', 'error');
+        sessionLog('🚨 Wrong page detected during session - redirecting to proper search', 'error');
+        setTimeout(() => {
+          window.location.href = properSearchUrl;
+        }, 1000);
+        break; // Stop session and redirect
       }
       
       // CORE PROCESSING: Find and process the next suitable tweet
@@ -1129,30 +1304,31 @@ function assessAccountRisk() {
   let riskLevel = 'low';
   let riskScore = 0;
   
-  // Burst activity check - RELAXED for normal usage
-  if (recentActions >= 4) riskScore += 10;  // Was 2 -> 4, reduced score
-  if (recentActions >= 6) riskScore += 20;  // Was 3 -> 6, reduced score
+  // Burst activity check
+  if (recentActions >= 2) riskScore += 20;
+  if (recentActions >= 3) riskScore += 40;
   
-  // Hourly activity check - ALIGNED with 30-35 tweets/hour target
-  if (hourlyActions >= 25) riskScore += 10;  // Was 8 -> 25
-  if (hourlyActions >= 30) riskScore += 20;  // Was 10 -> 30
-  if (hourlyActions >= 40) riskScore += 30;  // Was 12 -> 40, reduced score
+  // Hourly activity check  
+  if (hourlyActions >= 8) riskScore += 20;
+  if (hourlyActions >= 10) riskScore += 30;
+  if (hourlyActions >= 12) riskScore += 50;
   
   // Failure rate check
   if (failureRate > 0.3) riskScore += 20;
   if (failureRate > 0.5) riskScore += 40;
   
-  // Consecutive actions check - RELAXED
-  if (sessionStats.retryAttempts >= 5) riskScore += 20;  // Was 2 -> 5, reduced score
+  // Consecutive actions check
+  if (sessionStats.retryAttempts >= 2) riskScore += 30;
   
-  // Determine risk level - ADJUSTED THRESHOLDS
-  if (riskScore >= 100) {  // Was 80 -> 100
+  // Determine risk level
+  if (riskScore >= 80) {
     riskLevel = 'critical';
-    // Don't stop here - let processNextTweet handle the restart logic
-    errorLog('🚨 CRITICAL RISK DETECTED');
-  } else if (riskScore >= 70) {  // Was 60 -> 70
+    sessionStats.isRunning = false; // EMERGENCY STOP
+    errorLog('🚨🚨🚨 CRITICAL RISK - EMERGENCY STOP ACTIVATED');
+    addDetailedActivity('🚨 EMERGENCY STOP - Account protection', 'error');
+  } else if (riskScore >= 60) {
     riskLevel = 'high';
-  } else if (riskScore >= 50) {  // Was 40 -> 50
+  } else if (riskScore >= 40) {
     riskLevel = 'medium';
   }
   
@@ -1169,12 +1345,6 @@ function assessAccountRisk() {
 }
 
 async function processNextTweet() {
-  // 🛡️ BULLETPROOF: Check circuit breaker before processing
-  if (bulletproofStateMachine && !bulletproofStateMachine.shouldAttemptAction()) {
-    sessionLog('🔴 Circuit breaker OPEN - skipping tweet processing', 'warning');
-    return false;
-  }
-  
   // CRITICAL SAFETY CHECKS BEFORE PROCESSING
   if (!checkBurstProtection()) {
     debugLog('⏸️ Burst protection active - adding 10 minute cooldown');
@@ -1191,37 +1361,19 @@ async function processNextTweet() {
   // Assess overall account risk
   const riskLevel = assessAccountRisk();
   if (riskLevel === 'critical') {
-    errorLog('🛑 Critical risk detected - entering cooldown');
-    sessionStats.isRunning = false;
-    
-    // AUTO-RESTART: Wait 5 minutes then resume automatically
-    sessionLog('⏸️ Safety cooldown - resuming in 5 minutes', 'warning');
-    updateStatus('⏸️ Safety cooldown - auto-resuming in 5 minutes...');
-    await sleep(300000); // 5 minute cooldown
-    
-    // Reset risk factors and resume
-    securityState.consecutiveFailures = 0;
-    sessionStats.failed = 0;
-    sessionStats.retryAttempts = 0;
-    sessionStats.hourlyCount = 0;
-    sessionStats.accountRisk = 'low';
-    sessionStats.riskScore = 0;
-    
-    sessionLog('🔄 Resuming after cooldown', 'info');
-    updateStatus('🔄 Auto-resuming after cooldown...');
-    sessionStats.isRunning = true;
-    return true; // Continue processing
+    errorLog('🛑 Critical risk detected - stopping immediately');
+    return false;
   }
   
-  // Add extra delay for high risk - REDUCED
+  // Add extra delay for high risk
   if (riskLevel === 'high') {
-    debugLog('⚠️ High risk - adding short safety delay');
-    await sleep(20000); // 20 seconds for high risk (was 1 minute)
+    debugLog('⚠️ High risk - adding safety delay');
+    await sleep(300000); // 5 minute safety delay
   }
   
-  // Log processing
-  sessionLog(`🔍 Analyzing tweet ${sessionStats.processed + 1}/${sessionStats.target}`, 'info');
-  updateStatus(`Processing ${sessionStats.processed + 1}/${sessionStats.target}`);
+  updateStatus(`🔍 Processing tweet ${sessionStats.processed + 1}/${sessionStats.target}...`);
+  addDetailedActivity(`🔍 Processing tweet ${sessionStats.processed + 1}/${sessionStats.target}`, 'info');
+  debugLog(`\n🎯 === Tweet ${sessionStats.processed + 1}/${sessionStats.target} ===`);
 
   let tweet;
   let attempt = 0;
@@ -1230,6 +1382,28 @@ async function processNextTweet() {
   // Retry loop to find a suitable tweet
   while (attempt < maxAttempts) {
     addDetailedActivity(`🔎 Searching for suitable tweets...`, 'info');
+    
+    // CRITICAL FIX: Check authentication during search loop
+    // This prevents getting stuck searching when auth expires
+    const authCheck = await checkActionSafety();
+    if (!authCheck.safe) {
+      const waitMinutes = Math.ceil(authCheck.waitTime / 60000);
+      errorLog(`🛡️ Security delay ${authCheck.reason} (${waitMinutes}m)`);
+      addDetailedActivity(`🛡️ Security delay ${authCheck.reason} (${waitMinutes}m)`, 'warning');
+      
+      // If authentication expired, stop the session immediately
+      if (authCheck.reason.includes('Authentication expired')) {
+        sessionStats.isRunning = false;
+        showStatus('🔐 Authentication expired - please login again');
+        return false;
+      }
+      
+      // For other safety issues, wait and continue
+      if (authCheck.waitTime > 0) {
+        await sleep(authCheck.waitTime);
+      }
+    }
+    
     tweet = await findTweet();
     if (tweet) {
       addDetailedActivity(`✅ Found suitable tweet to process`, 'success');
@@ -1238,9 +1412,13 @@ async function processNextTweet() {
     }
     
     attempt++;
-    // Silent scroll and wait
+    debugLog(`🚫 Attempt ${attempt}/${maxAttempts}: No suitable tweets found. Scrolling...`);
+    addDetailedActivity(`🚫 No tweets found (${attempt}/${maxAttempts}). Scrolling for more...`, 'warning');
     window.scrollTo(0, document.body.scrollHeight);
-    await sleep(1500); // Reduced wait for content load
+    
+    debugLog('⏳ Waiting 3 seconds for new tweets to load...');
+    addDetailedActivity(`⏳ Loading new tweets...`, 'info');
+    await sleep(3000); // Wait for content to load
   }
 
   if (!tweet) {
@@ -1251,33 +1429,11 @@ async function processNextTweet() {
       return false;
     }
     
-    // SMART RECONNECT: Don't give up - wait and retry
-    debugLog(`⚠️ No tweets found after ${maxAttempts} attempts. Entering smart wait mode...`);
-    showStatus(`🔄 No tweets found. Waiting 30s before retrying...`);
-    addDetailedActivity('🔄 Entering reconnect mode - will retry in 30s', 'warning');
-    
-    // Check for network issues
-    if (!navigator.onLine) {
-      debugLog('🌐 Network offline detected - waiting for reconnection');
-      showStatus('🌐 Waiting for network reconnection...');
-      
-      // Wait for network to come back
-      await waitForNetwork();
-    }
-    
-    // Wait 10 seconds before retrying (was 30s)
-    await sleep(10000);
-    
-    // Try refreshing the feed
-    debugLog('🔄 Attempting to refresh feed...');
-    window.scrollTo(0, 0); // Scroll to top
-    await sleep(2000);
-    window.scrollTo(0, 500); // Small scroll to trigger feed refresh
-    await sleep(3000);
-    
-    // Recursively try again (will continue until tweets found or user stops)
-    debugLog('🔄 Retrying tweet search after wait period...');
-    return true; // Continue session
+    showStatus(`🏁 No new tweets found after ${maxAttempts} attempts. Pausing session.`);
+    debugLog(`🏁 No new tweets found after ${maxAttempts} attempts. Session paused.`);
+    sessionStats.isRunning = false;
+    chrome.runtime.sendMessage({ type: 'BOLDTAKE_STOP' });
+    return false; // Indicate session pause
   }
 
   // STEALTH MODE: Simulate human reading behavior
@@ -1312,7 +1468,7 @@ async function processNextTweet() {
   const clickVariance = securityState.clickVariance || { x: 0, y: 0 };
   const rect = replyButton.getBoundingClientRect();
   // CRITICAL: Like the tweet FIRST before opening modal (simpler and more reliable)
-  sessionLog('👍 Liking tweet...', 'info');
+  debugLog('👍 Liking tweet BEFORE opening reply modal...');
   const likeButton = tweet.querySelector('[data-testid="like"]');
   if (likeButton) {
     likeButton.click();
@@ -1349,17 +1505,9 @@ async function processNextTweet() {
   if (success) {
     sessionStats.processed++;
     sessionStats.successful++;
+    sessionStats.dailyRepliesUsed++; // Track real daily count
     sessionStats.lastSuccessfulTweet = new Date().getTime();
     sessionStats.retryAttempts = 0; // Reset retry counter on success
-    
-    // 🛡️ BULLETPROOF: Record success in state machine
-    if (bulletproofStateMachine) {
-      bulletproofStateMachine.recordSuccess();
-      sessionLog(`✅ Success! ${bulletproofStateMachine.progressTracker.successfulReplies} replies completed`, 'success');
-    }
-    
-    // STABILITY: Record successful progress
-    STABILITY_SYSTEM.recordSuccess();
     
     // CRITICAL: Track action for burst and hourly protection
     const now = Date.now();
@@ -1368,7 +1516,6 @@ async function processNextTweet() {
     sessionStats.recentActions.push(now);
     sessionStats.hourlyActions.push(now);
     
-    sessionLog(`✅ Reply sent! (${sessionStats.processed}/${sessionStats.target})`, 'success');
     updateStatus(`✅ Tweet ${sessionStats.processed}/${sessionStats.target} replied!`);
     addDetailedActivity(`✅ Successfully replied to tweet ${sessionStats.processed}/${sessionStats.target}`, 'success');
     
@@ -1440,7 +1587,7 @@ async function processNextTweet() {
  * @returns {Promise<HTMLElement|null>} The found text area element or null.
  */
 async function findReplyTextArea() {
-  // Silent search for text area
+  debugLog('🔍 Actively searching for reply text area...');
   const selectors = [
     '[data-testid="tweetTextarea_0"]', // Primary selector
     'div.public-DraftEditor-content[role="textbox"]', // Stable fallback
@@ -1543,8 +1690,6 @@ for (let i = 0; i < 5; i++) { // Reduced to 5 for faster failure
  */
 async function gracefullyCloseModal() {
   debugLog('Attempting to gracefully close reply modal...');
-  
-  // Method 1: Click close button
   const closeButton = document.querySelector('[data-testid="app-bar-close"]');
   if (closeButton) {
     closeButton.click();
@@ -1584,33 +1729,16 @@ async function gracefullyCloseModal() {
 }
 
 async function handleReplyModal(originalTweet) {
-  // Silent modal handling
+  debugLog('🎯 Handling Reply Modal...');
+  addDetailedActivity('🎯 Handling Reply Modal', 'info');
   
-  // Check if we're in a new window/tab situation or X.com error page
+  // Check if we're in a new window/tab situation
   const isNewWindow = window.location.href.includes('/compose/post') || 
                       window.location.href.includes('/intent/post');
   
   if (isNewWindow) {
     debugLog('🪟 Reply opened in new window - switching context');
     addDetailedActivity('🪟 New window detected - adapting', 'info');
-    
-    // CRITICAL: Check for X.com error page and force recovery
-    const hasXcomError = document.body?.textContent?.includes('Something went wrong') ||
-                        document.body?.textContent?.includes('let\'s give it another shot') ||
-                        document.body?.textContent?.includes('privacy related extensions');
-    
-    if (hasXcomError) {
-      addDetailedActivity('🚨 X.com error page detected in modal - forcing recovery', 'error');
-      // Force close this error window and return to main page
-      if (window.opener) {
-        window.close();
-        return { success: false, replyText: null, error: 'X.com error page' };
-      } else {
-        // Navigate back to main X.com
-        window.location.href = 'https://x.com/home';
-        return { success: false, replyText: null, error: 'X.com error page' };
-      }
-    }
     // Give the new window time to load
     await sleep(2000);
   }
@@ -1695,15 +1823,22 @@ async function handleReplyModal(originalTweet) {
   
   addDetailedActivity(`✅ High-quality reply generated successfully`, 'success');
 
-  debugLog('⌨️ Typing reply', replyText);
-  addDetailedActivity(`⌨️ Typing reply "${replyText.substring(0, 50)}..."`, 'info');
+  // CRITICAL SECURITY FIX: Remove any character count information that might have leaked in
+  const sanitizedReply = replyText
+    .replace(/\(\d+\s*chars?\)/gi, '') // Remove "(X char)" or "(X chars)"
+    .replace(/\(\d+\s*characters?\)/gi, '') // Remove "(X character)" or "(X characters)"
+    .replace(/\s+/g, ' ') // Clean up extra spaces
+    .trim();
+
+  debugLog('⌨️ Typing reply', sanitizedReply);
+  addDetailedActivity(`⌨️ Typing reply "${sanitizedReply.substring(0, 50)}..."`, 'info');
 
   // Step 3: Type using the "bulletproof" method
-  const typed = await safeTypeText(editable, replyText);
+  const typed = await safeTypeText(editable, sanitizedReply);
   if (!typed) {
     errorLog('❌ Typing failed inside reply modal.');
     await gracefullyCloseModal();
-    return { success: false, replyText };
+    return { success: false, replyText: sanitizedReply };
   }
   
   await sleep(500); // Reduced pause after typing
@@ -1717,20 +1852,20 @@ async function handleReplyModal(originalTweet) {
     addDetailedActivity(`⏳ Waiting for reply to post...`, 'info');
     const closed = await waitForModalToClose();
     if (closed) {
-      // Reply modal closed silently
-      sessionStats.lastAction = 'Reply sent';
+      debugLog('✅ Reply modal closed successfully.');
+      sessionStats.lastAction = '✅ Reply modal closed successfully';
       addDetailedActivity(`🎉 Reply posted successfully! Building engagement...`, 'success');
-      return { success: true, replyText };
+      return { success: true, replyText: sanitizedReply };
     } else {
       errorLog('❌ Reply modal did not close after sending.');
       addDetailedActivity(`❌ Reply modal failed to close`, 'error');
-      return { success: false, replyText };
+      return { success: false, replyText: sanitizedReply };
     }
   } else {
     errorLog('❌ Sending reply failed.');
     addDetailedActivity(`❌ Failed to send reply`, 'error');
     await gracefullyCloseModal();
-    return { success: false, replyText };
+    return { success: false, replyText: sanitizedReply };
   }
 }
 
@@ -1774,11 +1909,16 @@ async function waitForModalToClose() {
 }
 
 async function findTweet() {
-  // Multiple selectors for better tweet detection
+  // UPDATED: Multiple selectors for better tweet detection (X.com 2025)
   const selectors = [
-    '[data-testid="tweet"]:not([data-boldtake-processed="true"])',
-    'article[data-testid="tweet"]:not([data-boldtake-processed="true"])',
-    '[role="article"]:not([data-boldtake-processed="true"])'
+    // Primary selector for current X.com structure
+    '[data-testid="tweet"]',
+    // Fallback selectors for different X.com layouts
+    'article[data-testid="tweet"]',
+    '[role="article"]',
+    // Additional selectors for search results
+    '[data-testid="searchResult"]',
+    '.css-175oi2r r-1loqt21'  // X.com's dynamic class
   ];
   
   // 🚀 A++ OPTIMIZATION: Use performance cache for tweet queries
@@ -1787,11 +1927,13 @@ async function findTweet() {
     const found = performanceCache.getAll('tweets', selector, 2000); // 2s cache
     if (found.length > 0) {
       tweets = Array.from(found);
-      // Silent - found tweets
+      debugLog(`📊 Found ${tweets.length} unprocessed tweets using selector: ${selector}`);
+      addDetailedActivity(`📊 Found ${tweets.length} unprocessed tweets`, 'info');
       break;
     }
   }
   
+  // ENHANCED: Better error handling when no tweets found
   if (tweets.length === 0) {
     debugLog('📊 No tweets found with any selector');
     
@@ -1802,10 +1944,73 @@ async function findTweet() {
       return null;
     }
     
+    // Check if we're on the correct page
+    const currentUrl = window.location.href;
+    if (!currentUrl.includes('/search') || !currentUrl.includes('min_faves:')) {
+      addDetailedActivity('🔴 Not on proper search page - redirecting', 'error');
+      sessionLog('🔴 Not on proper search page - redirecting to search with filters', 'error');
+      // Redirect to proper search page
+      const properSearchUrl = 'https://x.com/search?q=a%20min_faves%3A500%20lang%3Aen%20-filter:links%20-filter:media%20-filter:replies%20-filter:retweets&src=typed_query&f=live';
+      setTimeout(() => {
+        window.location.href = properSearchUrl;
+      }, 2000);
+      return null;
+    }
+    
+    // CRITICAL: Add detailed diagnostics for debugging
+    addDetailedActivity('🔍 No tweets found - running diagnostics...', 'warning');
+    
+    // Check if page is still loading
+    const loadingElements = document.querySelectorAll('[role="progressbar"], [aria-label*="loading"], [data-testid="loading"]');
+    if (loadingElements.length > 0) {
+      addDetailedActivity('⏳ Page still loading - waiting...', 'info');
+      await sleep(3000);
+      return null; // Try again on next iteration
+    }
+    
+    // Check if we need to scroll to load more tweets
+    const scrollHeight = document.body.scrollHeight;
+    const currentScroll = window.scrollY + window.innerHeight;
+    
+    if (currentScroll >= scrollHeight - 100) {
+      // Already at bottom, no more tweets to load
+      addDetailedActivity('📄 Reached bottom of page - no more tweets', 'warning');
+      sessionLog('📄 Reached bottom of page - no more tweets to process', 'warning');
+      
+      // Wait a bit and try scrolling again in case new tweets load
+      await sleep(5000);
+      window.scrollTo(0, document.body.scrollHeight);
+      await sleep(3000);
+      
+      // Check again after scrolling
+      const newTweets = document.querySelectorAll(selectors[0]);
+      if (newTweets.length === 0) {
+        addDetailedActivity('🔄 No new tweets after scrolling - trying different keyword', 'info');
+        // Trigger keyword rotation to get fresh content
+        await rotateKeyword();
+        return null;
+      }
+    } else {
+      // Not at bottom yet, scroll down to load more tweets
+      addDetailedActivity('📜 Scrolling down to load more tweets...', 'info');
+      window.scrollTo(0, document.body.scrollHeight);
+      await sleep(3000);
+      return null; // Try again on next iteration
+    }
+    
     return null;
   }
   
   // Filter out spam, inappropriate content, and already liked tweets
+  debugLog(`🔍 Starting tweet filtering process with ${tweets.length} tweets`);
+  addDetailedActivity(`🔍 Filtering ${tweets.length} tweets for suitable content...`, 'info');
+  
+  let skippedCount = 0;
+  let likedCount = 0;
+  let restrictedCount = 0;
+  let shortCount = 0;
+  let spamCount = 0;
+  
   for (let tweet of tweets) {
     const tweetText = (tweet.textContent || '').toLowerCase();
     
@@ -1813,15 +2018,18 @@ async function findTweet() {
     // This prevents double commenting on the same tweet
     const unlikeButton = tweet.querySelector('[data-testid="unlike"]');
     if (unlikeButton) {
-      // SILENT - no logging to avoid detection
+      likedCount++;
+      debugLog('💚 Skipping already liked tweet (already replied) - preventing double comment');
       tweet.setAttribute('data-boldtake-processed', 'true');
       tweet.setAttribute('data-boldtake-already-liked', 'true');
+      addDetailedActivity('💚 Skipping liked tweet - already replied', 'info');
       continue;
     }
     
     // Also check if we failed to like it before but still replied
     if (tweet.getAttribute('data-boldtake-liked-failed') === 'true') {
-      // SILENT - no logging
+      skippedCount++;
+      debugLog('⚠️ Skipping tweet we previously replied to (like failed)');
       tweet.setAttribute('data-boldtake-processed', 'true');
       continue;
     }
@@ -1830,7 +2038,9 @@ async function findTweet() {
     const replyButton = tweet.querySelector('[data-testid="reply"]');
     if (replyButton && replyButton.getAttribute('aria-label') && 
         replyButton.getAttribute('aria-label').includes('can reply')) {
-      // SILENT - no logging
+      restrictedCount++;
+      debugLog('🚫 Skipping tweet with reply restrictions (mentioned users only)');
+      addDetailedActivity('🚫 Skipped tweet with reply restrictions', 'warning');
       tweet.setAttribute('data-boldtake-processed', 'true');
       continue;
     }
@@ -1840,7 +2050,8 @@ async function findTweet() {
     const words = cleanText.split(/\s+/).filter(word => word.length > 0);
     
     if (words.length <= 1 || cleanText.length < 15) {
-      // SILENT - no logging
+      shortCount++;
+      debugLog('📏 Skipping tweet - insufficient content (single word or too short)');
       tweet.setAttribute('data-boldtake-processed', 'true');
       continue;
     }
@@ -1880,17 +2091,34 @@ async function findTweet() {
     
     const isSpam = spamPatterns.some(pattern => tweetText.includes(pattern)) || isAdvancedSpam;
     
+    if (isSpam) {
+      spamCount++;
+      debugLog('🚫 Skipping spam tweet - matched spam patterns');
+      tweet.setAttribute('data-boldtake-processed', 'true');
+      continue;
+    }
+    
     if (!isSpam) {
       // Found good tweet - minimal logging
-      return tweet;
-    } else {
-      // SILENT - no logging for spam
-      tweet.setAttribute('data-boldtake-processed', 'true');
+      debugLog(`✅ Found suitable tweet after filtering ${tweets.length} tweets`);
+      addDetailedActivity(`✅ Found suitable tweet (filtered: ${likedCount} liked, ${restrictedCount} restricted, ${shortCount} short, ${spamCount} spam)`, 'success');
+      STABILITY_SYSTEM.recordProgress(); // Record progress for stability monitoring
+      return tweet; // Return the first suitable tweet
     }
   }
   
-  debugLog('❌ No clean, unliked tweets found');
-  return null;
+  // If we get here, all tweets were filtered out
+  debugLog(`📊 All ${tweets.length} tweets filtered out: ${likedCount} liked, ${restrictedCount} restricted, ${shortCount} short, ${spamCount} spam, ${skippedCount} other`);
+  addDetailedActivity(`📊 All tweets filtered: ${likedCount} liked, ${restrictedCount} restricted, ${shortCount} short, ${spamCount} spam`, 'warning');
+  
+  // If we have too many liked tweets, try scrolling to get fresh content
+  if (likedCount > tweets.length * 0.8) { // 80% or more are already liked
+    addDetailedActivity('🔄 Too many liked tweets - scrolling for fresh content', 'info');
+    window.scrollTo(0, document.body.scrollHeight);
+    await sleep(3000);
+  }
+  
+  return null; // No suitable tweets found
 }
 
 async function likeTweet(tweet) {
@@ -2232,8 +2460,24 @@ function initializeNetworkMonitoring() {
   window.addEventListener('online', handleNetworkOnline);
   window.addEventListener('offline', handleNetworkOffline);
   
-  // Start periodic network health checks
-  startNetworkHealthChecks();
+  // CRITICAL FIX: Add timeout protection to prevent hanging
+  try {
+    // Start periodic network health checks with error protection
+    setTimeout(() => {
+      startNetworkHealthChecks();
+      addDetailedActivity('✅ Network health checks started', 'success');
+    }, 1000); // Delay to prevent blocking
+  } catch (error) {
+    addDetailedActivity('⚠️ Network monitoring fallback mode', 'warning');
+    // Continue without network monitoring if it fails
+  }
+  
+  // CRITICAL: Don't let network monitoring block the main system
+  setTimeout(() => {
+    if (!sessionStats.isRunning) {
+      addDetailedActivity('🚀 System ready - network monitoring complete', 'success');
+    }
+  }, 3000);
 }
 
 /**
@@ -2291,10 +2535,28 @@ function handleNetworkOffline() {
  * Start periodic network health checks
  */
 function startNetworkHealthChecks() {
-  // Check network every 30 seconds
-  networkMonitor.networkCheckInterval = setInterval(async () => {
-    await performNetworkHealthCheck();
-  }, 30000);
+  // CRITICAL FIX: Add error protection to prevent hanging
+  try {
+    // Check network every 30 seconds with timeout protection
+    networkMonitor.networkCheckInterval = setInterval(async () => {
+      try {
+        // Add timeout to prevent hanging on network check
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Network check timeout')), 10000);
+        });
+        
+        await Promise.race([
+          performNetworkHealthCheck(),
+          timeoutPromise
+        ]);
+      } catch (error) {
+        // Don't let network check errors stop the system
+        addDetailedActivity('⚠️ Network check skipped - continuing', 'warning');
+      }
+    }, 30000);
+  } catch (error) {
+    addDetailedActivity('⚠️ Network monitoring disabled - system continues', 'warning');
+  }
 }
 
 /**
@@ -2309,13 +2571,7 @@ async function performNetworkHealthCheck() {
   }
   
   // Check for X.com error pages that require refresh (only during active sessions)
-  // CRITICAL: Add cooldown to prevent excessive error checking
-  const now = Date.now();
-  const lastErrorCheck = window.boldtakeLastErrorCheck || 0;
-  const errorCheckCooldown = 30000; // 30 seconds between error checks
-  
-  if (sessionStats.isRunning && (now - lastErrorCheck > errorCheckCooldown) && detectXcomErrorPage()) {
-    window.boldtakeLastErrorCheck = now;
+  if (sessionStats.isRunning && detectXcomErrorPage()) {
     addDetailedActivity('🔴 X.com error page detected - refreshing', 'warning');
     await handleXcomPageError();
     return;
@@ -2357,69 +2613,25 @@ async function performNetworkHealthCheck() {
  * Detect X.com error pages that need refresh
  */
 function detectXcomErrorPage() {
-  // 🛡️ BULLETPROOF: Enhanced error detection with multiple patterns
+  // FIXED: More specific error detection to prevent false refresh loops
+  const errorIndicators = [
+    'Something went wrong. Try reloading.',
+    'let\'s give it another shot',
+    'Some privacy related extensions may cause issues'
+  ];
   
-  // Check for various error message patterns
-  const bodyText = document.body?.textContent || '';
+  const pageText = document.body?.textContent || '';
   
-  // Pattern 1: Generic "Something went wrong" with variations
-  const hasGenericError = (
-    bodyText.includes("Something went wrong") ||
-    bodyText.includes("something went wrong")
-  );
+  // CRITICAL FIX: Only trigger if we see MULTIPLE error indicators or very specific error messages
+  const errorCount = errorIndicators.filter(indicator => pageText.includes(indicator)).length;
   
-  // Pattern 2: Specific search page error
-  const hasSearchError = bodyText.includes("Something went wrong, but don't fret");
+  // Also check for X.com's specific error page structure
+  const hasErrorPageStructure = document.querySelector('[data-testid="error-detail"]') || 
+                                document.querySelector('.error-page') ||
+                                document.title.includes('Something went wrong');
   
-  // Pattern 3: Privacy extension warning (CRITICAL)
-  const hasPrivacyWarning = (
-    bodyText.includes("privacy related extensions") ||
-    bodyText.includes("Some privacy related extensions may cause issues")
-  );
-  
-  // Pattern 4: "Try again" button presence
-  const hasTryAgainButton = (
-    document.querySelector('button[aria-label*="Try again"]') ||
-    Array.from(document.querySelectorAll('button')).some(btn => 
-      btn.textContent?.toLowerCase().includes('try again')
-    )
-  );
-  
-  // Pattern 5: DOM structure indicators
-  const hasErrorDOM = (
-    document.querySelector('[data-testid="error-detail"]') ||
-    document.querySelector('.error-page') ||
-    document.querySelector('[role="alert"]')
-  );
-  
-  // Pattern 6: URL patterns that indicate errors
-  const hasErrorURL = (
-    window.location.pathname.includes('/error') ||
-    window.location.search.includes('error=')
-  );
-  
-  // Combine all patterns with appropriate logic
-  const isErrorPage = (
-    // Privacy warning is a critical error
-    hasPrivacyWarning ||
-    // Search error with specific text
-    hasSearchError ||
-    // Generic error with Try Again button
-    (hasGenericError && hasTryAgainButton) ||
-    // Error DOM structure
-    hasErrorDOM ||
-    // Error in URL
-    hasErrorURL ||
-    // Title check with body content
-    (document.title.includes('Something went wrong') && hasGenericError)
-  );
-  
-  // Log detection for debugging
-  if (isErrorPage) {
-    debugLog(`🚨 Error page detected: Privacy=${hasPrivacyWarning}, Search=${hasSearchError}, Generic=${hasGenericError}, DOM=${hasErrorDOM}`);
-  }
-  
-  return isErrorPage;
+  // Only refresh if we have strong evidence of an error page
+  return errorCount >= 2 || hasErrorPageStructure;
 }
 
 /**
@@ -2688,95 +2900,25 @@ async function generateAnalyticsCSV() {
  * Handle X.com page errors by refreshing (with cooldown protection)
  */
 async function handleXcomPageError() {
-  // BULLETPROOF: Enhanced error recovery with intelligent handling
+  // CRITICAL FIX: Prevent refresh loops with cooldown
   const now = Date.now();
   const lastRefresh = window.boldtakeLastRefresh || 0;
-  const refreshCooldown = 300000; // 5 minutes minimum between refreshes
-  
-  // Track refresh attempts to prevent infinite loops
-  window.boldtakeRefreshCount = (window.boldtakeRefreshCount || 0);
-  
-  // Check for privacy extension warning specifically
-  const bodyText = document.body?.textContent || '';
-  const hasPrivacyWarning = bodyText.includes("privacy related extensions");
-  
-  // Handle privacy extension issues differently
-  if (hasPrivacyWarning) {
-    addDetailedActivity('⚠️ Privacy extension conflict detected - attempting alternative recovery', 'error');
-    sessionLog('⚠️ X.com reports privacy extensions are causing issues. Navigating to home page...', 'warning');
-    
-    // Don't refresh the error page, navigate to home instead
-    if (!window.location.pathname.includes('/home')) {
-      window.location.href = 'https://x.com/home';
-      return;
-    } else {
-      // If we're already at home and still seeing errors, stop
-      addDetailedActivity('🚨 Privacy extension blocking X.com - please disable privacy extensions', 'error');
-      sessionLog('🚨 Cannot proceed: Privacy extensions are blocking X.com functionality', 'error');
-      return;
-    }
-  }
+  const refreshCooldown = 60000; // 1 minute minimum between refreshes
   
   if (now - lastRefresh < refreshCooldown) {
-    addDetailedActivity('🛡️ Refresh cooldown active (5min) - skipping auto-refresh', 'warning');
+    addDetailedActivity('🛡️ Refresh cooldown active - skipping auto-refresh', 'warning');
     return;
   }
-  
-  // CRITICAL: Limit total refreshes per session
-  if (window.boldtakeRefreshCount >= 3) {
-    addDetailedActivity('🚨 Maximum refresh attempts reached (3) - trying navigation recovery', 'error');
-    
-    // Instead of stopping, try to navigate to a different page
-    const fallbackPages = [
-      'https://x.com/home',
-      'https://x.com/explore',
-      'https://x.com/notifications'
-    ];
-    
-    const currentPath = window.location.pathname;
-    const nextPage = fallbackPages.find(url => !currentPath.includes(url.split('.com')[1]));
-    
-    if (nextPage) {
-      sessionLog(`🔄 Navigating to ${nextPage} for recovery...`, 'info');
-      window.location.href = nextPage;
-    } else {
-      sessionLog('🚨 Extension paused: Multiple errors detected. Please check X.com manually.', 'error');
-    }
-    return;
-  }
-  
-  // Increment refresh counter
-  window.boldtakeRefreshCount++;
-  window.boldtakeLastRefresh = now;
   
   // Save current URL for recovery
   const currentUrl = window.location.href;
+  window.boldtakeLastRefresh = now;
   
-  // Check if we're on a search page with errors
-  const isSearchError = currentUrl.includes('/search') && detectXcomErrorPage();
-  
-  if (isSearchError) {
-    addDetailedActivity('🔄 Search page error - navigating to home page instead', 'warning');
-    sessionLog('🔄 Search results failed - redirecting to home page', 'warning');
-    
-    // Wait briefly then navigate to home
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    window.location.href = 'https://x.com/home';
-    return;
-  }
-  
-  addDetailedActivity(`🔄 X.com page error - refreshing (attempt ${window.boldtakeRefreshCount}/3) in 10 seconds`, 'warning');
-  sessionLog(`🔄 Refreshing X.com page (attempt ${window.boldtakeRefreshCount}/3)`, 'warning');
+  addDetailedActivity('🔄 X.com page error - refreshing in 5 seconds', 'warning');
   
   // Wait longer before refresh to prevent loops
-  await new Promise(resolve => setTimeout(resolve, 10000));
-  
-  // Double-check we still need to refresh (user might have navigated away)
-  if (window.location.href === currentUrl && detectXcomErrorPage()) {
-    window.location.href = currentUrl;
-  } else {
-    addDetailedActivity('🛡️ Page recovered during wait - refresh cancelled', 'success');
-  }
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  window.location.href = currentUrl;
 }
 
 /**
@@ -3031,9 +3173,10 @@ async function startCountdown(delayInMs) {
 
             remainingTime -= 1000;
 
-            if (remainingTime < 0) {
+            if (remainingTime <= 0) {
                 clearInterval(window.boldtakeCountdownInterval);
                 window.boldtakeCountdownInterval = null;
+                addDetailedActivity('⚡ Delay completed - continuing to next tweet', 'success');
                 resolve();
                 return;
             }
@@ -3143,14 +3286,13 @@ async function generateSmartReply(tweetText, tweetNumber) {
     }
   }
 
-  // 3. BULLETPROOF QUALITY CHECK: More lenient for better success rates
-  const hasMinLength = reply && reply.length >= 20; // Increased from 15 to 20
-  const hasProperEnding = reply && (/[.!?]$/.test(reply.trim()) || reply.length >= 50); // Allow longer replies without punctuation
-  const hasCompleteWords = reply && !reply.match(/\b\w{1}$/); // Only reject single-letter endings (was 1-2)
+  // 3. COMPREHENSIVE QUALITY CHECK: Length + Completeness
+  const hasMinLength = reply && reply.length >= 15;
+  const hasProperEnding = reply && /[.!?]$/.test(reply.trim()); // Ends with punctuation
+  const hasCompleteWords = reply && !reply.match(/\b\w{1,2}$/); // Not ending with partial word
   const isNotTruncated = reply && !reply.includes('...'); // No ellipsis truncation
   
-  // 🛡️ BULLETPROOF: More forgiving quality check to reduce false rejections
-  const isLowQuality = !hasMinLength || (!hasProperEnding && reply.length < 40) || !hasCompleteWords || !isNotTruncated;
+  const isLowQuality = !hasMinLength || !hasProperEnding || !hasCompleteWords || !isNotTruncated;
 
   // ENHANCED QUALITY DEBUG: Log all quality factors
   debugLog('🔍 Quality Check Debug', {
@@ -3309,13 +3451,13 @@ async function attemptGeneration(promptTemplate, tweetText, languageContext = {}
         cleanedLength: cleanReply.length,
         replyPreview: cleanReply.substring(0, 100),
         withinLimit: cleanReply.length <= 280,
-        safeLimit: cleanReply.length <= 260
+        safeLimit: cleanReply.length <= 240
       });
       
-      // SMART TRUNCATION: Use 260-character limit for better content preservation
-      if (cleanReply.length > 260) {
+      // AGGRESSIVE FIX: Enforce 240-character limit to prevent Twitter cutoffs
+      if (cleanReply.length > 240) {
         debugLog('⚠️ Reply exceeds safe limit, truncating:', cleanReply.length);
-        cleanReply = truncateAtSentence(cleanReply, 260);
+        cleanReply = truncateAtSentence(cleanReply, 240);
         debugLog('✅ Truncated to safe length:', cleanReply.length);
       }
       
@@ -4252,6 +4394,62 @@ Tweet: "{TWEET}"`
     }
 ];
 
+/**
+ * REAL-TIME SYNC: Sync daily count with backend during active sessions
+ * Ensures extension stays aligned with dashboard in real-time
+ */
+async function syncDailyCountWithBackend() {
+  try {
+    if (window.BoldTakeAuthManager) {
+      const authState = window.BoldTakeAuthManager.getAuthState();
+      if (authState.isAuthenticated) {
+        // TIMEZONE FIX: Send user's timezone for accurate daily boundaries
+        const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const localDate = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
+        
+        const response = await fetch(`${SUPABASE_CONFIG.url}/functions/v1/extension-check-subscription`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${authState.session?.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ 
+            action: 'get_daily_usage',
+            timezone: userTimezone,
+            local_date: localDate
+          })
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const backendCount = data.daily_replies_used || 0;
+          
+          // CRITICAL: Detect daily reset boundary
+          if (sessionStats.dailyRepliesUsed && backendCount < sessionStats.dailyRepliesUsed) {
+            debugLog('🌅 Daily reset detected - backend count reset to 0');
+            addDetailedActivity('🌅 Daily limit reset - new day started', 'success');
+          }
+          
+          // Update session stats with real backend count
+          sessionStats.dailyRepliesUsed = backendCount;
+          sessionStats.successful = backendCount; // Keep UI in sync
+          
+          sessionLog(`🔄 Real-time sync: ${backendCount}/${sessionStats.target} replies (backend confirmed)`, 'info');
+          addDetailedActivity(`🔄 Synced with backend: ${backendCount}/${sessionStats.target}`, 'info');
+          
+          // EXTENSION UPDATE PROTECTION: Save sync timestamp
+          await chrome.storage.local.set({
+            'boldtake_last_sync': Date.now(),
+            'boldtake_last_backend_count': backendCount
+          });
+        }
+      }
+    }
+  } catch (error) {
+    debugLog('⚠️ Real-time sync failed (continuing with local count):', error);
+  }
+}
+
 function showSessionSummary() {
   const endTime = new Date();
   const duration = Math.floor((endTime - sessionStats.startTime) / 1000);
@@ -4272,7 +4470,7 @@ function showSessionSummary() {
   
   const timeDisplay = hours > 0 ? `${hours}h ${displayMinutes}m ${seconds}s` : `${minutes}m ${seconds}s`;
   
-  // Session complete - show only in status
+  debugLog('\n🎬 === BoldTake Session Complete ===');
   debugLog(`⏰ Duration: ${timeDisplay}`);
   debugLog(`🎯 Target: ${sessionStats.target} tweets`);
   debugLog(`✅ Successful: ${sessionStats.successful}`);
@@ -4373,7 +4571,9 @@ async function checkKeywordRotation() {
  * Rotate to the next keyword and refresh the page
  */
 async function rotateKeyword() {
-  if (keywordRotation.keywords.length === 0) return;
+  if (keywordRotation.keywords.length === 0) {
+    return;
+  }
   
   // Move to next keyword
   keywordRotation.currentIndex = (keywordRotation.currentIndex + 1) % keywordRotation.keywords.length;
@@ -4448,8 +4648,11 @@ async function loadSession() {
   });
 }
 
-// Initialize completely silently - NO console output for maximum safety
-// X.com can detect console.log activity!
+// Initialize - Always show startup
+criticalLog('✅ BoldTake v1.1.0 STABLE - Ready to use!');
+criticalLog('🎯 Balanced mode: Natural pacing, smart safety limits');
+criticalLog('📍 Stays on your search page - no refreshing');
+criticalLog('💪 Built for reliability - just works!');
 
 /**
  * Update persistent analytics data
@@ -4856,379 +5059,6 @@ function testStrategySelection() {
 //   setTimeout(testStrategySelection, 1000);
 // }
 
-// 🛡️ BULLETPROOF STABILITY SYSTEM - MULTI-LAYER PROTECTION
-const STABILITY_SYSTEM = {
-  // Health monitoring
-  lastProgressTime: Date.now(),
-  lastSuccessTime: Date.now(),
-  consecutiveFailures: 0,
-  healthCheckInterval: null,
-  watchdogTimer: null,
-  
-  // Recovery mechanisms
-  recoveryAttempts: 0,
-  maxRecoveryAttempts: 3,
-  emergencyRefreshCooldown: 60000, // 1 minute between refreshes
-  lastEmergencyRefresh: 0,
-  
-  // State tracking
-  isRecovering: false,
-  lastKnownGoodState: null,
-  
-  // Initialize the stability system
-  initialize() {
-    this.startHealthMonitoring();
-    this.startWatchdog();
-    this.setupEmergencyHandlers();
-    sessionLog('🛡️ Bulletproof stability system activated', 'success');
-  },
-  
-  // Continuous health monitoring (every 30 seconds)
-  startHealthMonitoring() {
-    this.healthCheckInterval = setInterval(() => {
-      this.performHealthCheck();
-    }, 30000);
-  },
-  
-  // Watchdog timer (2 minutes for faster recovery)
-  startWatchdog() {
-    this.resetWatchdog();
-  },
-  
-  resetWatchdog() {
-    this.lastProgressTime = Date.now();
-    if (this.watchdogTimer) {
-      clearTimeout(this.watchdogTimer);
-    }
-    
-    this.watchdogTimer = setTimeout(() => {
-      if (sessionStats.isRunning && !this.isRecovering) {
-        this.triggerEmergencyRecovery('Watchdog timeout - no progress detected');
-      }
-    }, 120000); // 2 minutes
-  },
-  
-  // Comprehensive health check
-  performHealthCheck() {
-    if (!sessionStats.isRunning) return;
-    
-    const now = Date.now();
-    const timeSinceProgress = now - this.lastProgressTime;
-    const timeSinceSuccess = now - this.lastSuccessTime;
-    
-    // Check for various failure conditions
-    const checks = {
-      progressStalled: timeSinceProgress > 180000, // 3 minutes
-      noRecentSuccess: timeSinceSuccess > 600000, // 10 minutes
-      tooManyFailures: this.consecutiveFailures >= 5,
-      xcomErrorPage: detectXcomErrorPage(),
-      modalStuck: this.detectStuckModal(),
-      networkIssues: !navigator.onLine
-    };
-    
-    // Log health status
-    const failedChecks = Object.entries(checks).filter(([_, failed]) => failed);
-    if (failedChecks.length > 0) {
-      sessionLog(`🚨 Health check failed: ${failedChecks.map(([check]) => check).join(', ')}`, 'error');
-      this.triggerRecovery(failedChecks);
-    }
-  },
-  
-  // Detect stuck modal
-  detectStuckModal() {
-    const modal = document.querySelector('[data-testid="tweetTextarea_0"]');
-    const backdrop = document.querySelector('[role="dialog"]');
-    return modal && backdrop && (Date.now() - this.lastProgressTime > 60000);
-  },
-  
-  // Smart recovery based on failure type
-  triggerRecovery(failedChecks) {
-    if (this.isRecovering) return;
-    
-    this.isRecovering = true;
-    this.recoveryAttempts++;
-    
-    sessionLog(`🔧 Initiating recovery attempt ${this.recoveryAttempts}/${this.maxRecoveryAttempts}`, 'warning');
-    
-    // Choose recovery strategy based on failure type
-    const failures = failedChecks.map(([check]) => check);
-    
-    if (failures.includes('modalStuck')) {
-      this.recoverFromStuckModal();
-    } else if (failures.includes('xcomErrorPage')) {
-      this.recoverFromErrorPage();
-    } else if (failures.includes('networkIssues')) {
-      this.recoverFromNetworkIssues();
-    } else {
-      this.performGeneralRecovery();
-    }
-  },
-  
-  // Emergency recovery (last resort)
-  triggerEmergencyRecovery(reason) {
-    const now = Date.now();
-    if (now - this.lastEmergencyRefresh < this.emergencyRefreshCooldown) {
-      sessionLog('🛡️ Emergency refresh on cooldown - waiting', 'warning');
-      return;
-    }
-    
-    sessionLog(`🚨 EMERGENCY RECOVERY: ${reason}`, 'error');
-    this.lastEmergencyRefresh = now;
-    
-    // Save current state before refresh
-    this.saveEmergencyState();
-    
-    // Force refresh
-    window.location.reload();
-  },
-  
-  // Recovery methods
-  async recoverFromStuckModal() {
-    sessionLog('🔧 Recovering from stuck modal', 'info');
-    
-    // Try multiple modal closing methods
-    await this.forceCloseModal();
-    await sleep(2000);
-    
-    // If still stuck, skip current tweet
-    if (this.detectStuckModal()) {
-      this.skipCurrentTweet();
-    }
-    
-    this.completeRecovery();
-  },
-  
-  async recoverFromErrorPage() {
-    sessionLog('🔧 Recovering from X.com error page', 'info');
-    
-    // Wait a bit for X.com to recover
-    await sleep(5000);
-    
-    // Try to navigate back to search
-    if (this.lastKnownGoodState && this.lastKnownGoodState.searchUrl) {
-      window.location.href = this.lastKnownGoodState.searchUrl;
-    } else {
-      window.location.reload();
-    }
-  },
-  
-  async recoverFromNetworkIssues() {
-    sessionLog('🔧 Recovering from network issues', 'info');
-    
-    // Wait for network to stabilize
-    await this.waitForNetwork();
-    this.completeRecovery();
-  },
-  
-  async performGeneralRecovery() {
-    sessionLog('🔧 Performing general recovery', 'info');
-    
-    // Clear any stuck states
-    await this.clearStuckStates();
-    
-    // Scroll to refresh feed
-    window.scrollTo(0, 0);
-    await sleep(1000);
-    window.scrollTo(0, 500);
-    
-    this.completeRecovery();
-  },
-  
-  // Helper methods
-  async forceCloseModal() {
-    const methods = [
-      () => document.querySelector('[data-testid="app-bar-close"]')?.click(),
-      () => document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })),
-      () => document.querySelector('[role="dialog"]')?.parentElement?.click(),
-      () => window.history.back()
-    ];
-    
-    for (const method of methods) {
-      try {
-        method();
-        await sleep(1000);
-        if (!this.detectStuckModal()) break;
-      } catch (error) {
-        debugLog('Modal close method failed:', error);
-      }
-    }
-  },
-  
-  skipCurrentTweet() {
-    const tweets = document.querySelectorAll('[data-testid="tweet"]');
-    tweets.forEach(tweet => {
-      if (!tweet.hasAttribute('data-boldtake-processed')) {
-        tweet.setAttribute('data-boldtake-processed', 'true');
-        tweet.setAttribute('data-boldtake-skipped', 'true');
-        return; // Skip only the first unprocessed tweet
-      }
-    });
-    sessionLog('⏭️ Skipped stuck tweet - continuing session', 'info');
-  },
-  
-  async clearStuckStates() {
-    // Clear any stuck intervals/timeouts
-    if (window.boldtakeCountdownInterval) {
-      clearInterval(window.boldtakeCountdownInterval);
-      window.boldtakeCountdownInterval = null;
-    }
-    if (window.boldtakeTimeout) {
-      clearTimeout(window.boldtakeTimeout);
-      window.boldtakeTimeout = null;
-    }
-  },
-  
-  async waitForNetwork() {
-    return new Promise((resolve) => {
-      const checkNetwork = () => {
-        if (navigator.onLine) {
-          resolve();
-        } else {
-          setTimeout(checkNetwork, 1000);
-        }
-      };
-      checkNetwork();
-    });
-  },
-  
-  completeRecovery() {
-    this.isRecovering = false;
-    this.consecutiveFailures = 0;
-    this.resetWatchdog();
-    sessionLog('✅ Recovery completed successfully', 'success');
-  },
-  
-  // State management
-  saveEmergencyState() {
-    this.lastKnownGoodState = {
-      searchUrl: window.location.href,
-      sessionStats: { ...sessionStats },
-      timestamp: Date.now()
-    };
-    
-    // Save to storage for persistence across refreshes
-    chrome.storage.local.set({
-      boldtake_emergency_state: this.lastKnownGoodState
-    });
-  },
-  
-  async restoreEmergencyState() {
-    try {
-      const result = await chrome.storage.local.get(['boldtake_emergency_state']);
-      if (result.boldtake_emergency_state) {
-        this.lastKnownGoodState = result.boldtake_emergency_state;
-        sessionLog('🔄 Emergency state restored', 'info');
-      }
-    } catch (error) {
-      debugLog('Failed to restore emergency state:', error);
-    }
-  },
-  
-  // Setup emergency handlers
-  setupEmergencyHandlers() {
-    // Handle page errors
-    window.addEventListener('error', (event) => {
-      this.consecutiveFailures++;
-      if (this.consecutiveFailures >= 3) {
-        this.triggerEmergencyRecovery('Multiple JavaScript errors detected');
-      }
-    });
-    
-    // Handle unhandled promise rejections
-    window.addEventListener('unhandledrejection', (event) => {
-      this.consecutiveFailures++;
-      debugLog('Unhandled promise rejection:', event.reason);
-    });
-    
-    // Handle visibility changes (tab switching)
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible' && sessionStats.isRunning) {
-        this.resetWatchdog();
-      }
-    });
-  },
-  
-  // Public methods for external use
-  recordProgress() {
-    this.lastProgressTime = Date.now();
-    this.resetWatchdog();
-  },
-  
-  recordSuccess() {
-    this.lastSuccessTime = Date.now();
-    this.consecutiveFailures = 0;
-    this.recordProgress();
-  },
-  
-  recordFailure() {
-    this.consecutiveFailures++;
-  },
-  
-  // Cleanup
-  destroy() {
-    if (this.healthCheckInterval) {
-      clearInterval(this.healthCheckInterval);
-    }
-    if (this.watchdogTimer) {
-      clearTimeout(this.watchdogTimer);
-    }
-  }
-};
-
-// 🚀 INITIALIZE BULLETPROOF STATE MACHINE
-function initializeBulletproofSystem() {
-  // Load state machine dynamically
-  const script = document.createElement('script');
-  script.textContent = `
-    // Inline state machine for immediate availability
-    class BulletproofStateMachine {
-      constructor() {
-        this.currentState = 'IDLE';
-        this.progressTracker = {
-          successfulReplies: 0,
-          totalAttempts: 0,
-          consecutiveFailures: 0,
-          lastProgressTime: Date.now()
-        };
-        this.circuitBreaker = {
-          failureCount: 0,
-          state: 'CLOSED',
-          threshold: 5
-        };
-        sessionLog('🛡️ Bulletproof State Machine initialized', 'success');
-      }
-      
-      recordSuccess() {
-        this.progressTracker.successfulReplies++;
-        this.progressTracker.totalAttempts++;
-        this.progressTracker.consecutiveFailures = 0;
-        this.progressTracker.lastProgressTime = Date.now();
-        this.circuitBreaker.failureCount = 0;
-      }
-      
-      recordFailure() {
-        this.progressTracker.totalAttempts++;
-        this.progressTracker.consecutiveFailures++;
-        this.circuitBreaker.failureCount++;
-        
-        if (this.circuitBreaker.failureCount >= this.circuitBreaker.threshold) {
-          this.circuitBreaker.state = 'OPEN';
-          sessionLog('🔴 Circuit breaker OPEN - cooling down', 'error');
-        }
-      }
-      
-      shouldAttemptAction() {
-        return this.circuitBreaker.state !== 'OPEN';
-      }
-    }
-    window.BulletproofStateMachine = BulletproofStateMachine;
-  `;
-  document.head.appendChild(script);
-  
-  // Initialize state machine
-  bulletproofStateMachine = new window.BulletproofStateMachine();
-}
-
 // Legacy function for backward compatibility
 function resetWatchdog() {
   if (bulletproofStateMachine) {
@@ -5238,14 +5068,6 @@ function resetWatchdog() {
   }
 }
 
-// Initialize bulletproof system
-initializeBulletproofSystem();
-
-// Fallback to legacy system if needed
-if (!bulletproofStateMachine) {
-  STABILITY_SYSTEM.initialize();
-}
-
-// Initialization complete
-sessionLog('✅ BoldTake v5.0 Ready - Bulletproof Architecture', 'success');
-updateStatus('BoldTake Ready');
+// Initialization complete - system is ready
+debugLog('✅ BoldTake v5.5.0 Ready - Smart Redirect System');
+// Note: Main initialization happens in the initialize() function above

@@ -1391,10 +1391,15 @@ async function processNextTweet() {
       // CRITICAL: If we're stuck on X.com error page, trigger emergency recovery
       if (window.location.href.includes('/compose/post') && 
           document.body?.textContent?.includes('Something went wrong')) {
-        addDetailedActivity('🚨 Stuck on X.com error page - triggering emergency recovery', 'error');
-        // Navigate back to home to escape error page
+        addDetailedActivity('🚨 Stuck on compose error page - closing window', 'error');
+        // Try to close the compose window instead of navigating
         setTimeout(() => {
-          window.location.href = 'https://x.com/home';
+          if (window.opener) {
+            window.close();
+          } else {
+            // If can't close, go back instead of navigating to home
+            window.history.back();
+          }
         }, 2000);
       }
     }
@@ -1606,8 +1611,8 @@ async function handleReplyModal(originalTweet) {
         window.close();
         return { success: false, replyText: null, error: 'X.com error page' };
       } else {
-        // Navigate back to main X.com
-        window.location.href = 'https://x.com/home';
+        // Go back instead of navigating to home
+        window.history.back();
         return { success: false, replyText: null, error: 'X.com error page' };
       }
     }
@@ -2702,19 +2707,18 @@ async function handleXcomPageError() {
   
   // Handle privacy extension issues differently
   if (hasPrivacyWarning) {
-    addDetailedActivity('⚠️ Privacy extension conflict detected - attempting alternative recovery', 'error');
-    sessionLog('⚠️ X.com reports privacy extensions are causing issues. Navigating to home page...', 'warning');
+    addDetailedActivity('⚠️ Privacy extension conflict detected - staying on current page', 'error');
+    sessionLog('⚠️ X.com reports privacy extensions are causing issues. Waiting for recovery...', 'warning');
     
-    // Don't refresh the error page, navigate to home instead
-    if (!window.location.pathname.includes('/home')) {
-      window.location.href = 'https://x.com/home';
-      return;
-    } else {
-      // If we're already at home and still seeing errors, stop
-      addDetailedActivity('🚨 Privacy extension blocking X.com - please disable privacy extensions', 'error');
-      sessionLog('🚨 Cannot proceed: Privacy extensions are blocking X.com functionality', 'error');
-      return;
+    // Don't navigate away, just wait for the issue to resolve
+    await new Promise(resolve => setTimeout(resolve, 10000));
+    
+    // After waiting, check if still have issues
+    if (detectXcomErrorPage()) {
+      addDetailedActivity('🚨 Privacy extension still blocking - please disable privacy extensions', 'error');
+      sessionLog('🚨 Cannot proceed: Privacy extensions may be blocking X.com functionality', 'error');
     }
+    return;
   }
   
   if (now - lastRefresh < refreshCooldown) {
@@ -2756,12 +2760,11 @@ async function handleXcomPageError() {
   const isSearchError = currentUrl.includes('/search') && detectXcomErrorPage();
   
   if (isSearchError) {
-    addDetailedActivity('🔄 Search page error - navigating to home page instead', 'warning');
-    sessionLog('🔄 Search results failed - redirecting to home page', 'warning');
+    addDetailedActivity('🔄 Search page error detected - staying on page', 'warning');
+    sessionLog('🔄 Search results error - attempting recovery without navigation', 'warning');
     
-    // Wait briefly then navigate to home
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    window.location.href = 'https://x.com/home';
+    // Don't navigate away, just wait and let it recover naturally
+    await new Promise(resolve => setTimeout(resolve, 5000));
     return;
   }
   
