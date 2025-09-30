@@ -2234,6 +2234,56 @@ function initializeNetworkMonitoring() {
   
   // Start periodic network health checks
   startNetworkHealthChecks();
+  
+  // AUTO-RECOVERY: Check if tweets can be found after initialization
+  // This mimics Ctrl+Shift+R behavior when the extension gets stuck
+  setTimeout(async () => {
+    await checkAndRecoverStuckState();
+  }, 5000); // Wait 5 seconds after initialization
+}
+
+/**
+ * Check if extension is stuck and perform automatic recovery
+ * This mimics Ctrl+Shift+R behavior when tweets aren't being found
+ */
+async function checkAndRecoverStuckState() {
+  // Don't run if session is not active or recovery is already in progress
+  if (!sessionStats.isRunning || networkMonitor.recoveryInProgress) {
+    return;
+  }
+  
+  // Check if we can find tweets on the page
+  const testTweets = document.querySelectorAll('[data-testid="tweet"], article[data-testid="tweet"], [role="article"]');
+  
+  if (testTweets.length === 0 && window.location.pathname.includes('search')) {
+    // No tweets found on search page - likely stuck
+    addDetailedActivity('⚠️ No tweets detected - initiating auto-recovery', 'warning');
+    
+    // Track recovery attempts
+    if (!window.boldtakeRecoveryAttempts) {
+      window.boldtakeRecoveryAttempts = 0;
+    }
+    
+    window.boldtakeRecoveryAttempts++;
+    
+    if (window.boldtakeRecoveryAttempts <= 3) {
+      addDetailedActivity(`🔄 Auto-recovery attempt ${window.boldtakeRecoveryAttempts}/3 - refreshing page`, 'info');
+      
+      // Perform hard refresh (like Ctrl+Shift+R)
+      // This clears cache and reloads all resources
+      window.location.reload(true);
+    } else {
+      addDetailedActivity('⚠️ Max recovery attempts reached - manual intervention may be needed', 'error');
+      // Reset counter after max attempts
+      window.boldtakeRecoveryAttempts = 0;
+    }
+  } else if (testTweets.length > 0) {
+    // Tweets found, reset recovery counter
+    if (window.boldtakeRecoveryAttempts > 0) {
+      addDetailedActivity('✅ Tweets detected - recovery successful', 'success');
+      window.boldtakeRecoveryAttempts = 0;
+    }
+  }
 }
 
 /**
@@ -2306,6 +2356,11 @@ async function performNetworkHealthCheck() {
       handleNetworkOffline();
     }
     return;
+  }
+  
+  // AUTO-RECOVERY: Check for stuck state during active sessions
+  if (sessionStats.isRunning && window.location.pathname.includes('search')) {
+    await checkAndRecoverStuckState();
   }
   
   // Check for X.com error pages that require refresh (only during active sessions)
