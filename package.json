@@ -5,7 +5,7 @@
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "coverage": "jest --coverage",
     "test:e2e": "playwright test",
     "test:memory": "node scripts/memory-test.js",
     "lint": "eslint . --ext .js",
