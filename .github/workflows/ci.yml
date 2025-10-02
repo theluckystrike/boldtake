@@ -80,11 +80,14 @@ jobs:
       - name: Generate coverage report
         run: npm run coverage
         
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v3
-        with:
-          file: ./coverage/lcov.info
-          fail_ci_if_error: true
+      # Codecov disabled - requires token to avoid rate limiting
+      # To enable: Add CODECOV_TOKEN to repository secrets
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v3
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     file: ./coverage/lcov.info
+      #     fail_ci_if_error: false
 
   # Job 3: Build and Bundle Analysis
   build:
