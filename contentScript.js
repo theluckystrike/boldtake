@@ -1397,10 +1397,18 @@ async function processNextTweet() {
       if (window.location.href.includes('/compose/post') && 
           document.body?.textContent?.includes('Something went wrong')) {
         addDetailedActivity('🚨 Stuck on X.com error page - triggering emergency recovery', 'error');
-        // Navigate back to home to escape error page
-        setTimeout(() => {
-          window.location.href = 'https://x.com/home';
-        }, 2000);
+        // Navigate back to search page, not home!
+        const searchUrl = sessionStorage.getItem('boldtake_search_url');
+        if (searchUrl && searchUrl.includes('/search')) {
+          setTimeout(() => {
+            window.location.href = searchUrl;
+          }, 2000);
+        } else {
+          // Go back in history if no saved search URL
+          setTimeout(() => {
+            window.history.back();
+          }, 2000);
+        }
       }
     }
     
@@ -1611,8 +1619,14 @@ async function handleReplyModal(originalTweet) {
         window.close();
         return { success: false, replyText: null, error: 'X.com error page' };
       } else {
-        // Navigate back to main X.com
-        window.location.href = 'https://x.com/home';
+        // Navigate back to search page, not home!
+        const searchUrl = sessionStorage.getItem('boldtake_search_url');
+        if (searchUrl && searchUrl.includes('/search')) {
+          window.location.href = searchUrl;
+        } else {
+          // If no saved search, go back
+          window.history.back();
+        }
         return { success: false, replyText: null, error: 'X.com error page' };
       }
     }
@@ -2295,13 +2309,10 @@ async function checkAndRecoverStuckState() {
       }, 1000); // Small delay to ensure message is logged
     } else {
       addDetailedActivity('⚠️ Max recovery attempts reached - trying alternative recovery', 'warning');
-      // Try navigating to home and back to search
+      // Just refresh the search page - NEVER leave it!
       window.boldtakeRecoveryAttempts = 0;
-      const currentUrl = window.location.href;
-      window.location.href = 'https://x.com/home';
-      setTimeout(() => {
-        window.location.href = currentUrl;
-      }, 2000);
+      // Force refresh the current search page
+      window.location.reload(true);
     }
   } else if (testTweets.length > 0) {
     // Tweets found, reset recovery counter
@@ -2794,9 +2805,9 @@ async function handleXcomPageError() {
     addDetailedActivity('⚠️ Privacy extension conflict detected - attempting alternative recovery', 'error');
     sessionLog('⚠️ X.com reports privacy extensions are causing issues. Navigating to home page...', 'warning');
     
-    // Don't refresh the error page, navigate to home instead
-    if (!window.location.pathname.includes('/home')) {
-      window.location.href = 'https://x.com/home';
+    // If on search page with privacy warning, just refresh it
+    if (window.location.pathname.includes('/search')) {
+      window.location.reload(true);
       return;
     } else {
       // If we're already at home and still seeing errors, stop
@@ -2857,10 +2868,15 @@ async function handleXcomPageError() {
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
     
-    // If still stuck, navigate to search or home
+    // If still stuck, navigate back to the user's search page
     if (window.location.href.includes('/compose/post')) {
-      const searchUrl = sessionStorage.getItem('boldtake_search_url') || 'https://x.com/home';
-      window.location.href = searchUrl;
+      const searchUrl = sessionStorage.getItem('boldtake_search_url');
+      if (searchUrl && searchUrl.includes('/search')) {
+        window.location.href = searchUrl;
+      } else {
+        // Don't navigate to home - just go back
+        window.history.back();
+      }
     }
     return;
   }
@@ -2872,9 +2888,10 @@ async function handleXcomPageError() {
     addDetailedActivity('🔄 Search page error - navigating to home page instead', 'warning');
     sessionLog('🔄 Search results failed - redirecting to home page', 'warning');
     
-    // Wait briefly then navigate to home
+    // Wait briefly then refresh the search page (not navigate to home!)
     await new Promise(resolve => setTimeout(resolve, 3000));
-    window.location.href = 'https://x.com/home';
+    // Refresh the current search page instead of going home
+    window.location.reload(true);
     return;
   }
   
@@ -2932,7 +2949,14 @@ async function attemptSessionRecovery() {
     // Check if we're still on X.com
     if (!window.location.hostname.includes('x.com') && !window.location.hostname.includes('twitter.com')) {
       addDetailedActivity('🌐 Navigating back to X.com...', 'info');
-      window.location.href = 'https://x.com/home';
+      // Navigate back to the saved search URL with user's filters
+      const savedSearchUrl = sessionStorage.getItem('boldtake_search_url');
+      if (savedSearchUrl && savedSearchUrl.includes('/search')) {
+        window.location.href = savedSearchUrl;
+      } else {
+        // If no saved search, stop - don't navigate randomly
+        addDetailedActivity('⚠️ No saved search URL - please restart from search page', 'error');
+      }
       return;
     }
     
