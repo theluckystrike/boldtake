@@ -2235,11 +2235,19 @@ function initializeNetworkMonitoring() {
   // Start periodic network health checks
   startNetworkHealthChecks();
   
-  // AUTO-RECOVERY: Check if tweets can be found after initialization
-  // This mimics Ctrl+Shift+R behavior when the extension gets stuck
+  // AUTO-RECOVERY: More aggressive recovery checks
+  // Check multiple times to ensure tweets are loading
   setTimeout(async () => {
     await checkAndRecoverStuckState();
-  }, 5000); // Wait 5 seconds after initialization
+  }, 3000); // First check after 3 seconds
+  
+  setTimeout(async () => {
+    await checkAndRecoverStuckState();
+  }, 8000); // Second check after 8 seconds
+  
+  setTimeout(async () => {
+    await checkAndRecoverStuckState();
+  }, 15000); // Third check after 15 seconds
 }
 
 /**
@@ -2247,16 +2255,19 @@ function initializeNetworkMonitoring() {
  * This mimics Ctrl+Shift+R behavior when tweets aren't being found
  */
 async function checkAndRecoverStuckState() {
-  // Don't run if session is not active or recovery is already in progress
-  if (!sessionStats.isRunning || networkMonitor.recoveryInProgress) {
-    return;
-  }
-  
   // Check if we can find tweets on the page
   const testTweets = document.querySelectorAll('[data-testid="tweet"], article[data-testid="tweet"], [role="article"]');
   
-  if (testTweets.length === 0 && window.location.pathname.includes('search')) {
-    // No tweets found on search page - likely stuck
+  // Also check if the timeline is loading
+  const isLoading = document.querySelector('[aria-label="Loading timeline"]') || 
+                    document.querySelector('[role="progressbar"]');
+  
+  // Check if we're on search page and session is active
+  const isSearchPage = window.location.pathname.includes('search');
+  const shouldRecover = sessionStats.isRunning && isSearchPage;
+  
+  if (testTweets.length === 0 && shouldRecover && !isLoading) {
+    // No tweets found on search page and not loading - likely stuck
     addDetailedActivity('⚠️ No tweets detected - initiating auto-recovery', 'warning');
     
     // Track recovery attempts
@@ -2269,13 +2280,23 @@ async function checkAndRecoverStuckState() {
     if (window.boldtakeRecoveryAttempts <= 3) {
       addDetailedActivity(`🔄 Auto-recovery attempt ${window.boldtakeRecoveryAttempts}/3 - refreshing page`, 'info');
       
+      // Clear any cached state
+      sessionStorage.clear();
+      
       // Perform hard refresh (like Ctrl+Shift+R)
-      // This clears cache and reloads all resources
-      window.location.reload(true);
+      // Force reload bypassing cache
+      setTimeout(() => {
+        window.location.reload(true);
+      }, 1000); // Small delay to ensure message is logged
     } else {
-      addDetailedActivity('⚠️ Max recovery attempts reached - manual intervention may be needed', 'error');
-      // Reset counter after max attempts
+      addDetailedActivity('⚠️ Max recovery attempts reached - trying alternative recovery', 'warning');
+      // Try navigating to home and back to search
       window.boldtakeRecoveryAttempts = 0;
+      const currentUrl = window.location.href;
+      window.location.href = 'https://x.com/home';
+      setTimeout(() => {
+        window.location.href = currentUrl;
+      }, 2000);
     }
   } else if (testTweets.length > 0) {
     // Tweets found, reset recovery counter
@@ -2283,6 +2304,9 @@ async function checkAndRecoverStuckState() {
       addDetailedActivity('✅ Tweets detected - recovery successful', 'success');
       window.boldtakeRecoveryAttempts = 0;
     }
+  } else if (isLoading && shouldRecover) {
+    // Page is still loading, wait a bit more
+    addDetailedActivity('⏳ Page still loading - waiting...', 'info');
   }
 }
 

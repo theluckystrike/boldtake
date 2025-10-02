@@ -25,18 +25,23 @@
     "eslint-config-airbnb": "^19.0.4",
     "eslint-plugin-import": "^2.28.0",
     "eslint-plugin-security": "^1.7.1",
+    "husky": "^8.0.3",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
+    "lint-staged": "^16.2.3",
     "prettier": "^3.0.3",
     "webpack": "^5.88.0",
-    "webpack-bundle-analyzer": "^4.9.0",
-    "husky": "^8.0.3",
-    "lint-staged": "^14.0.1"
+    "webpack-bundle-analyzer": "^4.9.0"
   },
   "jest": {
     "testEnvironment": "jsdom",
-    "setupFilesAfterEnv": ["<rootDir>/test/setup.js"],
-    "testPathIgnorePatterns": ["/node_modules/", "/test/e2e/"],
+    "setupFilesAfterEnv": [
+      "<rootDir>/test/setup.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/test/e2e/"
+    ],
     "collectCoverageFrom": [
       "*.js",
       "!node_modules/**",
@@ -53,7 +58,10 @@
     }
   },
   "eslintConfig": {
-    "extends": ["airbnb", "plugin:security/recommended"],
+    "extends": [
+      "airbnb",
+      "plugin:security/recommended"
+    ],
     "env": {
       "browser": true,
       "webextensions": true,
@@ -79,7 +87,13 @@
     }
   },
   "lint-staged": {
-    "*.js": ["eslint --fix", "prettier --write", "jest --findRelatedTests"],
-    "*.{json,md}": ["prettier --write"]
+    "*.js": [
+      "eslint --fix",
+      "prettier --write",
+      "jest --findRelatedTests"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
   }
 }
