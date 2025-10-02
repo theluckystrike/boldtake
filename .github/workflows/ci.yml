@@ -169,11 +169,16 @@ jobs:
         with:
           node-version: '18'
           
-      - name: Run Lighthouse CI
-        run: |
-          npm install -g @lhci/cli
-          lhci autorun
+      # Lighthouse CI disabled - not applicable for Chrome extensions
+      # Extensions don't have their own URLs to test
+      # - name: Run Lighthouse CI
+      #   run: |
+      #     npm install -g @lhci/cli
+      #     lhci autorun
           
+      - name: Install dependencies
+        run: npm ci
+        
       - name: Memory leak detection
         run: npm run test:memory
 

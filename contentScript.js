@@ -1169,6 +1169,11 @@ function assessAccountRisk() {
 }
 
 async function processNextTweet() {
+  // Save the search URL if we're on a search page (for recovery from compose errors)
+  if (window.location.href.includes('/search')) {
+    sessionStorage.setItem('boldtake_search_url', window.location.href);
+  }
+  
   // 🛡️ BULLETPROOF: Check circuit breaker before processing
   if (bulletproofStateMachine && !bulletproofStateMachine.shouldAttemptAction()) {
     sessionLog('🔴 Circuit breaker OPEN - skipping tweet processing', 'warning');
@@ -2438,6 +2443,11 @@ async function performNetworkHealthCheck() {
 function detectXcomErrorPage() {
   // 🛡️ BULLETPROOF: Enhanced error detection with multiple patterns
   
+  // Check if we're on the compose/post error page
+  if (window.location.href.includes('/compose/post')) {
+    return true; // Always treat compose/post as an error page
+  }
+  
   // Check for various error message patterns
   const bodyText = document.body?.textContent || '';
   
@@ -2830,6 +2840,30 @@ async function handleXcomPageError() {
   
   // Save current URL for recovery
   const currentUrl = window.location.href;
+  
+  // Check if we're on a compose error page
+  const isComposeError = currentUrl.includes('/compose/post');
+  
+  if (isComposeError) {
+    addDetailedActivity('🚨 Stuck on compose error page - navigating away', 'warning');
+    sessionLog('🔄 Compose error detected - returning to previous page', 'warning');
+    
+    // Store that we hit a compose error
+    sessionStorage.setItem('boldtake_compose_error', 'true');
+    
+    // Try to go back first
+    if (window.history.length > 1) {
+      window.history.back();
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    
+    // If still stuck, navigate to search or home
+    if (window.location.href.includes('/compose/post')) {
+      const searchUrl = sessionStorage.getItem('boldtake_search_url') || 'https://x.com/home';
+      window.location.href = searchUrl;
+    }
+    return;
+  }
   
   // Check if we're on a search page with errors
   const isSearchError = currentUrl.includes('/search') && detectXcomErrorPage();
