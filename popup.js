@@ -19,6 +19,9 @@ let nicheSelect, suggestedKeywords;
 // Settings Elements
 let dailyTargetInput;
 
+// Auto-Restart Elements
+let autoRestartToggle, autoRestartInterval, autoRestartStatus, manualRestartBtn, lastRestartTime;
+
 // Custom Prompt Elements (removed)
 
 // Comprehensive Keyword Suggestions by Niche
@@ -83,6 +86,256 @@ let commentHistoryList, analyticsInsights, clearHistoryBtn;
 let activityLog = [];
 let activityUpdatesPaused = false;
 let totalActivityEvents = 0;
+
+// === AUTO-RESTART FUNCTIONALITY ===
+
+/**
+ * Initialize auto-restart controls and load current status
+ */
+async function initializeAutoRestartControls() {
+    try {
+        // Get current auto-restart status from background
+        const response = await chrome.runtime.sendMessage({ type: 'GET_AUTO_RESTART_STATUS' });
+        
+        if (response && response.success) {
+            const status = response.status;
+            
+            // Update UI with current status
+            if (autoRestartToggle) {
+                autoRestartToggle.checked = status.enabled;
+            }
+            
+            if (autoRestartInterval) {
+                autoRestartInterval.value = status.intervalMs.toString();
+            }
+            
+            if (autoRestartStatus) {
+                autoRestartStatus.textContent = status.enabled ? 'Active' : 'Disabled';
+                autoRestartStatus.style.color = status.enabled ? 'hsl(var(--brand-green))' : 'hsl(var(--text-secondary))';
+            }
+            
+            // Update last restart time
+            updateLastRestartTime(status.lastRestart);
+            
+            // Set up event listeners
+            setupAutoRestartEventListeners();
+            
+            debugLog('✅ Auto-restart controls initialized:', status);
+        } else {
+            debugLog('⚠️ Failed to get auto-restart status');
+        }
+    } catch (error) {
+        console.error('❌ Error initializing auto-restart controls:', error);
+    }
+}
+
+/**
+ * Set up event listeners for auto-restart controls
+ */
+function setupAutoRestartEventListeners() {
+    // Toggle auto-restart on/off
+    if (autoRestartToggle) {
+        autoRestartToggle.addEventListener('change', async (e) => {
+            const enabled = e.target.checked;
+            
+            try {
+                const response = await chrome.runtime.sendMessage({
+                    type: 'UPDATE_AUTO_RESTART',
+                    settings: { enabled }
+                });
+                
+                if (response && response.success) {
+                    if (autoRestartStatus) {
+                        autoRestartStatus.textContent = enabled ? 'Active' : 'Disabled';
+                        autoRestartStatus.style.color = enabled ? 'hsl(var(--brand-green))' : 'hsl(var(--text-secondary))';
+                    }
+                    
+                    // Show notification
+                    showNotification(
+                        enabled ? '✅ Auto-restart enabled' : '⏸️ Auto-restart disabled',
+                        'success'
+                    );
+                } else {
+                    // Revert toggle on error
+                    e.target.checked = !enabled;
+                    showNotification('❌ Failed to update auto-restart setting', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating auto-restart:', error);
+                e.target.checked = !enabled;
+                showNotification('❌ Error updating auto-restart', 'error');
+            }
+        });
+    }
+    
+    // Change interval
+    if (autoRestartInterval) {
+        autoRestartInterval.addEventListener('change', async (e) => {
+            const intervalMs = parseInt(e.target.value);
+            
+            try {
+                const response = await chrome.runtime.sendMessage({
+                    type: 'UPDATE_AUTO_RESTART',
+                    settings: { intervalMs }
+                });
+                
+                if (response && response.success) {
+                    const intervalMinutes = intervalMs / 1000 / 60;
+                    showNotification(
+                        `✅ Auto-restart interval set to ${intervalMinutes} minute${intervalMinutes > 1 ? 's' : ''}`,
+                        'success'
+                    );
+                } else {
+                    showNotification('❌ Failed to update interval', 'error');
+                }
+            } catch (error) {
+                console.error('Error updating interval:', error);
+                showNotification('❌ Error updating interval', 'error');
+            }
+        });
+    }
+    
+    // Manual restart button
+    if (manualRestartBtn) {
+        manualRestartBtn.addEventListener('click', async () => {
+            manualRestartBtn.disabled = true;
+            manualRestartBtn.textContent = '⏳ Restarting...';
+            
+            try {
+                const response = await chrome.runtime.sendMessage({
+                    type: 'TRIGGER_AUTO_RESTART'
+                });
+                
+                if (response && response.success) {
+                    const tabCount = response.result.tabsRefreshed || 0;
+                    showNotification(
+                        `✅ Hard refresh completed on ${tabCount} tab${tabCount !== 1 ? 's' : ''}`,
+                        'success'
+                    );
+                    
+                    // Update last restart time
+                    updateLastRestartTime(response.result.timestamp);
+                } else {
+                    showNotification(
+                        response?.result?.message || '❌ Failed to perform hard refresh',
+                        'error'
+                    );
+                }
+            } catch (error) {
+                console.error('Error triggering manual restart:', error);
+                showNotification('❌ Error performing hard refresh', 'error');
+            } finally {
+                manualRestartBtn.disabled = false;
+                manualRestartBtn.textContent = '⚡ Restart Now';
+            }
+        });
+    }
+}
+
+/**
+ * Update the last restart time display
+ */
+function updateLastRestartTime(timestamp) {
+    if (!lastRestartTime) return;
+    
+    if (!timestamp) {
+        lastRestartTime.textContent = 'Never';
+        return;
+    }
+    
+    try {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMinutes = Math.floor(diffMs / 1000 / 60);
+        
+        if (diffMinutes < 1) {
+            lastRestartTime.textContent = 'Just now';
+        } else if (diffMinutes < 60) {
+            lastRestartTime.textContent = `${diffMinutes} minute${diffMinutes !== 1 ? 's' : ''} ago`;
+        } else {
+            const diffHours = Math.floor(diffMinutes / 60);
+            lastRestartTime.textContent = `${diffHours} hour${diffHours !== 1 ? 's' : ''} ago`;
+        }
+    } catch (error) {
+        lastRestartTime.textContent = 'Unknown';
+    }
+}
+
+/**
+ * Listen for auto-restart events from background
+ */
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'AUTO_RESTART_PERFORMED') {
+        if (message.result && message.result.success) {
+            // Update last restart time
+            updateLastRestartTime(message.result.timestamp);
+            
+            // Show notification
+            const tabCount = message.result.tabsRefreshed || 0;
+            showNotification(
+                `🔄 Auto-restart completed on ${tabCount} tab${tabCount !== 1 ? 's' : ''}`,
+                'info'
+            );
+        }
+    }
+});
+
+/**
+ * Show notification in popup
+ */
+function showNotification(message, type = 'info') {
+    // Check if there's an existing notification system
+    const existingNotification = document.querySelector('.notification-toast');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = 'notification-toast';
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: ${type === 'success' ? 'hsl(var(--brand-green))' : type === 'error' ? '#ef4444' : '#3b82f6'};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 10000;
+        animation: slideIn 0.3s ease-out;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    `;
+    notification.textContent = message;
+    
+    // Add animation
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease-out forwards';
+        setTimeout(() => notification.remove(), 300);
+    }, 3000);
+}
+
+// === END AUTO-RESTART FUNCTIONALITY ===
 
 /**
  * Get language code for X.com search URL
@@ -280,6 +533,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Update display on page load
         updateDailyLimitDisplay();
     }
+    
+    // Auto-Restart elements initialization
+    autoRestartToggle = document.getElementById('auto-restart-toggle');
+    autoRestartInterval = document.getElementById('auto-restart-interval');
+    autoRestartStatus = document.getElementById('auto-restart-status');
+    manualRestartBtn = document.getElementById('manual-restart-btn');
+    lastRestartTime = document.getElementById('last-restart-time');
+    
+    // Initialize auto-restart controls
+    await initializeAutoRestartControls();
     
     // Prompt Library elements
     const promptSelects = {

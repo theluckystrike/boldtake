@@ -49,7 +49,26 @@ const BOLDTAKE_CONFIG = {
         totalComments: 'boldtake_total_comments',
         dailyComments: 'boldtake_daily_comments',
         commentHistory: 'boldtake_comment_history',
-        lastResetDate: 'boldtake_last_reset_date'
+        lastResetDate: 'boldtake_last_reset_date',
+        autoRestartSettings: 'boldtake_auto_restart_settings',
+        autoRestartLog: 'boldtake_auto_restart_log',
+        lastAutoRestart: 'boldtake_last_auto_restart'
+    },
+    
+    // Auto-Restart Configuration
+    autoRestart: {
+        enabled: true,
+        defaultIntervalMs: 60 * 60 * 1000, // 1 hour
+        minIntervalMs: 15 * 60 * 1000, // 15 minutes minimum
+        maxIntervalMs: 4 * 60 * 60 * 1000, // 4 hours maximum
+        intervals: [
+            { label: '15 minutes', value: 15 * 60 * 1000 },
+            { label: '30 minutes', value: 30 * 60 * 1000 },
+            { label: '1 hour', value: 60 * 60 * 1000 },
+            { label: '2 hours', value: 2 * 60 * 60 * 1000 },
+            { label: '3 hours', value: 3 * 60 * 60 * 1000 },
+            { label: '4 hours', value: 4 * 60 * 60 * 1000 }
+        ]
     }
 };
 

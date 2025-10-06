@@ -2758,6 +2758,31 @@
                         <option value="500" disabled>500 replies/day (Pro - $49.99)</option>
                     </select>
                 </div>
+                
+                <!-- Auto-Restart Settings -->
+                <div class="input-group">
+                    <label for="auto-restart-toggle" style="display: flex; align-items: center; justify-content: space-between;">
+                        <span>🔄 Auto-Restart (Hard Refresh)</span>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <input type="checkbox" id="auto-restart-toggle" checked style="width: auto; margin: 0;">
+                            <span id="auto-restart-status" style="font-size: 12px; color: hsl(var(--brand-green));">Active</span>
+                        </div>
+                    </label>
+                    <select id="auto-restart-interval" class="daily-target-select" style="margin-top: 10px;">
+                        <option value="900000">Every 15 minutes</option>
+                        <option value="1800000">Every 30 minutes</option>
+                        <option value="3600000" selected>Every 1 hour (Recommended)</option>
+                        <option value="7200000">Every 2 hours</option>
+                        <option value="10800000">Every 3 hours</option>
+                        <option value="14400000">Every 4 hours</option>
+                    </select>
+                    <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <button id="manual-restart-btn" class="action-btn" style="background: hsl(var(--brand-green)); color: hsl(var(--bg-primary)); padding: 8px 16px; font-size: 12px; border-radius: 6px;">
+                            ⚡ Restart Now
+                        </button>
+                        <span id="last-restart-time" style="font-size: 11px; color: hsl(var(--text-secondary));">Never</span>
+                    </div>
+                </div>
 
                 <div class="input-group">
                     <label for="keyword-input">Target Keyword</label>

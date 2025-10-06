@@ -31,9 +31,210 @@ const SESSION_CONFIG = {
   retryDelay: 1000
 };
 
+// Auto-restart configuration
+const AUTO_RESTART_CONFIG = {
+  enabled: true,
+  intervalMs: 60 * 60 * 1000, // 1 hour in milliseconds
+  storageKey: 'boldtake_auto_restart_settings'
+};
+
 // Logging functions
 const debugLog = (...args) => console.log('[BoldTake]', ...args);
 const errorLog = (...args) => console.error('[BoldTake Error]', ...args);
+
+// --- Auto-Restart Mechanism ---
+
+let autoRestartInterval = null;
+let lastRestartTime = null;
+
+/**
+ * Performs a hard browser refresh (Ctrl+Shift+R equivalent) on X.com tabs
+ * This ensures a complete reload of the page and clears any stuck states
+ */
+async function performHardRefresh() {
+  try {
+    debugLog('🔄 Auto-restart: Performing hard refresh on X.com tabs...');
+    
+    // Get all tabs with X.com or Twitter.com
+    const tabs = await chrome.tabs.query({
+      url: ['https://x.com/*', 'https://twitter.com/*']
+    });
+    
+    if (tabs.length === 0) {
+      debugLog('⚠️ Auto-restart: No X.com tabs found to refresh');
+      return { success: false, message: 'No X.com tabs found' };
+    }
+    
+    // Store the current restart time
+    lastRestartTime = new Date().toISOString();
+    await chrome.storage.local.set({
+      'boldtake_last_auto_restart': lastRestartTime
+    });
+    
+    // Perform hard refresh on each tab
+    for (const tab of tabs) {
+      try {
+        // Method 1: Use chrome.tabs.reload with bypassCache flag for hard refresh
+        await chrome.tabs.reload(tab.id, { bypassCache: true });
+        debugLog(`✅ Auto-restart: Hard refresh performed on tab ${tab.id} (${tab.title})`);
+        
+        // Optional: Inject a script to clear any localStorage/sessionStorage if needed
+        // This mimics a more complete Ctrl+Shift+R behavior
+        chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => {
+            // Clear any extension-related session data that might be stuck
+            try {
+              // Clear session storage
+              if (window.sessionStorage) {
+                const keysToRemove = [];
+                for (let i = 0; i < window.sessionStorage.length; i++) {
+                  const key = window.sessionStorage.key(i);
+                  if (key && key.includes('boldtake')) {
+                    keysToRemove.push(key);
+                  }
+                }
+                keysToRemove.forEach(key => window.sessionStorage.removeItem(key));
+              }
+              console.log('[BoldTake] Auto-restart: Cleared session data');
+            } catch (e) {
+              console.error('[BoldTake] Auto-restart: Error clearing session data:', e);
+            }
+          }
+        }).catch(err => {
+          // Script injection might fail if tab is still loading, that's okay
+          debugLog('⚠️ Script injection failed (expected during reload):', err.message);
+        });
+        
+      } catch (error) {
+        errorLog(`❌ Auto-restart: Failed to refresh tab ${tab.id}:`, error);
+      }
+    }
+    
+    // Log the restart event
+    const restartEvent = {
+      timestamp: lastRestartTime,
+      tabsRefreshed: tabs.length,
+      success: true
+    };
+    
+    // Store in activity log
+    await storeRestartEvent(restartEvent);
+    
+    debugLog(`🎯 Auto-restart: Completed - ${tabs.length} tab(s) refreshed`);
+    return { success: true, tabsRefreshed: tabs.length, timestamp: lastRestartTime };
+    
+  } catch (error) {
+    errorLog('❌ Auto-restart: Critical error during hard refresh:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Stores auto-restart events for tracking
+ */
+async function storeRestartEvent(event) {
+  try {
+    const storage = await chrome.storage.local.get('boldtake_auto_restart_log');
+    let restartLog = storage.boldtake_auto_restart_log || [];
+    
+    // Keep only last 50 events
+    if (restartLog.length >= 50) {
+      restartLog = restartLog.slice(-49);
+    }
+    
+    restartLog.push(event);
+    await chrome.storage.local.set({ 'boldtake_auto_restart_log': restartLog });
+  } catch (error) {
+    debugLog('Failed to store restart event:', error);
+  }
+}
+
+/**
+ * Initializes the auto-restart mechanism
+ */
+async function initializeAutoRestart() {
+  try {
+    // Load settings from storage
+    const storage = await chrome.storage.local.get(AUTO_RESTART_CONFIG.storageKey);
+    const settings = storage[AUTO_RESTART_CONFIG.storageKey] || {
+      enabled: AUTO_RESTART_CONFIG.enabled,
+      intervalMs: AUTO_RESTART_CONFIG.intervalMs
+    };
+    
+    // Clear any existing interval
+    if (autoRestartInterval) {
+      clearInterval(autoRestartInterval);
+      autoRestartInterval = null;
+    }
+    
+    if (!settings.enabled) {
+      debugLog('⏸️ Auto-restart: Feature disabled');
+      return;
+    }
+    
+    // Set up the interval
+    autoRestartInterval = setInterval(async () => {
+      debugLog('⏰ Auto-restart: Timer triggered');
+      const result = await performHardRefresh();
+      
+      // Notify popup if it's open
+      chrome.runtime.sendMessage({
+        type: 'AUTO_RESTART_PERFORMED',
+        result: result
+      }).catch(() => {
+        // Popup might not be open, that's fine
+      });
+    }, settings.intervalMs);
+    
+    debugLog(`✅ Auto-restart: Initialized with ${settings.intervalMs / 1000 / 60} minute interval`);
+    
+    // Store initialization time
+    await chrome.storage.local.set({
+      'boldtake_auto_restart_initialized': new Date().toISOString()
+    });
+    
+  } catch (error) {
+    errorLog('❌ Auto-restart: Failed to initialize:', error);
+  }
+}
+
+/**
+ * Updates auto-restart settings
+ */
+async function updateAutoRestartSettings(newSettings) {
+  try {
+    const storage = await chrome.storage.local.get(AUTO_RESTART_CONFIG.storageKey);
+    const currentSettings = storage[AUTO_RESTART_CONFIG.storageKey] || {
+      enabled: AUTO_RESTART_CONFIG.enabled,
+      intervalMs: AUTO_RESTART_CONFIG.intervalMs
+    };
+    
+    const updatedSettings = { ...currentSettings, ...newSettings };
+    await chrome.storage.local.set({
+      [AUTO_RESTART_CONFIG.storageKey]: updatedSettings
+    });
+    
+    // Reinitialize with new settings
+    await initializeAutoRestart();
+    
+    debugLog('✅ Auto-restart: Settings updated:', updatedSettings);
+    return { success: true, settings: updatedSettings };
+    
+  } catch (error) {
+    errorLog('❌ Auto-restart: Failed to update settings:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Initialize auto-restart when service worker starts
+chrome.runtime.onInstalled.addListener(() => {
+  debugLog('🚀 Extension installed/updated - initializing auto-restart');
+  initializeAutoRestart();
+});
+
+// Also initialize on service worker startup
+initializeAutoRestart();
 
 // --- Message Handling ---
 
@@ -122,6 +323,70 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ error: 'Failed to get session stats' });
       }
       return false;
+    }
+    
+    if (message.type === 'GET_AUTO_RESTART_STATUS') {
+      // Get auto-restart status and settings
+      (async () => {
+        try {
+          const storage = await chrome.storage.local.get([
+            AUTO_RESTART_CONFIG.storageKey,
+            'boldtake_last_auto_restart',
+            'boldtake_auto_restart_initialized',
+            'boldtake_auto_restart_log'
+          ]);
+          
+          const settings = storage[AUTO_RESTART_CONFIG.storageKey] || {
+            enabled: AUTO_RESTART_CONFIG.enabled,
+            intervalMs: AUTO_RESTART_CONFIG.intervalMs
+          };
+          
+          const status = {
+            enabled: settings.enabled,
+            intervalMs: settings.intervalMs,
+            intervalMinutes: settings.intervalMs / 1000 / 60,
+            lastRestart: storage.boldtake_last_auto_restart || null,
+            initialized: storage.boldtake_auto_restart_initialized || null,
+            isRunning: autoRestartInterval !== null,
+            recentRestarts: (storage.boldtake_auto_restart_log || []).slice(-5)
+          };
+          
+          sendResponse({ success: true, status });
+        } catch (error) {
+          errorLog('Error getting auto-restart status:', error);
+          sendResponse({ success: false, error: error.message });
+        }
+      })();
+      return true;
+    }
+    
+    if (message.type === 'UPDATE_AUTO_RESTART') {
+      // Update auto-restart settings
+      (async () => {
+        try {
+          const result = await updateAutoRestartSettings(message.settings);
+          sendResponse(result);
+        } catch (error) {
+          errorLog('Error updating auto-restart:', error);
+          sendResponse({ success: false, error: error.message });
+        }
+      })();
+      return true;
+    }
+    
+    if (message.type === 'TRIGGER_AUTO_RESTART') {
+      // Manually trigger auto-restart
+      (async () => {
+        try {
+          debugLog('⚡ Manual auto-restart triggered');
+          const result = await performHardRefresh();
+          sendResponse({ success: true, result });
+        } catch (error) {
+          errorLog('Error triggering manual restart:', error);
+          sendResponse({ success: false, error: error.message });
+        }
+      })();
+      return true;
     }
 
     // STABILITY: Handle unknown message types
