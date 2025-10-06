@@ -2769,12 +2769,9 @@
                         </div>
                     </label>
                     <select id="auto-restart-interval" class="daily-target-select" style="margin-top: 10px;">
-                        <option value="900000">Every 15 minutes</option>
-                        <option value="1800000">Every 30 minutes</option>
-                        <option value="3600000" selected>Every 1 hour (Recommended)</option>
-                        <option value="7200000">Every 2 hours</option>
-                        <option value="10800000">Every 3 hours</option>
-                        <option value="14400000">Every 4 hours</option>
+                        <option value="7200000" selected>Every 2 hours (Recommended)</option>
+                        <option value="10800000">Every 3 hours (Conservative)</option>
+                        <option value="14400000">Every 4 hours (Very Safe)</option>
                     </select>
                     <div style="margin-top: 10px; display: flex; justify-content: space-between; align-items: center;">
                         <button id="manual-restart-btn" class="action-btn" style="background: hsl(var(--brand-green)); color: hsl(var(--bg-primary)); padding: 8px 16px; font-size: 12px; border-radius: 6px;">
@@ -2782,13 +2779,16 @@
                         </button>
                         <span id="last-restart-time" style="font-size: 11px; color: hsl(var(--text-secondary));">Never</span>
                     </div>
-                    <div style="margin-top: 8px; padding: 12px; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 6px; font-size: 11px; color: #92400e;">
-                        <div style="font-weight: 600; margin-bottom: 6px;">⚠️ MANUAL MODE ONLY</div>
+                    <div style="margin-top: 8px; padding: 12px; background: #dbeafe; border: 2px solid #3b82f6; border-radius: 6px; font-size: 11px; color: #1e40af;">
+                        <div style="font-weight: 600; margin-bottom: 6px;">🧠 SMART PROACTIVE MODE</div>
                         <div style="margin-bottom: 8px; line-height: 1.4;">
-                            Auto-restart is DISABLED by default to prevent refresh loops. Use the "Restart Now" button manually when needed.
+                            • Only refreshes when extension is idle (5min+)<br>
+                            • 10-minute cooldown between refreshes<br>
+                            • Prevents "stuck at network monitoring" issue<br>
+                            • Safe for long automation sessions
                         </div>
                         <button id="emergency-stop-btn" style="width: 100%; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;">
-                            🛑 STOP ALL REFRESHING NOW
+                            🛑 EMERGENCY STOP
                         </button>
                     </div>
                 </div>

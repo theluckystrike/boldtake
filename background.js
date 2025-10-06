@@ -31,15 +31,26 @@ const SESSION_CONFIG = {
   retryDelay: 1000
 };
 
-// Auto-restart configuration - DISABLED BY DEFAULT
+// Auto-restart configuration - SMART PROACTIVE MODE
 const AUTO_RESTART_CONFIG = {
-  enabled: false, // CRITICAL: Disabled by default to prevent loops
-  intervalMs: 60 * 60 * 1000, // 1 hour in milliseconds
+  enabled: false, // User must opt-in
+  intervalMs: 2 * 60 * 60 * 1000, // 2 hours (conservative to prevent loops)
   storageKey: 'boldtake_auto_restart_settings',
-  crashDetection: false, // CRITICAL: Disabled by default
-  crashRecoveryDelayMs: 5000, // 5 seconds after crash detection
-  maxCrashesBeforeRestart: 3,
-  memoryCheckIntervalMs: 5 * 60 * 1000 // Check memory every 5 minutes
+  
+  // Proactive prevention (not reactive detection)
+  preventiveMode: true,
+  
+  // Only refresh during safe windows
+  safeRefreshWindows: {
+    minActivityGap: 5 * 60 * 1000, // Only refresh if no activity for 5 minutes
+    maxSessionDuration: 3 * 60 * 60 * 1000, // Force refresh after 3 hours max
+  },
+  
+  // Single refresh lock with timeout
+  refreshLock: {
+    maxDuration: 60000, // 1 minute max for a refresh operation
+    cooldownPeriod: 10 * 60 * 1000 // 10 minutes between any refreshes
+  }
 };
 
 // Logging functions
@@ -50,41 +61,62 @@ const errorLog = (...args) => console.error('[BoldTake Error]', ...args);
 
 let autoRestartInterval = null;
 let lastRestartTime = null;
-let crashCounter = 0;
-let memoryCheckInterval = null;
-let lastMemoryCheck = null;
-let isRefreshing = false; // Lock to prevent concurrent refreshes
-let lastRefreshAttempt = 0; // Timestamp of last refresh attempt
-const MIN_REFRESH_INTERVAL = 30000; // Minimum 30 seconds between refreshes
+let isRefreshing = false;
+let lastRefreshAttempt = 0;
+let refreshLockTimeout = null;
+let extensionStartTime = Date.now();
+let lastExtensionActivity = Date.now();
 
 /**
- * Performs a hard browser refresh (Ctrl+Shift+R equivalent) on X.com tabs
- * Enhanced with crash recovery and cache clearing for "Aw, Snap" errors
+ * SMART PROACTIVE REFRESH - Prevents "stuck" state before it happens
+ * Only refreshes during safe windows when extension is idle
  */
 async function performHardRefresh(options = {}) {
   try {
-    const { clearCache = false, reason = 'scheduled' } = options;
-    
-    // CRITICAL FIX: Prevent refresh loop with lock and cooldown
+    const { clearCache = false, reason = 'scheduled', force = false } = options;
     const now = Date.now();
-    const timeSinceLastRefresh = now - lastRefreshAttempt;
     
+    // === SAFETY CHECK 1: Refresh Lock ===
     if (isRefreshing) {
-      debugLog('⚠️ Refresh already in progress - skipping to prevent loop');
-      return { success: false, message: 'Refresh already in progress' };
+      debugLog('⚠️ Refresh already in progress - BLOCKED');
+      return { success: false, message: 'Refresh in progress' };
     }
     
-    if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
-      const waitTime = Math.ceil((MIN_REFRESH_INTERVAL - timeSinceLastRefresh) / 1000);
-      debugLog(`⏳ Cooldown active - must wait ${waitTime}s before next refresh`);
-      return { success: false, message: `Cooldown active - wait ${waitTime}s` };
+    // === SAFETY CHECK 2: Cooldown Period (10 minutes) ===
+    const timeSinceLastRefresh = now - lastRefreshAttempt;
+    const cooldownRemaining = AUTO_RESTART_CONFIG.refreshLock.cooldownPeriod - timeSinceLastRefresh;
+    
+    if (!force && cooldownRemaining > 0) {
+      const minutesRemaining = Math.ceil(cooldownRemaining / 60000);
+      debugLog(`⏳ Cooldown active: ${minutesRemaining}m remaining - BLOCKED`);
+      return { success: false, message: `Cooldown: ${minutesRemaining}m remaining` };
     }
     
-    // Set lock and update timestamp
+    // === SAFETY CHECK 3: Activity Window (only refresh when idle) ===
+    if (!force && AUTO_RESTART_CONFIG.preventiveMode) {
+      const timeSinceActivity = now - lastExtensionActivity;
+      const minGap = AUTO_RESTART_CONFIG.safeRefreshWindows.minActivityGap;
+      
+      if (timeSinceActivity < minGap) {
+        const minutesUntilSafe = Math.ceil((minGap - timeSinceActivity) / 60000);
+        debugLog(`🚫 Extension is active - waiting ${minutesUntilSafe}m for idle window`);
+        return { success: false, message: 'Extension active - waiting for idle window' };
+      }
+    }
+    
+    // === ACQUIRE LOCK ===
     isRefreshing = true;
     lastRefreshAttempt = now;
     
-    debugLog(`🔄 Auto-restart: Performing hard refresh (reason: ${reason})...`);
+    // === SAFETY CHECK 4: Auto-release lock after 1 minute ===
+    refreshLockTimeout = setTimeout(() => {
+      if (isRefreshing) {
+        errorLog('⚠️ Refresh lock timeout - force releasing');
+        isRefreshing = false;
+      }
+    }, AUTO_RESTART_CONFIG.refreshLock.maxDuration);
+    
+    debugLog(`🔄 SMART REFRESH: ${reason} | Cache: ${clearCache} | Force: ${force}`);
     
     // Get all tabs with X.com or Twitter.com
     const tabs = await chrome.tabs.query({
@@ -195,17 +227,22 @@ async function performHardRefresh(options = {}) {
     // Store in activity log
     await storeRestartEvent(restartEvent);
     
-    debugLog(`🎯 Auto-restart: Completed - ${tabs.length} tab(s) refreshed`);
+    debugLog(`🎯 SMART REFRESH: Completed - ${tabs.length} tab(s) refreshed`);
     
-    // Release lock after successful completion
+    // === RELEASE LOCK ===
+    clearTimeout(refreshLockTimeout);
     isRefreshing = false;
+    
+    // Reset extension start time (fresh session)
+    extensionStartTime = Date.now();
     
     return { success: true, tabsRefreshed: tabs.length, timestamp: lastRestartTime };
     
   } catch (error) {
-    errorLog('❌ Auto-restart: Critical error during hard refresh:', error);
+    errorLog('❌ SMART REFRESH: Error:', error);
     
-    // CRITICAL: Always release lock even on error
+    // === CRITICAL: Always release lock ===
+    clearTimeout(refreshLockTimeout);
     isRefreshing = false;
     
     return { success: false, error: error.message };
@@ -256,107 +293,45 @@ async function storeRestartEvent(event) {
 }
 
 /**
- * Detects tab crashes and initiates recovery
+ * Track extension activity to determine safe refresh windows
+ * Called by content script when it performs actions
  */
-async function detectAndRecoverFromCrashes() {
-  try {
-    // CRITICAL FIX: Don't check for crashes if we're already refreshing
-    if (isRefreshing) {
-      debugLog('⏭️ Skipping crash detection - refresh in progress');
-      return;
+function updateActivityTimestamp() {
+  lastExtensionActivity = Date.now();
+  debugLog('📍 Activity timestamp updated');
+}
+
+/**
+ * Check if extension should proactively refresh
+ * Called periodically by the main interval
+ */
+async function checkProactiveRefresh() {
+  const now = Date.now();
+  const sessionDuration = now - extensionStartTime;
+  const timeSinceActivity = now - lastExtensionActivity;
+  
+  // Check if we've exceeded max session duration (3 hours)
+  const maxDuration = AUTO_RESTART_CONFIG.safeRefreshWindows.maxSessionDuration;
+  if (sessionDuration > maxDuration) {
+    debugLog(`⏰ Max session duration reached (${Math.round(sessionDuration / 3600000)}h) - scheduling refresh`);
+    
+    // Wait for idle window before refreshing
+    const minGap = AUTO_RESTART_CONFIG.safeRefreshWindows.minActivityGap;
+    if (timeSinceActivity >= minGap) {
+      debugLog('✅ Extension is idle - safe to refresh now');
+      await performHardRefresh({ 
+        clearCache: true, 
+        reason: `proactive_${Math.round(sessionDuration / 3600000)}h_session` 
+      });
+    } else {
+      const minutesUntilIdle = Math.ceil((minGap - timeSinceActivity) / 60000);
+      debugLog(`⏳ Waiting ${minutesUntilIdle}m for idle window before refresh`);
     }
-    
-    // CRITICAL FIX: Respect cooldown period
-    const timeSinceLastRefresh = Date.now() - lastRefreshAttempt;
-    if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
-      debugLog('⏭️ Skipping crash detection - in cooldown period');
-      return;
-    }
-    
-    const tabs = await chrome.tabs.query({
-      url: ['https://x.com/*', 'https://twitter.com/*']
-    });
-    
-    let crashedTabs = 0;
-    
-    for (const tab of tabs) {
-      // Check for signs of crashed tabs
-      if (tab.status === 'unloaded' || 
-          (tab.title && tab.title.includes('Error')) ||
-          (tab.title && tab.title.includes('Aw, Snap'))) {
-        crashedTabs++;
-        debugLog(`🚨 Detected crashed tab: ${tab.id}`);
-      }
-    }
-    
-    if (crashedTabs > 0) {
-      crashCounter += crashedTabs;
-      debugLog(`⚠️ Total crashes detected: ${crashCounter}`);
-      
-      // If we've seen too many crashes, perform a hard refresh with cache clear
-      if (crashCounter >= AUTO_RESTART_CONFIG.maxCrashesBeforeRestart) {
-        debugLog('🔧 Multiple crashes detected - initiating recovery with cache clear...');
-        await performHardRefresh({ 
-          clearCache: true, 
-          reason: `crash_recovery (${crashCounter} crashes)` 
-        });
-        crashCounter = 0; // Reset after recovery
-      } else {
-        // Perform a regular refresh for minor crashes (with delay)
-        debugLog(`⏳ Scheduling crash recovery in ${AUTO_RESTART_CONFIG.crashRecoveryDelayMs / 1000}s...`);
-        setTimeout(async () => {
-          // Double-check we're not in cooldown before executing
-          const timeSinceLastRefresh = Date.now() - lastRefreshAttempt;
-          if (timeSinceLastRefresh >= MIN_REFRESH_INTERVAL && !isRefreshing) {
-            await performHardRefresh({ reason: 'crash_detected' });
-          } else {
-            debugLog('⏭️ Skipping scheduled crash recovery - cooldown active');
-          }
-        }, AUTO_RESTART_CONFIG.crashRecoveryDelayMs);
-      }
-    }
-  } catch (error) {
-    errorLog('Error in crash detection:', error);
   }
 }
 
 /**
- * Monitors memory usage and triggers restart if needed
- */
-async function monitorMemoryUsage() {
-  try {
-    // Check if chrome.system.memory is available
-    if (!chrome.system || !chrome.system.memory) {
-      debugLog('⚠️ Memory monitoring not available in this environment');
-      return;
-    }
-    
-    chrome.system.memory.getInfo((info) => {
-      const usedMemoryPercent = ((info.capacity - info.availableCapacity) / info.capacity) * 100;
-      
-      debugLog(`📊 Memory usage: ${usedMemoryPercent.toFixed(1)}%`);
-      lastMemoryCheck = {
-        timestamp: new Date().toISOString(),
-        usedPercent: usedMemoryPercent,
-        availableMB: Math.round(info.availableCapacity / 1024 / 1024)
-      };
-      
-      // If memory usage is critically high, trigger a restart
-      if (usedMemoryPercent > 90) {
-        debugLog('⚠️ Critical memory usage detected - triggering restart...');
-        performHardRefresh({ 
-          clearCache: true, 
-          reason: `high_memory (${usedMemoryPercent.toFixed(1)}%)` 
-        });
-      }
-    });
-  } catch (error) {
-    debugLog('Memory monitoring error:', error);
-  }
-}
-
-/**
- * Initializes the auto-restart mechanism
+ * Initializes the SMART PROACTIVE auto-restart system
  */
 async function initializeAutoRestart() {
   try {
@@ -364,8 +339,7 @@ async function initializeAutoRestart() {
     const storage = await chrome.storage.local.get(AUTO_RESTART_CONFIG.storageKey);
     const settings = storage[AUTO_RESTART_CONFIG.storageKey] || {
       enabled: AUTO_RESTART_CONFIG.enabled,
-      intervalMs: AUTO_RESTART_CONFIG.intervalMs,
-      crashDetection: AUTO_RESTART_CONFIG.crashDetection
+      intervalMs: AUTO_RESTART_CONFIG.intervalMs
     };
     
     // Clear any existing intervals
@@ -373,45 +347,32 @@ async function initializeAutoRestart() {
       clearInterval(autoRestartInterval);
       autoRestartInterval = null;
     }
-    if (memoryCheckInterval) {
-      clearInterval(memoryCheckInterval);
-      memoryCheckInterval = null;
-    }
     
     if (!settings.enabled) {
-      debugLog('⏸️ Auto-restart: Feature disabled');
+      debugLog('⏸️ Smart Auto-Restart: DISABLED (manual mode)');
+      debugLog('💡 Enable in popup for proactive refresh every 2-3 hours');
       return;
     }
     
-    // Set up the main restart interval
+    // === SMART PROACTIVE MODE ===
+    // Check every 15 minutes if we need a proactive refresh
     autoRestartInterval = setInterval(async () => {
-      debugLog('⏰ Auto-restart: Timer triggered');
-      const result = await performHardRefresh({ reason: 'scheduled' });
-      
-      // Notify popup if it's open
-      chrome.runtime.sendMessage({
-        type: 'AUTO_RESTART_PERFORMED',
-        result: result
-      }).catch(() => {
-        // Popup might not be open, that's fine
-      });
-    }, settings.intervalMs);
+      await checkProactiveRefresh();
+    }, 15 * 60 * 1000); // Check every 15 minutes
     
-    // DISABLED: Crash detection and memory monitoring to prevent loops
-    // These features caused refresh loops and are now disabled
-    debugLog('⚠️ Crash detection and memory monitoring DISABLED by default');
-    debugLog('💡 Use manual "Restart Now" button only when needed');
-    
-    debugLog(`✅ Auto-restart: Initialized with ${settings.intervalMs / 1000 / 60} minute interval`);
-    debugLog('✅ Memory monitoring: Active');
+    debugLog('✅ Smart Auto-Restart: ENABLED');
+    debugLog(`⏰ Proactive refresh: Every ${settings.intervalMs / 3600000}h when idle`);
+    debugLog('🛡️ Safe mode: Only refreshes during 5min+ idle windows');
+    debugLog('⏳ Cooldown: 10min between any refreshes');
     
     // Store initialization time
     await chrome.storage.local.set({
-      'boldtake_auto_restart_initialized': new Date().toISOString()
+      'boldtake_auto_restart_initialized': new Date().toISOString(),
+      'boldtake_extension_start_time': extensionStartTime
     });
     
   } catch (error) {
-    errorLog('❌ Auto-restart: Failed to initialize:', error);
+    errorLog('❌ Smart Auto-Restart: Failed to initialize:', error);
   }
 }
 
@@ -616,14 +577,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             clearInterval(autoRestartInterval);
             autoRestartInterval = null;
           }
-          if (memoryCheckInterval) {
-            clearInterval(memoryCheckInterval);
-            memoryCheckInterval = null;
+          
+          // Clear lock timeout
+          if (refreshLockTimeout) {
+            clearTimeout(refreshLockTimeout);
+            refreshLockTimeout = null;
           }
           
-          // Reset all locks
+          // Reset all locks and state
           isRefreshing = false;
-          crashCounter = 0;
           
           // Disable in settings
           await chrome.storage.local.set({
@@ -641,6 +603,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
       })();
       return true;
+    }
+    
+    if (message.type === 'UPDATE_ACTIVITY') {
+      // Content script reports activity
+      updateActivityTimestamp();
+      sendResponse({ success: true });
+      return false;
     }
 
     // STABILITY: Handle unknown message types
