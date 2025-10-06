@@ -35,7 +35,11 @@ const SESSION_CONFIG = {
 const AUTO_RESTART_CONFIG = {
   enabled: true,
   intervalMs: 60 * 60 * 1000, // 1 hour in milliseconds
-  storageKey: 'boldtake_auto_restart_settings'
+  storageKey: 'boldtake_auto_restart_settings',
+  crashDetection: true,
+  crashRecoveryDelayMs: 5000, // 5 seconds after crash detection
+  maxCrashesBeforeRestart: 3,
+  memoryCheckIntervalMs: 5 * 60 * 1000 // Check memory every 5 minutes
 };
 
 // Logging functions
@@ -46,14 +50,19 @@ const errorLog = (...args) => console.error('[BoldTake Error]', ...args);
 
 let autoRestartInterval = null;
 let lastRestartTime = null;
+let crashCounter = 0;
+let memoryCheckInterval = null;
+let lastMemoryCheck = null;
 
 /**
  * Performs a hard browser refresh (Ctrl+Shift+R equivalent) on X.com tabs
- * This ensures a complete reload of the page and clears any stuck states
+ * Enhanced with crash recovery and cache clearing for "Aw, Snap" errors
  */
-async function performHardRefresh() {
+async function performHardRefresh(options = {}) {
   try {
-    debugLog('🔄 Auto-restart: Performing hard refresh on X.com tabs...');
+    const { clearCache = false, reason = 'scheduled' } = options;
+    
+    debugLog(`🔄 Auto-restart: Performing hard refresh (reason: ${reason})...`);
     
     // Get all tabs with X.com or Twitter.com
     const tabs = await chrome.tabs.query({
@@ -65,49 +74,90 @@ async function performHardRefresh() {
       return { success: false, message: 'No X.com tabs found' };
     }
     
+    // Clear browser cache if requested (helps with "Aw, Snap" errors)
+    if (clearCache) {
+      debugLog('🧹 Clearing browser cache to fix potential corruption...');
+      await clearBrowserCache();
+    }
+    
     // Store the current restart time
     lastRestartTime = new Date().toISOString();
     await chrome.storage.local.set({
       'boldtake_last_auto_restart': lastRestartTime
     });
     
+    // Reset crash counter after successful restart
+    crashCounter = 0;
+    
     // Perform hard refresh on each tab
     for (const tab of tabs) {
       try {
+        // Check if tab is crashed first
+        if (tab.status === 'unloaded' || !tab.url) {
+          debugLog(`⚠️ Tab ${tab.id} appears to be crashed, attempting recovery...`);
+        }
+        
         // Method 1: Use chrome.tabs.reload with bypassCache flag for hard refresh
         await chrome.tabs.reload(tab.id, { bypassCache: true });
-        debugLog(`✅ Auto-restart: Hard refresh performed on tab ${tab.id} (${tab.title})`);
+        debugLog(`✅ Auto-restart: Hard refresh performed on tab ${tab.id} (${tab.title || 'Crashed Tab'})`);
         
-        // Optional: Inject a script to clear any localStorage/sessionStorage if needed
-        // This mimics a more complete Ctrl+Shift+R behavior
-        chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          func: () => {
-            // Clear any extension-related session data that might be stuck
-            try {
-              // Clear session storage
-              if (window.sessionStorage) {
-                const keysToRemove = [];
-                for (let i = 0; i < window.sessionStorage.length; i++) {
-                  const key = window.sessionStorage.key(i);
-                  if (key && key.includes('boldtake')) {
-                    keysToRemove.push(key);
+        // Wait a bit before injecting script to ensure page starts loading
+        setTimeout(() => {
+          // Inject a script to clear any localStorage/sessionStorage if needed
+          chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            func: () => {
+              // Clear any extension-related session data that might be stuck
+              try {
+                // Clear session storage
+                if (window.sessionStorage) {
+                  const keysToRemove = [];
+                  for (let i = 0; i < window.sessionStorage.length; i++) {
+                    const key = window.sessionStorage.key(i);
+                    if (key && (key.includes('boldtake') || key.includes('twitter') || key.includes('x.com'))) {
+                      keysToRemove.push(key);
+                    }
                   }
+                  keysToRemove.forEach(key => window.sessionStorage.removeItem(key));
                 }
-                keysToRemove.forEach(key => window.sessionStorage.removeItem(key));
+                
+                // Also clear problematic localStorage items
+                if (window.localStorage) {
+                  const localKeysToRemove = [];
+                  for (let i = 0; i < window.localStorage.length; i++) {
+                    const key = window.localStorage.key(i);
+                    // Clear temporary/cache-like data that might be corrupted
+                    if (key && (key.includes('cache') || key.includes('temp') || key.includes('draft'))) {
+                      localKeysToRemove.push(key);
+                    }
+                  }
+                  localKeysToRemove.forEach(key => window.localStorage.removeItem(key));
+                }
+                
+                console.log('[BoldTake] Auto-restart: Cleared session and cache data');
+              } catch (e) {
+                console.error('[BoldTake] Auto-restart: Error clearing data:', e);
               }
-              console.log('[BoldTake] Auto-restart: Cleared session data');
-            } catch (e) {
-              console.error('[BoldTake] Auto-restart: Error clearing session data:', e);
             }
-          }
-        }).catch(err => {
-          // Script injection might fail if tab is still loading, that's okay
-          debugLog('⚠️ Script injection failed (expected during reload):', err.message);
-        });
+          }).catch(err => {
+            // Script injection might fail if tab is still loading, that's okay
+            debugLog('⚠️ Script injection failed (expected during reload):', err.message);
+          });
+        }, 1000);
         
       } catch (error) {
         errorLog(`❌ Auto-restart: Failed to refresh tab ${tab.id}:`, error);
+        
+        // If reload fails, try to recreate the tab
+        if (error.message.includes('No tab with id') || error.message.includes('Cannot access')) {
+          debugLog('🔧 Attempting to recreate crashed tab...');
+          try {
+            await chrome.tabs.create({ url: 'https://x.com/', active: false });
+            debugLog('✅ Created new X.com tab to replace crashed one');
+          } catch (createError) {
+            errorLog('❌ Failed to create replacement tab:', createError);
+          }
+        }
       }
     }
     
@@ -115,7 +165,9 @@ async function performHardRefresh() {
     const restartEvent = {
       timestamp: lastRestartTime,
       tabsRefreshed: tabs.length,
-      success: true
+      success: true,
+      reason: reason,
+      cacheCleared: clearCache
     };
     
     // Store in activity log
@@ -127,6 +179,29 @@ async function performHardRefresh() {
   } catch (error) {
     errorLog('❌ Auto-restart: Critical error during hard refresh:', error);
     return { success: false, error: error.message };
+  }
+}
+
+/**
+ * Clears browser cache to help fix "Aw, Snap" errors
+ */
+async function clearBrowserCache() {
+  try {
+    // Clear cache for the last hour to avoid clearing everything
+    const oneHourAgo = Date.now() - (60 * 60 * 1000);
+    
+    await chrome.browsingData.remove({
+      "since": oneHourAgo,
+      "origins": ["https://x.com", "https://twitter.com"]
+    }, {
+      "cache": true,
+      "cookies": false, // Don't clear cookies to maintain login
+      "localStorage": false // Keep localStorage for settings
+    });
+    
+    debugLog('✅ Browser cache cleared for X.com');
+  } catch (error) {
+    errorLog('⚠️ Failed to clear browser cache:', error);
   }
 }
 
@@ -151,6 +226,86 @@ async function storeRestartEvent(event) {
 }
 
 /**
+ * Detects tab crashes and initiates recovery
+ */
+async function detectAndRecoverFromCrashes() {
+  try {
+    const tabs = await chrome.tabs.query({
+      url: ['https://x.com/*', 'https://twitter.com/*']
+    });
+    
+    let crashedTabs = 0;
+    
+    for (const tab of tabs) {
+      // Check for signs of crashed tabs
+      if (tab.status === 'unloaded' || 
+          (tab.title && tab.title.includes('Error')) ||
+          (tab.title && tab.title.includes('Aw, Snap'))) {
+        crashedTabs++;
+        debugLog(`🚨 Detected crashed tab: ${tab.id}`);
+      }
+    }
+    
+    if (crashedTabs > 0) {
+      crashCounter += crashedTabs;
+      debugLog(`⚠️ Total crashes detected: ${crashCounter}`);
+      
+      // If we've seen too many crashes, perform a hard refresh with cache clear
+      if (crashCounter >= AUTO_RESTART_CONFIG.maxCrashesBeforeRestart) {
+        debugLog('🔧 Multiple crashes detected - initiating recovery with cache clear...');
+        await performHardRefresh({ 
+          clearCache: true, 
+          reason: `crash_recovery (${crashCounter} crashes)` 
+        });
+        crashCounter = 0; // Reset after recovery
+      } else {
+        // Perform a regular refresh for minor crashes
+        setTimeout(async () => {
+          await performHardRefresh({ reason: 'crash_detected' });
+        }, AUTO_RESTART_CONFIG.crashRecoveryDelayMs);
+      }
+    }
+  } catch (error) {
+    errorLog('Error in crash detection:', error);
+  }
+}
+
+/**
+ * Monitors memory usage and triggers restart if needed
+ */
+async function monitorMemoryUsage() {
+  try {
+    // Check if chrome.system.memory is available
+    if (!chrome.system || !chrome.system.memory) {
+      debugLog('⚠️ Memory monitoring not available in this environment');
+      return;
+    }
+    
+    chrome.system.memory.getInfo((info) => {
+      const usedMemoryPercent = ((info.capacity - info.availableCapacity) / info.capacity) * 100;
+      
+      debugLog(`📊 Memory usage: ${usedMemoryPercent.toFixed(1)}%`);
+      lastMemoryCheck = {
+        timestamp: new Date().toISOString(),
+        usedPercent: usedMemoryPercent,
+        availableMB: Math.round(info.availableCapacity / 1024 / 1024)
+      };
+      
+      // If memory usage is critically high, trigger a restart
+      if (usedMemoryPercent > 90) {
+        debugLog('⚠️ Critical memory usage detected - triggering restart...');
+        performHardRefresh({ 
+          clearCache: true, 
+          reason: `high_memory (${usedMemoryPercent.toFixed(1)}%)` 
+        });
+      }
+    });
+  } catch (error) {
+    debugLog('Memory monitoring error:', error);
+  }
+}
+
+/**
  * Initializes the auto-restart mechanism
  */
 async function initializeAutoRestart() {
@@ -159,13 +314,18 @@ async function initializeAutoRestart() {
     const storage = await chrome.storage.local.get(AUTO_RESTART_CONFIG.storageKey);
     const settings = storage[AUTO_RESTART_CONFIG.storageKey] || {
       enabled: AUTO_RESTART_CONFIG.enabled,
-      intervalMs: AUTO_RESTART_CONFIG.intervalMs
+      intervalMs: AUTO_RESTART_CONFIG.intervalMs,
+      crashDetection: AUTO_RESTART_CONFIG.crashDetection
     };
     
-    // Clear any existing interval
+    // Clear any existing intervals
     if (autoRestartInterval) {
       clearInterval(autoRestartInterval);
       autoRestartInterval = null;
+    }
+    if (memoryCheckInterval) {
+      clearInterval(memoryCheckInterval);
+      memoryCheckInterval = null;
     }
     
     if (!settings.enabled) {
@@ -173,10 +333,10 @@ async function initializeAutoRestart() {
       return;
     }
     
-    // Set up the interval
+    // Set up the main restart interval
     autoRestartInterval = setInterval(async () => {
       debugLog('⏰ Auto-restart: Timer triggered');
-      const result = await performHardRefresh();
+      const result = await performHardRefresh({ reason: 'scheduled' });
       
       // Notify popup if it's open
       chrome.runtime.sendMessage({
@@ -187,7 +347,23 @@ async function initializeAutoRestart() {
       });
     }, settings.intervalMs);
     
+    // Set up crash detection if enabled
+    if (settings.crashDetection) {
+      // Check for crashes every 30 seconds
+      setInterval(() => {
+        detectAndRecoverFromCrashes();
+      }, 30000);
+      
+      debugLog('🛡️ Crash detection enabled');
+    }
+    
+    // Set up memory monitoring
+    memoryCheckInterval = setInterval(() => {
+      monitorMemoryUsage();
+    }, AUTO_RESTART_CONFIG.memoryCheckIntervalMs);
+    
     debugLog(`✅ Auto-restart: Initialized with ${settings.intervalMs / 1000 / 60} minute interval`);
+    debugLog('✅ Memory monitoring: Active');
     
     // Store initialization time
     await chrome.storage.local.set({
