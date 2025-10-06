@@ -31,12 +31,12 @@ const SESSION_CONFIG = {
   retryDelay: 1000
 };
 
-// Auto-restart configuration
+// Auto-restart configuration - DISABLED BY DEFAULT
 const AUTO_RESTART_CONFIG = {
-  enabled: true,
+  enabled: false, // CRITICAL: Disabled by default to prevent loops
   intervalMs: 60 * 60 * 1000, // 1 hour in milliseconds
   storageKey: 'boldtake_auto_restart_settings',
-  crashDetection: true,
+  crashDetection: false, // CRITICAL: Disabled by default
   crashRecoveryDelayMs: 5000, // 5 seconds after crash detection
   maxCrashesBeforeRestart: 3,
   memoryCheckIntervalMs: 5 * 60 * 1000 // Check memory every 5 minutes
@@ -397,20 +397,10 @@ async function initializeAutoRestart() {
       });
     }, settings.intervalMs);
     
-    // Set up crash detection if enabled
-    if (settings.crashDetection) {
-      // Check for crashes every 30 seconds
-      setInterval(() => {
-        detectAndRecoverFromCrashes();
-      }, 30000);
-      
-      debugLog('🛡️ Crash detection enabled');
-    }
-    
-    // Set up memory monitoring
-    memoryCheckInterval = setInterval(() => {
-      monitorMemoryUsage();
-    }, AUTO_RESTART_CONFIG.memoryCheckIntervalMs);
+    // DISABLED: Crash detection and memory monitoring to prevent loops
+    // These features caused refresh loops and are now disabled
+    debugLog('⚠️ Crash detection and memory monitoring DISABLED by default');
+    debugLog('💡 Use manual "Restart Now" button only when needed');
     
     debugLog(`✅ Auto-restart: Initialized with ${settings.intervalMs / 1000 / 60} minute interval`);
     debugLog('✅ Memory monitoring: Active');

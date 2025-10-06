@@ -2764,8 +2764,8 @@
                     <label for="auto-restart-toggle" style="display: flex; align-items: center; justify-content: space-between;">
                         <span>🔄 Auto-Restart (Hard Refresh)</span>
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <input type="checkbox" id="auto-restart-toggle" checked style="width: auto; margin: 0;">
-                            <span id="auto-restart-status" style="font-size: 12px; color: hsl(var(--brand-green));">Active</span>
+                            <input type="checkbox" id="auto-restart-toggle" style="width: auto; margin: 0;">
+                            <span id="auto-restart-status" style="font-size: 12px; color: #ef4444;">Disabled</span>
                         </div>
                     </label>
                     <select id="auto-restart-interval" class="daily-target-select" style="margin-top: 10px;">
@@ -2782,17 +2782,13 @@
                         </button>
                         <span id="last-restart-time" style="font-size: 11px; color: hsl(var(--text-secondary));">Never</span>
                     </div>
-                    <div style="margin-top: 8px; padding: 8px; background: hsl(var(--bg-primary)); border-radius: 6px; font-size: 11px;">
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                            <span>🛡️ Crash Protection:</span>
-                            <span style="color: hsl(var(--brand-green));">Active</span>
+                    <div style="margin-top: 8px; padding: 12px; background: #fef3c7; border: 2px solid #f59e0b; border-radius: 6px; font-size: 11px; color: #92400e;">
+                        <div style="font-weight: 600; margin-bottom: 6px;">⚠️ MANUAL MODE ONLY</div>
+                        <div style="margin-bottom: 8px; line-height: 1.4;">
+                            Auto-restart is DISABLED by default to prevent refresh loops. Use the "Restart Now" button manually when needed.
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span>🧹 Cache Clearing:</span>
-                            <span style="color: hsl(var(--brand-green));">Enabled</span>
-                        </div>
-                        <button id="emergency-stop-btn" style="width: 100%; padding: 6px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 11px; font-weight: 600; cursor: pointer;">
-                            🛑 EMERGENCY STOP (If Looping)
+                        <button id="emergency-stop-btn" style="width: 100%; padding: 8px; background: #ef4444; color: white; border: none; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                            🛑 STOP ALL REFRESHING NOW
                         </button>
                     </div>
                 </div>
