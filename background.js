@@ -53,6 +53,9 @@ let lastRestartTime = null;
 let crashCounter = 0;
 let memoryCheckInterval = null;
 let lastMemoryCheck = null;
+let isRefreshing = false; // Lock to prevent concurrent refreshes
+let lastRefreshAttempt = 0; // Timestamp of last refresh attempt
+const MIN_REFRESH_INTERVAL = 30000; // Minimum 30 seconds between refreshes
 
 /**
  * Performs a hard browser refresh (Ctrl+Shift+R equivalent) on X.com tabs
@@ -61,6 +64,25 @@ let lastMemoryCheck = null;
 async function performHardRefresh(options = {}) {
   try {
     const { clearCache = false, reason = 'scheduled' } = options;
+    
+    // CRITICAL FIX: Prevent refresh loop with lock and cooldown
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshAttempt;
+    
+    if (isRefreshing) {
+      debugLog('⚠️ Refresh already in progress - skipping to prevent loop');
+      return { success: false, message: 'Refresh already in progress' };
+    }
+    
+    if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
+      const waitTime = Math.ceil((MIN_REFRESH_INTERVAL - timeSinceLastRefresh) / 1000);
+      debugLog(`⏳ Cooldown active - must wait ${waitTime}s before next refresh`);
+      return { success: false, message: `Cooldown active - wait ${waitTime}s` };
+    }
+    
+    // Set lock and update timestamp
+    isRefreshing = true;
+    lastRefreshAttempt = now;
     
     debugLog(`🔄 Auto-restart: Performing hard refresh (reason: ${reason})...`);
     
@@ -174,10 +196,18 @@ async function performHardRefresh(options = {}) {
     await storeRestartEvent(restartEvent);
     
     debugLog(`🎯 Auto-restart: Completed - ${tabs.length} tab(s) refreshed`);
+    
+    // Release lock after successful completion
+    isRefreshing = false;
+    
     return { success: true, tabsRefreshed: tabs.length, timestamp: lastRestartTime };
     
   } catch (error) {
     errorLog('❌ Auto-restart: Critical error during hard refresh:', error);
+    
+    // CRITICAL: Always release lock even on error
+    isRefreshing = false;
+    
     return { success: false, error: error.message };
   }
 }
@@ -230,6 +260,19 @@ async function storeRestartEvent(event) {
  */
 async function detectAndRecoverFromCrashes() {
   try {
+    // CRITICAL FIX: Don't check for crashes if we're already refreshing
+    if (isRefreshing) {
+      debugLog('⏭️ Skipping crash detection - refresh in progress');
+      return;
+    }
+    
+    // CRITICAL FIX: Respect cooldown period
+    const timeSinceLastRefresh = Date.now() - lastRefreshAttempt;
+    if (timeSinceLastRefresh < MIN_REFRESH_INTERVAL) {
+      debugLog('⏭️ Skipping crash detection - in cooldown period');
+      return;
+    }
+    
     const tabs = await chrome.tabs.query({
       url: ['https://x.com/*', 'https://twitter.com/*']
     });
@@ -259,9 +302,16 @@ async function detectAndRecoverFromCrashes() {
         });
         crashCounter = 0; // Reset after recovery
       } else {
-        // Perform a regular refresh for minor crashes
+        // Perform a regular refresh for minor crashes (with delay)
+        debugLog(`⏳ Scheduling crash recovery in ${AUTO_RESTART_CONFIG.crashRecoveryDelayMs / 1000}s...`);
         setTimeout(async () => {
-          await performHardRefresh({ reason: 'crash_detected' });
+          // Double-check we're not in cooldown before executing
+          const timeSinceLastRefresh = Date.now() - lastRefreshAttempt;
+          if (timeSinceLastRefresh >= MIN_REFRESH_INTERVAL && !isRefreshing) {
+            await performHardRefresh({ reason: 'crash_detected' });
+          } else {
+            debugLog('⏭️ Skipping scheduled crash recovery - cooldown active');
+          }
         }, AUTO_RESTART_CONFIG.crashRecoveryDelayMs);
       }
     }
@@ -555,10 +605,48 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       (async () => {
         try {
           debugLog('⚡ Manual auto-restart triggered');
-          const result = await performHardRefresh();
+          const result = await performHardRefresh({ reason: 'manual' });
           sendResponse({ success: true, result });
         } catch (error) {
           errorLog('Error triggering manual restart:', error);
+          sendResponse({ success: false, error: error.message });
+        }
+      })();
+      return true;
+    }
+    
+    if (message.type === 'EMERGENCY_STOP_AUTO_RESTART') {
+      // Emergency stop - disable all auto-restart features
+      (async () => {
+        try {
+          debugLog('🛑 EMERGENCY STOP triggered');
+          
+          // Clear all intervals
+          if (autoRestartInterval) {
+            clearInterval(autoRestartInterval);
+            autoRestartInterval = null;
+          }
+          if (memoryCheckInterval) {
+            clearInterval(memoryCheckInterval);
+            memoryCheckInterval = null;
+          }
+          
+          // Reset all locks
+          isRefreshing = false;
+          crashCounter = 0;
+          
+          // Disable in settings
+          await chrome.storage.local.set({
+            [AUTO_RESTART_CONFIG.storageKey]: {
+              enabled: false,
+              intervalMs: AUTO_RESTART_CONFIG.intervalMs
+            }
+          });
+          
+          debugLog('✅ All auto-restart features stopped');
+          sendResponse({ success: true, message: 'Auto-restart emergency stopped' });
+        } catch (error) {
+          errorLog('Error in emergency stop:', error);
           sendResponse({ success: false, error: error.message });
         }
       })();

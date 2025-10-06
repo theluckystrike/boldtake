@@ -20,7 +20,7 @@ let nicheSelect, suggestedKeywords;
 let dailyTargetInput;
 
 // Auto-Restart Elements
-let autoRestartToggle, autoRestartInterval, autoRestartStatus, manualRestartBtn, lastRestartTime;
+let autoRestartToggle, autoRestartInterval, autoRestartStatus, manualRestartBtn, lastRestartTime, emergencyStopBtn;
 
 // Custom Prompt Elements (removed)
 
@@ -227,6 +227,49 @@ function setupAutoRestartEventListeners() {
             } finally {
                 manualRestartBtn.disabled = false;
                 manualRestartBtn.textContent = '⚡ Restart Now';
+            }
+        });
+    }
+    
+    // Emergency stop button
+    if (emergencyStopBtn) {
+        emergencyStopBtn.addEventListener('click', async () => {
+            if (!confirm('⚠️ This will STOP all auto-restart features immediately. Are you sure?')) {
+                return;
+            }
+            
+            emergencyStopBtn.disabled = true;
+            emergencyStopBtn.textContent = '⏳ Stopping...';
+            
+            try {
+                const response = await chrome.runtime.sendMessage({
+                    type: 'EMERGENCY_STOP_AUTO_RESTART'
+                });
+                
+                if (response && response.success) {
+                    showNotification('🛑 Auto-restart STOPPED - Refresh loop prevented!', 'success');
+                    
+                    // Update UI
+                    if (autoRestartToggle) {
+                        autoRestartToggle.checked = false;
+                    }
+                    if (autoRestartStatus) {
+                        autoRestartStatus.textContent = 'Stopped';
+                        autoRestartStatus.style.color = '#ef4444';
+                    }
+                    
+                    emergencyStopBtn.textContent = '✅ Stopped';
+                    emergencyStopBtn.style.background = '#6b7280';
+                } else {
+                    showNotification('❌ Failed to stop auto-restart', 'error');
+                    emergencyStopBtn.disabled = false;
+                    emergencyStopBtn.textContent = '🛑 EMERGENCY STOP';
+                }
+            } catch (error) {
+                console.error('Error in emergency stop:', error);
+                showNotification('❌ Error stopping auto-restart', 'error');
+                emergencyStopBtn.disabled = false;
+                emergencyStopBtn.textContent = '🛑 EMERGENCY STOP';
             }
         });
     }
@@ -540,6 +583,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     autoRestartStatus = document.getElementById('auto-restart-status');
     manualRestartBtn = document.getElementById('manual-restart-btn');
     lastRestartTime = document.getElementById('last-restart-time');
+    emergencyStopBtn = document.getElementById('emergency-stop-btn');
     
     // Initialize auto-restart controls
     await initializeAutoRestartControls();
