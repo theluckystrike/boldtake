@@ -749,7 +749,9 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
             languageInstructions: tweetContext.languageInstructions || undefined,
             debugMode: tweetContext.debugMode || false,
             // CRITICAL: Character length requirements for quality engagement
-            minCharacters: 280,
+            // Minimum 150 to avoid obviously short AI-generated spam (85 char issue)
+            // Target 200-280 for best engagement
+            minCharacters: 150,
             maxCharacters: 280
           }),
           signal: controller.signal
@@ -825,11 +827,13 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
           throw new Error('Empty response from AI service');
         }
 
-        // CRITICAL: Validate minimum length for quality engagement
-        if (content.length < 280) {
-          errorLog(`❌ Reply too short: ${content.length} chars (minimum 280 required)`);
+        // CRITICAL: Validate minimum length to prevent obviously AI-generated spam
+        // The 85-char replies are unacceptable and damage user reputation
+        const MIN_ACCEPTABLE_LENGTH = 150;
+        if (content.length < MIN_ACCEPTABLE_LENGTH) {
+          errorLog(`❌ Reply too short: ${content.length} chars (minimum ${MIN_ACCEPTABLE_LENGTH} required)`);
           errorLog(`Short reply content: "${content}"`);
-          throw new Error(`Generated reply is too short (${content.length} chars). Minimum 280 characters required for quality engagement on X.com.`);
+          throw new Error(`Generated reply is too short (${content.length} chars). Minimum ${MIN_ACCEPTABLE_LENGTH} characters required to avoid AI-spam detection.`);
         }
 
         // CRITICAL: Validate maximum length (X.com limit)
@@ -838,7 +842,11 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
           throw new Error(`Response exceeds X.com character limit (${content.length}/280 chars).`);
         }
 
-        debugLog(`✅ Reply length validated: ${content.length} chars (optimal for X.com)`);
+        // Log quality metric
+        if (content.length >= 200) {
+          debugLog(`✅ Quality reply: ${content.length} chars (excellent engagement potential)`);
+        } else {
+          debugLog(`⚠️ Acceptable reply: ${content.length} chars (consider aiming for 200+ for better engagement)`);
         
         // Legacy check for extreme cases
         if (content.length > 1000) {
