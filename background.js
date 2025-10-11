@@ -853,6 +853,7 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
           debugLog(`✅ Quality reply: ${content.length} chars (excellent engagement potential)`);
         } else {
           debugLog(`⚠️ Acceptable reply: ${content.length} chars (consider aiming for 200+ for better engagement)`);
+        }
         
         // Legacy check for extreme cases
         if (content.length > 1000) {
