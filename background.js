@@ -747,7 +747,10 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
             // NEW: Language support fields
             language: tweetContext.language || 'english',
             languageInstructions: tweetContext.languageInstructions || undefined,
-            debugMode: tweetContext.debugMode || false
+            debugMode: tweetContext.debugMode || false,
+            // CRITICAL: Character length requirements for quality engagement
+            minCharacters: 280,
+            maxCharacters: 280
           }),
           signal: controller.signal
         });
@@ -822,6 +825,22 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
           throw new Error('Empty response from AI service');
         }
 
+        // CRITICAL: Validate minimum length for quality engagement
+        if (content.length < 280) {
+          errorLog(`❌ Reply too short: ${content.length} chars (minimum 280 required)`);
+          errorLog(`Short reply content: "${content}"`);
+          throw new Error(`Generated reply is too short (${content.length} chars). Minimum 280 characters required for quality engagement on X.com.`);
+        }
+
+        // CRITICAL: Validate maximum length (X.com limit)
+        if (content.length > 280) {
+          errorLog(`❌ Reply too long: ${content.length} chars (maximum 280)`);
+          throw new Error(`Response exceeds X.com character limit (${content.length}/280 chars).`);
+        }
+
+        debugLog(`✅ Reply length validated: ${content.length} chars (optimal for X.com)`);
+        
+        // Legacy check for extreme cases
         if (content.length > 1000) {
           throw new Error('Response too long - potential error');
         }
