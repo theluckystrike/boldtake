@@ -820,7 +820,13 @@ async function generateReplyWithSupabase(prompt, tweetContext = {}) {
           throw new Error('Invalid response structure from Edge Function');
         }
 
-        const content = data.reply.trim();
+        let content = data.reply.trim();
+        
+        // CRITICAL: Remove character count mentions that make replies look AI-generated
+        // Backend sometimes adds "(85 chars)" or "(197 characters)" to replies
+        content = content.replace(/\s*\(\d+\s*chars?\)\.?$/i, '');
+        content = content.replace(/\s*\(\d+\s*characters?\)\.?$/i, '');
+        content = content.trim();
         
         // STABILITY: Validate content
         if (!content || content.length === 0) {
